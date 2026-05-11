@@ -9,6 +9,17 @@
  */
 
 import type {
+	AutocompleteItem,
+	AutocompleteProvider,
+	Component,
+	EditorComponent,
+	EditorTheme,
+	KeyId,
+	OverlayHandle,
+	OverlayOptions,
+	TUI,
+} from "@mariozechner/pi-tui";
+import type {
 	AgentMessage,
 	AgentToolResult,
 	AgentToolUpdateCallback,
@@ -28,17 +39,6 @@ import type {
 	TextContent,
 	ToolResultMessage,
 } from "@sammorrowdrums/mcpi-ai";
-import type {
-	AutocompleteItem,
-	AutocompleteProvider,
-	Component,
-	EditorComponent,
-	EditorTheme,
-	KeyId,
-	OverlayHandle,
-	OverlayOptions,
-	TUI,
-} from "@mariozechner/pi-tui";
 import type { Static, TSchema } from "typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.js";
 import type { BashResult } from "../bash-executor.js";

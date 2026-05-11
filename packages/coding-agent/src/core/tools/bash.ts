@@ -1,9 +1,9 @@
-import type { AgentTool } from "@sammorrowdrums/mcpi-agent";
 import { randomBytes } from "node:crypto";
 import { createWriteStream, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Container, Text, truncateToWidth } from "@mariozechner/pi-tui";
+import type { AgentTool } from "@sammorrowdrums/mcpi-agent";
 import { spawn } from "child_process";
 import { type Static, Type } from "typebox";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";

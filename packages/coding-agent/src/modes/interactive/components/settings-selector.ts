@@ -1,5 +1,3 @@
-import type { ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
-import type { Transport } from "@sammorrowdrums/mcpi-ai";
 import {
 	Container,
 	getCapabilities,
@@ -11,6 +9,8 @@ import {
 	Spacer,
 	Text,
 } from "@mariozechner/pi-tui";
+import type { ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
+import type { Transport } from "@sammorrowdrums/mcpi-ai";
 import { getSelectListTheme, getSettingsListTheme, theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 

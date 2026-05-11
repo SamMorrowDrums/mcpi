@@ -1,6 +1,6 @@
+import { join } from "node:path";
 import type { ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
 import type { Model } from "@sammorrowdrums/mcpi-ai";
-import { join } from "node:path";
 import { getAgentDir } from "../config.js";
 import { AuthStorage } from "./auth-storage.js";
 import type { SessionStartEvent, ToolDefinition } from "./extensions/index.js";

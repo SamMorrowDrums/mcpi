@@ -1,6 +1,6 @@
+import { join } from "node:path";
 import { Agent, type AgentMessage, type ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
 import { type Message, type Model, streamSimple } from "@sammorrowdrums/mcpi-ai";
-import { join } from "node:path";
 import { getAgentDir } from "../config.js";
 import { AgentSession } from "./agent-session.js";
 import { formatNoModelsAvailableMessage } from "./auth-guidance.js";

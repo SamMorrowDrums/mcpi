@@ -1,5 +1,5 @@
-import type { ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
 import { Container, type SelectItem, SelectList, type SelectListLayoutOptions } from "@mariozechner/pi-tui";
+import type { ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
 import { getSelectListTheme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 

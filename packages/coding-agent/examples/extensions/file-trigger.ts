@@ -8,8 +8,8 @@
  *   echo "Run the tests" > /tmp/agent-trigger.txt
  */
 
-import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 import * as fs from "node:fs";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 
 export default function (pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {

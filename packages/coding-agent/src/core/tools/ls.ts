@@ -1,5 +1,5 @@
-import type { AgentTool } from "@sammorrowdrums/mcpi-agent";
 import { Text } from "@mariozechner/pi-tui";
+import type { AgentTool } from "@sammorrowdrums/mcpi-agent";
 import { existsSync, readdirSync, statSync } from "fs";
 import nodePath from "path";
 import { type Static, Type } from "typebox";

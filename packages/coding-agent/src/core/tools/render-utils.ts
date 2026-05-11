@@ -1,6 +1,6 @@
-import type { ImageContent, TextContent } from "@sammorrowdrums/mcpi-ai";
 import * as os from "node:os";
 import { getCapabilities, getImageDimensions, imageFallback } from "@mariozechner/pi-tui";
+import type { ImageContent, TextContent } from "@sammorrowdrums/mcpi-ai";
 import stripAnsi from "strip-ansi";
 import { sanitizeBinaryOutput } from "../../utils/shell.js";
 

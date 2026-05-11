@@ -4,9 +4,6 @@
  * Uses @mariozechner/jiti fork with virtualModules support for compiled Bun binaries.
  */
 
-import * as _bundledPiAgentCore from "@sammorrowdrums/mcpi-agent";
-import * as _bundledPiAi from "@sammorrowdrums/mcpi-ai";
-import * as _bundledPiAiOauth from "@sammorrowdrums/mcpi-ai/oauth";
 import * as fs from "node:fs";
 import { createRequire } from "node:module";
 import * as os from "node:os";
@@ -15,6 +12,9 @@ import { fileURLToPath } from "node:url";
 import { createJiti } from "@mariozechner/jiti";
 import type { KeyId } from "@mariozechner/pi-tui";
 import * as _bundledPiTui from "@mariozechner/pi-tui";
+import * as _bundledPiAgentCore from "@sammorrowdrums/mcpi-agent";
+import * as _bundledPiAi from "@sammorrowdrums/mcpi-ai";
+import * as _bundledPiAiOauth from "@sammorrowdrums/mcpi-ai/oauth";
 // Static imports of packages that extensions may use.
 // These MUST be static so Bun bundles them into the compiled binary.
 // The virtualModules option then makes them available to extensions.

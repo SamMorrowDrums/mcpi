@@ -875,12 +875,17 @@ function buildParams(
 	}
 
 	if (context.tools) {
-		params.tools = convertTools(
+		const tools = convertTools(
 			context.tools,
 			isOAuthToken,
 			getAnthropicCompat(model).supportsEagerToolInputStreaming,
 			cacheControl,
 		);
+		// Auto-inject tool_search when deferred tools are present
+		if (context.tools.some((t) => (t as { deferred?: boolean }).deferred)) {
+			tools.push({ type: "tool_search_tool_regex_20251119", name: "tool_search_tool_regex" } as any);
+		}
+		params.tools = tools;
 	}
 
 	// Configure thinking mode: adaptive (Opus 4.6+ and Sonnet 4.6),

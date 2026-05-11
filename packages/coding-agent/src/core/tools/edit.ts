@@ -1,5 +1,5 @@
-import type { AgentTool } from "@sammorrowdrums/mcpi-agent";
 import { Box, Container, Spacer, Text } from "@mariozechner/pi-tui";
+import type { AgentTool } from "@sammorrowdrums/mcpi-agent";
 import { constants } from "fs";
 import { access as fsAccess, readFile as fsReadFile, writeFile as fsWriteFile } from "fs/promises";
 import { type Static, Type } from "typebox";

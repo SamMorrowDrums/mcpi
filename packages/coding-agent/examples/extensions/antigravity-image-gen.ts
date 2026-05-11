@@ -25,12 +25,12 @@
  *   Example: { "save": "global" }
  */
 
-import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "@sammorrowdrums/mcpi";
-import { StringEnum } from "@sammorrowdrums/mcpi-ai";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "@sammorrowdrums/mcpi";
+import { StringEnum } from "@sammorrowdrums/mcpi-ai";
 import { type Static, Type } from "typebox";
 
 const PROVIDER = "google-antigravity";

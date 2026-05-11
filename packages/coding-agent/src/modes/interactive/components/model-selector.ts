@@ -1,4 +1,3 @@
-import { type Model, modelsAreEqual } from "@sammorrowdrums/mcpi-ai";
 import {
 	Container,
 	type Focusable,
@@ -9,6 +8,7 @@ import {
 	Text,
 	type TUI,
 } from "@mariozechner/pi-tui";
+import { type Model, modelsAreEqual } from "@sammorrowdrums/mcpi-ai";
 import type { ModelRegistry } from "../../../core/model-registry.js";
 import type { SettingsManager } from "../../../core/settings-manager.js";
 import { theme } from "../theme/theme.js";

@@ -4,9 +4,9 @@
  * Spawns the agent in RPC mode and provides a typed API for all operations.
  */
 
+import { type ChildProcess, spawn } from "node:child_process";
 import type { AgentEvent, AgentMessage, ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
 import type { ImageContent } from "@sammorrowdrums/mcpi-ai";
-import { type ChildProcess, spawn } from "node:child_process";
 import type { SessionStats } from "../../core/agent-session.js";
 import type { BashResult } from "../../core/bash-executor.js";
 import type { CompactionResult } from "../../core/compaction/index.js";

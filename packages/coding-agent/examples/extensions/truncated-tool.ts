@@ -14,6 +14,8 @@
  * built-in `grep` tool in src/core/tools/grep.ts for a more complete implementation.
  */
 
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { Text } from "@mariozechner/pi-tui";
 import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 import {
 	DEFAULT_MAX_BYTES,
@@ -23,8 +25,6 @@ import {
 	truncateHead,
 	withFileMutationQueue,
 } from "@sammorrowdrums/mcpi";
-import { mkdtemp, writeFile } from "node:fs/promises";
-import { Text } from "@mariozechner/pi-tui";
 import { execSync } from "child_process";
 import { tmpdir } from "os";
 import { join } from "path";

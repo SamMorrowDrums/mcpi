@@ -17,9 +17,9 @@
  * separate variables. Only the agent cursor is ever exposed to the agent.
  */
 
+import { type Component, matchesKey, Text, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import type { ExtensionAPI, ExtensionContext, Theme, ToolExecutionMode } from "@sammorrowdrums/mcpi";
 import { StringEnum } from "@sammorrowdrums/mcpi-ai";
-import { type Component, matchesKey, Text, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
 
 // Thrown from the tool on illegal actions. The agent runtime surfaces thrown

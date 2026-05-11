@@ -1,5 +1,5 @@
-import type { AssistantMessage } from "@sammorrowdrums/mcpi-ai";
 import { Container, Markdown, type MarkdownTheme, Spacer, Text } from "@mariozechner/pi-tui";
+import type { AssistantMessage } from "@sammorrowdrums/mcpi-ai";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";

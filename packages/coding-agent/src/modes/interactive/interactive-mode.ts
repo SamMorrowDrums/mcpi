@@ -3,15 +3,6 @@
  * Handles TUI rendering and user interaction, delegating business logic to AgentSession.
  */
 
-import type { AgentMessage } from "@sammorrowdrums/mcpi-agent";
-import {
-	type AssistantMessage,
-	getProviders,
-	type ImageContent,
-	type Message,
-	type Model,
-	type OAuthProviderId,
-} from "@sammorrowdrums/mcpi-ai";
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -45,6 +36,15 @@ import {
 	TUI,
 	visibleWidth,
 } from "@mariozechner/pi-tui";
+import type { AgentMessage } from "@sammorrowdrums/mcpi-agent";
+import {
+	type AssistantMessage,
+	getProviders,
+	type ImageContent,
+	type Message,
+	type Model,
+	type OAuthProviderId,
+} from "@sammorrowdrums/mcpi-ai";
 import { spawn, spawnSync } from "child_process";
 import {
 	APP_NAME,

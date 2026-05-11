@@ -1,6 +1,6 @@
-import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 
 export default function (pi: ExtensionAPI) {
 	const logFile = join(process.cwd(), ".pi", "provider-payload.log");

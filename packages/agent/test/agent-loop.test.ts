@@ -1365,7 +1365,8 @@ describe("agentLoopContinue with AgentMessage", () => {
 		const notification = allSecondCallMessages?.find((m: any) => {
 			if (m.role !== "user") return false;
 			if (typeof m.content === "string") return m.content.includes("New tools available");
-			if (Array.isArray(m.content)) return m.content.some((c: any) => c.type === "text" && c.text?.includes("New tools available"));
+			if (Array.isArray(m.content))
+				return m.content.some((c: any) => c.type === "text" && c.text?.includes("New tools available"));
 			return false;
 		});
 		expect(notification).toBeDefined();

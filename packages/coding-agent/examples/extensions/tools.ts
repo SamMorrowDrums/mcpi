@@ -9,9 +9,9 @@
  * 2. Use /tools to open the tool selector
  */
 
+import { Container, type SettingItem, SettingsList } from "@mariozechner/pi-tui";
 import type { ExtensionAPI, ExtensionContext, ToolInfo } from "@sammorrowdrums/mcpi";
 import { getSettingsListTheme } from "@sammorrowdrums/mcpi";
-import { Container, type SettingItem, SettingsList } from "@mariozechner/pi-tui";
 
 // State persisted to session
 interface ToolsState {

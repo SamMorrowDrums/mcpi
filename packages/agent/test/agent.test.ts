@@ -544,7 +544,9 @@ describe("Agent", () => {
 			(m) =>
 				m.role === "user" &&
 				Array.isArray(m.content) &&
-				m.content.some((c) => c.type === "text" && "text" in c && c.text.includes("New tools are now available: dynamic")),
+				m.content.some(
+					(c) => c.type === "text" && "text" in c && c.text.includes("New tools are now available: dynamic"),
+				),
 		);
 		expect(notification).toBeDefined();
 	});
