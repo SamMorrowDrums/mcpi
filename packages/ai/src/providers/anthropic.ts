@@ -1044,21 +1044,33 @@ function convertMessages(
 			const toolResults: ContentBlockParam[] = [];
 
 			// Add the current tool result
-			toolResults.push({
-				type: "tool_result",
-				tool_use_id: msg.toolCallId,
-				content: convertContentBlocks(msg.content),
-				is_error: msg.isError,
-			});
-
-			// Inject tool_reference blocks for deferred tools activated by this result.
-			// This enables the model to see full parameter schemas for tools
-			// discovered via skills, without requiring tool_search.
 			const activated = (msg.details as { activatedTools?: string[] })?.activatedTools;
-			if (activated) {
-				for (const toolName of activated) {
-					toolResults.push({ type: "tool_reference", tool_name: toolName } as any);
+			if (activated && activated.length > 0) {
+				// Inject tool_reference blocks inside tool_result content to
+				// activate deferred tools. tool_reference can't be mixed with
+				// text, so put references in the tool_result and skill body
+				// text as a separate block.
+				toolResults.push({
+					type: "tool_result",
+					tool_use_id: msg.toolCallId,
+					content: activated.map((name) => ({ type: "tool_reference", tool_name: name })) as any,
+					is_error: msg.isError,
+				});
+				// Add the original text content as a separate text block
+				const textContent = msg.content
+					.filter((c) => c.type === "text")
+					.map((c) => (c as { text: string }).text)
+					.join("\n");
+				if (textContent) {
+					toolResults.push({ type: "text", text: textContent } as any);
 				}
+			} else {
+				toolResults.push({
+					type: "tool_result",
+					tool_use_id: msg.toolCallId,
+					content: convertContentBlocks(msg.content),
+					is_error: msg.isError,
+				});
 			}
 
 			// Look ahead for consecutive toolResult messages
