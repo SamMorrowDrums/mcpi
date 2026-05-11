@@ -5,9 +5,9 @@
  *   pi -e examples/extensions/mac-system-theme.ts
  */
 
+import type { ExtensionAPI } from "@SamMorrowDrums/mcpi";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 const execAsync = promisify(exec);
 

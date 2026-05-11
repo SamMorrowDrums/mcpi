@@ -25,8 +25,8 @@
  *   pi -e ./built-in-tool-renderer.ts
  */
 
-import type { BashToolDetails, EditToolDetails, ExtensionAPI, ReadToolDetails } from "@mariozechner/pi-coding-agent";
-import { createBashTool, createEditTool, createReadTool, createWriteTool } from "@mariozechner/pi-coding-agent";
+import type { BashToolDetails, EditToolDetails, ExtensionAPI, ReadToolDetails } from "@SamMorrowDrums/mcpi";
+import { createBashTool, createEditTool, createReadTool, createWriteTool } from "@SamMorrowDrums/mcpi";
 import { Text } from "@mariozechner/pi-tui";
 
 export default function (pi: ExtensionAPI) {

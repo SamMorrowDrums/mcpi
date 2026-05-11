@@ -1,4 +1,4 @@
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import type { AgentTool } from "@SamMorrowDrums/mcpi-agent";
 import type { ExtensionContext, ToolDefinition } from "../extensions/types.js";
 
 /** Wrap a ToolDefinition into an AgentTool for the core runtime. */
@@ -13,6 +13,7 @@ export function wrapToolDefinition<TDetails = unknown>(
 		parameters: definition.parameters,
 		prepareArguments: definition.prepareArguments,
 		executionMode: definition.executionMode,
+		deferred: definition.deferred,
 		execute: (toolCallId, params, signal, onUpdate) =>
 			definition.execute(toolCallId, params, signal, onUpdate, ctxFactory?.() as ExtensionContext),
 	};
@@ -40,6 +41,7 @@ export function createToolDefinitionFromAgentTool(tool: AgentTool<any>): ToolDef
 		parameters: tool.parameters as any,
 		prepareArguments: tool.prepareArguments,
 		executionMode: tool.executionMode,
+		deferred: tool.deferred,
 		execute: async (toolCallId, params, signal, onUpdate) => tool.execute(toolCallId, params, signal, onUpdate),
 	};
 }

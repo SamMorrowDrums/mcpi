@@ -3,6 +3,8 @@
     <img src="https://pi.dev/logo.svg" alt="pi logo" width="128">
   </a>
 </p>
+
+> **This is an experimental fork.** It adds [`deferred` tool support](docs/progressive-tool-discovery.md) for progressive MCP tool discovery via skills. This may lead to an upstream contribution to Pi. Please do not use this fork directly — if you want to try the experiment, see [mcpi-ext](https://github.com/SamMorrowDrums/mcpi-ext) for the extension that implements skill-based tool gating.
 <p align="center">
   <a href="https://discord.com/invite/3cU7Bz4UPx"><img alt="Discord" src="https://img.shields.io/badge/discord-community-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
   <a href="https://github.com/badlogic/pi-mono/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/badlogic/pi-mono/ci.yml?style=flat-square&branch=main" /></a>

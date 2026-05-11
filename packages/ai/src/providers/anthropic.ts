@@ -1116,6 +1116,7 @@ function convertTools(
 
 	return tools.map((tool, index) => {
 		const schema = tool.parameters as { properties?: unknown; required?: string[] };
+		const deferred = (tool as { deferred?: boolean }).deferred;
 
 		return {
 			name: isOAuthToken ? toClaudeCodeName(tool.name) : tool.name,
@@ -1126,6 +1127,7 @@ function convertTools(
 				properties: schema.properties ?? {},
 				required: schema.required ?? [],
 			},
+			...(deferred ? { defer_loading: true } : {}),
 			...(cacheControl && index === tools.length - 1 ? { cache_control: cacheControl } : {}),
 		};
 	});

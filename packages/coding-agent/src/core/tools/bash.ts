@@ -1,8 +1,8 @@
+import type { AgentTool } from "@SamMorrowDrums/mcpi-agent";
 import { randomBytes } from "node:crypto";
 import { createWriteStream, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
 import { Container, Text, truncateToWidth } from "@mariozechner/pi-tui";
 import { spawn } from "child_process";
 import { type Static, Type } from "typebox";

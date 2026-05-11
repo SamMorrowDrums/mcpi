@@ -228,7 +228,12 @@ function buildParams(model: Model<"openai-responses">, context: Context, options
 	}
 
 	if (context.tools) {
-		params.tools = convertResponsesTools(context.tools);
+		const tools = convertResponsesTools(context.tools);
+		// Auto-inject tool_search when deferred tools are present (OpenAI requires it)
+		if (context.tools.some((t) => (t as { deferred?: boolean }).deferred)) {
+			tools.push({ type: "tool_search" } as any);
+		}
+		params.tools = tools;
 	}
 
 	if (model.reasoning) {

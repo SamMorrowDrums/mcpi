@@ -5,7 +5,7 @@
  * Useful to ensure work is committed before switching context.
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@SamMorrowDrums/mcpi";
 
 async function checkDirtyRepo(
 	pi: ExtensionAPI,

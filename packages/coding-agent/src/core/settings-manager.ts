@@ -1,4 +1,4 @@
-import type { Transport } from "@mariozechner/pi-ai";
+import type { Transport } from "@SamMorrowDrums/mcpi-ai";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { dirname, join } from "path";

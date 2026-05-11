@@ -1,6 +1,6 @@
+import { Agent, type AgentMessage, type ThinkingLevel } from "@SamMorrowDrums/mcpi-agent";
+import { type Message, type Model, streamSimple } from "@SamMorrowDrums/mcpi-ai";
 import { join } from "node:path";
-import { Agent, type AgentMessage, type ThinkingLevel } from "@mariozechner/pi-agent-core";
-import { type Message, type Model, streamSimple } from "@mariozechner/pi-ai";
 import { getAgentDir } from "../config.js";
 import { AgentSession } from "./agent-session.js";
 import { formatNoModelsAvailableMessage } from "./auth-guidance.js";
@@ -151,7 +151,7 @@ function getOpenRouterAttributionHeaders(
  * const { session } = await createAgentSession();
  *
  * // With explicit model
- * import { getModel } from '@mariozechner/pi-ai';
+ * import { getModel } from '@SamMorrowDrums/mcpi-ai';
  * const { session } = await createAgentSession({
  *   model: getModel('anthropic', 'claude-opus-4-5'),
  *   thinkingLevel: 'high',

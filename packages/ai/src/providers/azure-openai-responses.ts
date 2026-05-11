@@ -234,7 +234,11 @@ function buildParams(
 	}
 
 	if (context.tools) {
-		params.tools = convertResponsesTools(context.tools);
+		const tools = convertResponsesTools(context.tools);
+		if (context.tools.some((t) => (t as { deferred?: boolean }).deferred)) {
+			tools.push({ type: "tool_search" } as any);
+		}
+		params.tools = tools;
 	}
 
 	if (model.reasoning) {

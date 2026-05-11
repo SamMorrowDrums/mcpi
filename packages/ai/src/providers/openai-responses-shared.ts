@@ -267,13 +267,17 @@ export function convertResponsesMessages<TApi extends Api>(
 
 export function convertResponsesTools(tools: Tool[], options?: ConvertResponsesToolsOptions): OpenAITool[] {
 	const strict = options?.strict === undefined ? false : options.strict;
-	return tools.map((tool) => ({
-		type: "function",
-		name: tool.name,
-		description: tool.description,
-		parameters: tool.parameters as any, // TypeBox already generates JSON Schema
-		strict,
-	}));
+	return tools.map((tool) => {
+		const deferred = (tool as { deferred?: boolean }).deferred;
+		return {
+			type: "function",
+			name: tool.name,
+			description: tool.description,
+			parameters: tool.parameters as any, // TypeBox already generates JSON Schema
+			strict,
+			...(deferred ? { defer_loading: true } : {}),
+		};
+	});
 }
 
 // =============================================================================
