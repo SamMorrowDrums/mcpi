@@ -875,17 +875,12 @@ function buildParams(
 	}
 
 	if (context.tools) {
-		const tools = convertTools(
+		params.tools = convertTools(
 			context.tools,
 			isOAuthToken,
 			getAnthropicCompat(model).supportsEagerToolInputStreaming,
 			cacheControl,
 		);
-		// Auto-inject tool_search when deferred tools are present
-		if (context.tools.some((t) => (t as { deferred?: boolean }).deferred)) {
-			tools.push({ type: "tool_search_tool_regex_20251119", name: "tool_search_tool_regex" } as any);
-		}
-		params.tools = tools;
 	}
 
 	// Configure thinking mode: adaptive (Opus 4.6+ and Sonnet 4.6),
@@ -1055,6 +1050,16 @@ function convertMessages(
 				content: convertContentBlocks(msg.content),
 				is_error: msg.isError,
 			});
+
+			// Inject tool_reference blocks for deferred tools activated by this result.
+			// This enables the model to see full parameter schemas for tools
+			// discovered via skills, without requiring tool_search.
+			const activated = (msg.details as { activatedTools?: string[] })?.activatedTools;
+			if (activated) {
+				for (const toolName of activated) {
+					toolResults.push({ type: "tool_reference", tool_name: toolName } as any);
+				}
+			}
 
 			// Look ahead for consecutive toolResult messages
 			let j = i + 1;
