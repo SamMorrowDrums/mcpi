@@ -1,6 +1,6 @@
 {
 	"name": "@sammorrowdrums/mcpi-agent",
-	"version": "0.70.3",
+	"version": "0.70.4",
 	"description": "General-purpose agent with transport abstraction, state management, and attachment support",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -17,7 +17,7 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
-		"@sammorrowdrums/mcpi-ai": "^0.70.3",
+		"@sammorrowdrums/mcpi-ai": "^0.70.4",
 		"typebox": "^1.1.24"
 	},
 	"keywords": [
