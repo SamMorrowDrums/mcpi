@@ -9,7 +9,7 @@ import type {
 	TextContent,
 	Tool,
 	ToolResultMessage,
-} from "@mariozechner/pi-ai";
+} from "@SamMorrowDrums/mcpi-ai";
 import type { Static, TSchema } from "typebox";
 
 /**
@@ -213,6 +213,24 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	onToolsChanged?: (changes: { added: string[]; removed: string[] }) => AgentMessage[] | undefined;
 
 	/**
+	 * Resolve a tool by name when it is not found in `Context.tools`.
+	 *
+	 * Called during tool dispatch when the model emits a `tool_use` block for a
+	 * name not in the current context tools array. This enables progressive
+	 * tool disclosure: deferred tools are excluded from the tools array sent
+	 * to the provider (saving prompt tokens and preserving cache) but remain
+	 * registered for execution. The model discovers them through conversation
+	 * content (e.g. a skill's tool_result).
+	 *
+	 * Return the matching AgentTool to execute it, or undefined to fall through
+	 * to the default "tool not found" error.
+	 *
+	 * Experimental — ideally model providers would explicitly support deferred
+	 * tool loading without requiring tools in the API tools array.
+	 */
+	resolveTool?: (name: string) => AgentTool<any> | undefined;
+
+	/**
 	 * Tool execution mode.
 	 * - "sequential": execute tool calls one by one
 	 * - "parallel": preflight tool calls sequentially, then execute allowed tools concurrently;
@@ -248,7 +266,7 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 
 /**
  * Thinking/reasoning level for models that support it.
- * Note: "xhigh" is only supported by selected model families. Use supportsXhigh() from @mariozechner/pi-ai
+ * Note: "xhigh" is only supported by selected model families. Use supportsXhigh() from @SamMorrowDrums/mcpi-ai
  * to detect support for a concrete model.
  */
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -331,6 +349,18 @@ export type AgentToolUpdateCallback<T = any> = (partialResult: AgentToolResult<T
 export interface AgentTool<TParameters extends TSchema = TSchema, TDetails = any> extends Tool<TParameters> {
 	/** Human-readable label for UI display. */
 	label: string;
+	/**
+	 * When true, the tool is registered for execution but excluded from the
+	 * system prompt. The model discovers it through conversation content
+	 * (e.g. a skill's tool_result) rather than up-front tool descriptions.
+	 *
+	 * This enables progressive tool disclosure without changing the tools
+	 * array sent to the provider, preserving prompt cache across turns.
+	 *
+	 * Experimental — ideally model providers would explicitly support
+	 * deferred tool loading (e.g. Anthropic's `defer_loading`).
+	 */
+	deferred?: boolean;
 	/**
 	 * Optional compatibility shim for raw tool-call arguments before schema validation.
 	 * Must return an object that matches `TParameters`.

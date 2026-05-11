@@ -13,18 +13,11 @@
  * Modes use this class and add their own I/O layer on top.
  */
 
+import type { Agent, AgentEvent, AgentMessage, AgentState, AgentTool, ThinkingLevel } from "@SamMorrowDrums/mcpi-agent";
+import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@SamMorrowDrums/mcpi-ai";
+import { isContextOverflow, modelsAreEqual, resetApiProviders, supportsXhigh } from "@SamMorrowDrums/mcpi-ai";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
-import type {
-	Agent,
-	AgentEvent,
-	AgentMessage,
-	AgentState,
-	AgentTool,
-	ThinkingLevel,
-} from "@mariozechner/pi-agent-core";
-import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@mariozechner/pi-ai";
-import { isContextOverflow, modelsAreEqual, resetApiProviders, supportsXhigh } from "@mariozechner/pi-ai";
 import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";
 import { sleep } from "../utils/sleep.js";
@@ -370,6 +363,9 @@ export class AgentSession {
 	 * happens here instead of in wrappers.
 	 */
 	private _installAgentToolHooks(): void {
+		// Resolve deferred tools from the registry when not in context tools array
+		this.agent.resolveTool = (name: string) => this._toolRegistry.get(name);
+
 		this.agent.beforeToolCall = async ({ toolCall, args }) => {
 			const runner = this._extensionRunner;
 			if (!runner.hasHandlers("tool_call")) {
@@ -796,18 +792,22 @@ export class AgentSession {
 	 */
 	setActiveToolsByName(toolNames: string[]): void {
 		const tools: AgentTool[] = [];
-		const validToolNames: string[] = [];
+		const promptToolNames: string[] = [];
 		for (const name of toolNames) {
 			const tool = this._toolRegistry.get(name);
 			if (tool) {
 				tools.push(tool);
-				validToolNames.push(name);
+				if (!tool.deferred) {
+					promptToolNames.push(name);
+				}
 			}
 		}
 		this.agent.state.tools = tools;
 
-		// Rebuild base system prompt with new tool set
-		this._baseSystemPrompt = this._rebuildSystemPrompt(validToolNames);
+		// Rebuild base system prompt — deferred tools are excluded from the
+		// prompt but stay in the tools array with defer_loading for providers
+		// that support it (Anthropic). This preserves prompt cache.
+		this._baseSystemPrompt = this._rebuildSystemPrompt(promptToolNames);
 		this.agent.state.systemPrompt = this._baseSystemPrompt;
 	}
 
@@ -2060,7 +2060,8 @@ export class AgentSession {
 		};
 
 		this._resourceLoader.extendResources(extensionPaths);
-		this._baseSystemPrompt = this._rebuildSystemPrompt(this.getActiveToolNames());
+		const promptToolNames = this.getActiveToolNames().filter((name) => !this._toolRegistry.get(name)?.deferred);
+		this._baseSystemPrompt = this._rebuildSystemPrompt(promptToolNames);
 		this.agent.state.systemPrompt = this._baseSystemPrompt;
 	}
 

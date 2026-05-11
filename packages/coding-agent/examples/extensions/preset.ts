@@ -38,11 +38,11 @@
  * CLI flags always override preset values.
  */
 
+import type { ExtensionAPI, ExtensionContext } from "@SamMorrowDrums/mcpi";
+import { DynamicBorder, getAgentDir } from "@SamMorrowDrums/mcpi";
+import type { Api, Model } from "@SamMorrowDrums/mcpi-ai";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Api, Model } from "@mariozechner/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { DynamicBorder, getAgentDir } from "@mariozechner/pi-coding-agent";
 import { Container, Key, type SelectItem, SelectList, Text } from "@mariozechner/pi-tui";
 
 // Preset configuration

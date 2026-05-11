@@ -1,5 +1,5 @@
+import type { AgentTool } from "@SamMorrowDrums/mcpi-agent";
 import { createInterface } from "node:readline";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
 import { Text } from "@mariozechner/pi-tui";
 import { spawn } from "child_process";
 import { readFileSync, statSync } from "fs";

@@ -20,8 +20,8 @@
  * If the agent runs an interactive command, it will fail (which is fine).
  */
 
+import type { ExtensionAPI } from "@SamMorrowDrums/mcpi";
 import { spawnSync } from "node:child_process";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 // Default interactive commands - editors, pagers, git ops, TUIs
 const DEFAULT_INTERACTIVE_COMMANDS = [

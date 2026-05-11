@@ -7,7 +7,7 @@ import {
 	type TextContent,
 	type ThinkingBudgets,
 	type Transport,
-} from "@mariozechner/pi-ai";
+} from "@SamMorrowDrums/mcpi-ai";
 import { runAgentLoop, runAgentLoopContinue } from "./agent-loop.js";
 import type {
 	AfterToolCallContext,
@@ -186,6 +186,8 @@ export class Agent {
 	public maxRetryDelayMs?: number;
 	/** Tool execution strategy for assistant messages that contain multiple tool calls. */
 	public toolExecution: ToolExecutionMode;
+	/** Resolve deferred tools not in the context tools array. */
+	public resolveTool?: (name: string) => AgentTool<any> | undefined;
 
 	constructor(options: AgentOptions = {}) {
 		this._state = createMutableAgentState(options.initialState);
@@ -425,6 +427,7 @@ export class Agent {
 			transformContext: this.transformContext,
 			getApiKey: this.getApiKey,
 			getActiveTools: () => this._state.tools.slice(),
+			resolveTool: this.resolveTool,
 			onToolsChanged: ({ added }) => {
 				if (added.length === 0) return undefined;
 				return [

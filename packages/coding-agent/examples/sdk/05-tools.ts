@@ -10,7 +10,7 @@
  * extensions system using pi.registerTool().
  */
 
-import { createAgentSession, SessionManager } from "@mariozechner/pi-coding-agent";
+import { createAgentSession, SessionManager } from "@SamMorrowDrums/mcpi";
 
 // Read-only mode (no edit/write)
 await createAgentSession({

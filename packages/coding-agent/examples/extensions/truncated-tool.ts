@@ -14,8 +14,7 @@
  * built-in `grep` tool in src/core/tools/grep.ts for a more complete implementation.
  */
 
-import { mkdtemp, writeFile } from "node:fs/promises";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@SamMorrowDrums/mcpi";
 import {
 	DEFAULT_MAX_BYTES,
 	DEFAULT_MAX_LINES,
@@ -23,7 +22,8 @@ import {
 	type TruncationResult,
 	truncateHead,
 	withFileMutationQueue,
-} from "@mariozechner/pi-coding-agent";
+} from "@SamMorrowDrums/mcpi";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { Text } from "@mariozechner/pi-tui";
 import { execSync } from "child_process";
 import { tmpdir } from "os";

@@ -5,9 +5,9 @@
  * createAgentSession() options. The SDK does the heavy lifting.
  */
 
+import { type ImageContent, modelsAreEqual, supportsXhigh } from "@SamMorrowDrums/mcpi-ai";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
-import { type ImageContent, modelsAreEqual, supportsXhigh } from "@mariozechner/pi-ai";
 import { ProcessTerminal, setKeybindings, TUI } from "@mariozechner/pi-tui";
 import chalk from "chalk";
 import { type Args, type Mode, parseArgs, printHelp } from "./cli/args.js";

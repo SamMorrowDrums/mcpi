@@ -17,8 +17,8 @@
  * separate variables. Only the agent cursor is ever exposed to the agent.
  */
 
-import { StringEnum } from "@mariozechner/pi-ai";
-import type { ExtensionAPI, ExtensionContext, Theme, ToolExecutionMode } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, Theme, ToolExecutionMode } from "@SamMorrowDrums/mcpi";
+import { StringEnum } from "@SamMorrowDrums/mcpi-ai";
 import { type Component, matchesKey, Text, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
 

@@ -10,7 +10,7 @@ import {
 	streamSimple,
 	type ToolResultMessage,
 	validateToolArguments,
-} from "@mariozechner/pi-ai";
+} from "@SamMorrowDrums/mcpi-ai";
 import type {
 	AgentContext,
 	AgentEvent,
@@ -366,9 +366,10 @@ async function executeToolCalls(
 	emit: AgentEventSink,
 ): Promise<ExecutedToolCallBatch> {
 	const toolCalls = assistantMessage.content.filter((c) => c.type === "toolCall");
-	const hasSequentialToolCall = toolCalls.some(
-		(tc) => currentContext.tools?.find((t) => t.name === tc.name)?.executionMode === "sequential",
-	);
+	const hasSequentialToolCall = toolCalls.some((tc) => {
+		const tool = currentContext.tools?.find((t) => t.name === tc.name) ?? config.resolveTool?.(tc.name);
+		return tool?.executionMode === "sequential";
+	});
 	if (config.toolExecution === "sequential" || hasSequentialToolCall) {
 		return executeToolCallsSequential(currentContext, assistantMessage, toolCalls, config, signal, emit);
 	}
@@ -544,7 +545,7 @@ async function prepareToolCall(
 	config: AgentLoopConfig,
 	signal: AbortSignal | undefined,
 ): Promise<PreparedToolCall | ImmediateToolCallOutcome> {
-	const tool = currentContext.tools?.find((t) => t.name === toolCall.name);
+	const tool = currentContext.tools?.find((t) => t.name === toolCall.name) ?? config.resolveTool?.(toolCall.name);
 	if (!tool) {
 		return {
 			kind: "immediate",

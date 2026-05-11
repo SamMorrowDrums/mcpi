@@ -2,9 +2,9 @@
  * Agent discovery and configuration
  */
 
+import { getAgentDir, parseFrontmatter } from "@SamMorrowDrums/mcpi";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getAgentDir, parseFrontmatter } from "@mariozechner/pi-coding-agent";
 
 export type AgentScope = "user" | "project" | "both";
 

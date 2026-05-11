@@ -14,7 +14,7 @@ import type {
 	AgentToolUpdateCallback,
 	ThinkingLevel,
 	ToolExecutionMode,
-} from "@mariozechner/pi-agent-core";
+} from "@SamMorrowDrums/mcpi-agent";
 import type {
 	Api,
 	AssistantMessageEvent,
@@ -27,7 +27,7 @@ import type {
 	SimpleStreamOptions,
 	TextContent,
 	ToolResultMessage,
-} from "@mariozechner/pi-ai";
+} from "@SamMorrowDrums/mcpi-ai";
 import type {
 	AutocompleteItem,
 	AutocompleteProvider,
@@ -222,12 +222,12 @@ export interface ExtensionUIContext {
 	 * - `keybindings`: KeybindingsManager for app-level keybindings
 	 *
 	 * For full app keybinding support (escape, ctrl+d, model switching, etc.),
-	 * extend `CustomEditor` from `@mariozechner/pi-coding-agent` and call
+	 * extend `CustomEditor` from `@SamMorrowDrums/mcpi` and call
 	 * `super.handleInput(data)` for keys you don't handle.
 	 *
 	 * @example
 	 * ```ts
-	 * import { CustomEditor } from "@mariozechner/pi-coding-agent";
+	 * import { CustomEditor } from "@SamMorrowDrums/mcpi";
 	 *
 	 * class VimEditor extends CustomEditor {
 	 *   private mode: "normal" | "insert" = "insert";
@@ -445,6 +445,19 @@ export interface ToolDefinition<TParams extends TSchema = TSchema, TDetails = un
 	 * If omitted, the default execution mode applies.
 	 */
 	executionMode?: ToolExecutionMode;
+
+	/**
+	 * When true, the tool is registered for execution but excluded from the
+	 * system prompt. The model discovers it through conversation content
+	 * (e.g. a skill's tool_result) rather than up-front tool descriptions.
+	 *
+	 * This enables progressive tool disclosure without changing the tools
+	 * array sent to the provider, preserving prompt cache across turns.
+	 *
+	 * Experimental — ideally model providers would explicitly support
+	 * deferred tool loading (e.g. Anthropic's `defer_loading`).
+	 */
+	deferred?: boolean;
 
 	/** Execute the tool. */
 	execute(
