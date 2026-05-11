@@ -55,9 +55,8 @@ jobs:
           generate_release_notes: true
 
       # Publish only the packages modified by this fork, in dependency order.
-      # --ignore-existing skips packages already published at this version.
       - name: Publish packages
         run: |
-          npm publish --workspace packages/ai --provenance --access public || true
-          npm publish --workspace packages/agent --provenance --access public || true
-          npm publish --workspace packages/coding-agent --provenance --access public || true
+          npm publish --workspace packages/ai --provenance --access public
+          npm publish --workspace packages/agent --provenance --access public
+          npm publish --workspace packages/coding-agent --provenance --access public
