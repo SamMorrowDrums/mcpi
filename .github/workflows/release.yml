@@ -37,7 +37,7 @@ jobs:
           echo "Version $PKG_VERSION matches tag"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build
         run: npm run build --workspaces
