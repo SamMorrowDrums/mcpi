@@ -52,8 +52,13 @@ const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@sammorrowdrums/mcpi-agent": _bundledPiAgentCore,
 	"@mariozechner/pi-tui": _bundledPiTui,
 	"@sammorrowdrums/mcpi-ai": _bundledPiAi,
-	"mcpi-ai/oauth": _bundledPiAiOauth,
+	"@sammorrowdrums/mcpi-ai/oauth": _bundledPiAiOauth,
 	"@sammorrowdrums/mcpi": _bundledPiCodingAgent,
+	// Backwards-compat aliases for extensions using upstream names
+	"@mariozechner/pi-ai": _bundledPiAi,
+	"@mariozechner/pi-ai/oauth": _bundledPiAiOauth,
+	"@mariozechner/pi-agent-core": _bundledPiAgentCore,
+	"@mariozechner/pi-coding-agent": _bundledPiCodingAgent,
 };
 
 const require = createRequire(import.meta.url);
@@ -88,7 +93,12 @@ function getAliases(): Record<string, string> {
 		"@sammorrowdrums/mcpi-agent": resolveWorkspaceOrImport("agent/dist/index.js", "@sammorrowdrums/mcpi-agent"),
 		"@mariozechner/pi-tui": resolveWorkspaceOrImport("tui/dist/index.js", "@mariozechner/pi-tui"),
 		"@sammorrowdrums/mcpi-ai": resolveWorkspaceOrImport("ai/dist/index.js", "@sammorrowdrums/mcpi-ai"),
-		"mcpi-ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "mcpi-ai/oauth"),
+		"@sammorrowdrums/mcpi-ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "@sammorrowdrums/mcpi-ai/oauth"),
+		// Backwards-compat aliases for extensions using upstream names
+		"@mariozechner/pi-ai": resolveWorkspaceOrImport("ai/dist/index.js", "@sammorrowdrums/mcpi-ai"),
+		"@mariozechner/pi-ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "@sammorrowdrums/mcpi-ai/oauth"),
+		"@mariozechner/pi-agent-core": resolveWorkspaceOrImport("agent/dist/index.js", "@sammorrowdrums/mcpi-agent"),
+		"@mariozechner/pi-coding-agent": packageIndex,
 		typebox: typeboxEntry,
 		"typebox/compile": typeboxCompileEntry,
 		"typebox/value": typeboxValueEntry,
