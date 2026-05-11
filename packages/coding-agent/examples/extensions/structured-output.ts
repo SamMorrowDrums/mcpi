@@ -5,7 +5,7 @@
  * without paying for an extra follow-up LLM turn.
  */
 
-import { defineTool, type ExtensionAPI } from "mcpi";
+import { defineTool, type ExtensionAPI } from "@sammorrowdrums/mcpi";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
 

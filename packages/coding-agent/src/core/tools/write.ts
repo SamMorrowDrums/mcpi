@@ -1,4 +1,4 @@
-import type { AgentTool } from "mcpi-agent";
+import type { AgentTool } from "@sammorrowdrums/mcpi-agent";
 import { Container, Text } from "@mariozechner/pi-tui";
 import { mkdir as fsMkdir, writeFile as fsWriteFile } from "fs/promises";
 import { dirname } from "path";

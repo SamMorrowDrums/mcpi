@@ -1,4 +1,4 @@
-import type { ExtensionAPI, ExtensionContext } from "mcpi";
+import type { ExtensionAPI, ExtensionContext } from "@sammorrowdrums/mcpi";
 
 const COMPACT_THRESHOLD_TOKENS = 100_000;
 

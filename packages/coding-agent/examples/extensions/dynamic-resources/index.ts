@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "mcpi";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 

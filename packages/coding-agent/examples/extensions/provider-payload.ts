@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "mcpi";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 

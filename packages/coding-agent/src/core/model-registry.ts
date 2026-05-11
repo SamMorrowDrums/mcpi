@@ -17,8 +17,8 @@ import {
 	registerApiProvider,
 	resetApiProviders,
 	type SimpleStreamOptions,
-} from "mcpi-ai";
-import { registerOAuthProvider, resetOAuthProviders } from "mcpi-ai/oauth";
+} from "@sammorrowdrums/mcpi-ai";
+import { registerOAuthProvider, resetOAuthProviders } from "@sammorrowdrums/mcpi-ai/oauth";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { type Static, Type } from "typebox";

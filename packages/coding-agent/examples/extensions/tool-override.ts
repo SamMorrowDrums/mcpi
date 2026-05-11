@@ -20,8 +20,8 @@
  *   pi -e ./tool-override.ts
  */
 
-import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "mcpi";
-import type { TextContent } from "mcpi-ai";
+import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "@sammorrowdrums/mcpi";
+import type { TextContent } from "@sammorrowdrums/mcpi-ai";
 import { constants, readFileSync } from "fs";
 import { access, appendFile, readFile } from "fs/promises";
 import { join, resolve } from "path";

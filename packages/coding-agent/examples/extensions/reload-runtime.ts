@@ -5,7 +5,7 @@
  * tool that queues a follow-up command to trigger reload.
  */
 
-import type { ExtensionAPI } from "mcpi";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 import { Type } from "typebox";
 
 export default function (pi: ExtensionAPI) {

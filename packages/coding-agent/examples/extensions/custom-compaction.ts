@@ -13,9 +13,9 @@
  *   pi --extension examples/extensions/custom-compaction.ts
  */
 
-import type { ExtensionAPI } from "mcpi";
-import { convertToLlm, serializeConversation } from "mcpi";
-import { complete } from "mcpi-ai";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
+import { convertToLlm, serializeConversation } from "@sammorrowdrums/mcpi";
+import { complete } from "@sammorrowdrums/mcpi-ai";
 
 export default function (pi: ExtensionAPI) {
 	pi.on("session_before_compact", async (event, ctx) => {

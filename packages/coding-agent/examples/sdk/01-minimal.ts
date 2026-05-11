@@ -5,7 +5,7 @@
  * from cwd and ~/.pi/agent. Model chosen from settings or first available.
  */
 
-import { createAgentSession } from "mcpi";
+import { createAgentSession } from "@sammorrowdrums/mcpi";
 
 const { session } = await createAgentSession();
 

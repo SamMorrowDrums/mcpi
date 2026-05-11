@@ -1,4 +1,4 @@
-import type { AgentTool } from "mcpi-agent";
+import type { AgentTool } from "@sammorrowdrums/mcpi-agent";
 import { randomBytes } from "node:crypto";
 import { createWriteStream, existsSync } from "node:fs";
 import { tmpdir } from "node:os";

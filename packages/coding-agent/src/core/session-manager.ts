@@ -1,5 +1,5 @@
-import type { AgentMessage } from "mcpi-agent";
-import type { ImageContent, Message, TextContent } from "mcpi-ai";
+import type { AgentMessage } from "@sammorrowdrums/mcpi-agent";
+import type { ImageContent, Message, TextContent } from "@sammorrowdrums/mcpi-ai";
 import { randomUUID } from "crypto";
 import {
 	appendFileSync,

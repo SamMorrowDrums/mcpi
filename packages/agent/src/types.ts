@@ -9,7 +9,7 @@ import type {
 	TextContent,
 	Tool,
 	ToolResultMessage,
-} from "mcpi-ai";
+} from "@sammorrowdrums/mcpi-ai";
 import type { Static, TSchema } from "typebox";
 
 /**

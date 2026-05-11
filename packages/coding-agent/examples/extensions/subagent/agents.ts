@@ -2,7 +2,7 @@
  * Agent discovery and configuration
  */
 
-import { getAgentDir, parseFrontmatter } from "mcpi";
+import { getAgentDir, parseFrontmatter } from "@sammorrowdrums/mcpi";
 import * as fs from "node:fs";
 import * as path from "node:path";
 

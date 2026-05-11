@@ -1,4 +1,4 @@
-import { setBedrockProviderModule } from "mcpi-ai";
-import { bedrockProviderModule } from "mcpi-ai/bedrock-provider";
+import { setBedrockProviderModule } from "@sammorrowdrums/mcpi-ai";
+import { bedrockProviderModule } from "@sammorrowdrums/mcpi-ai/bedrock-provider";
 
 setBedrockProviderModule(bedrockProviderModule);

@@ -14,7 +14,7 @@ import type {
 	AgentToolUpdateCallback,
 	ThinkingLevel,
 	ToolExecutionMode,
-} from "mcpi-agent";
+} from "@sammorrowdrums/mcpi-agent";
 import type {
 	Api,
 	AssistantMessageEvent,
@@ -27,7 +27,7 @@ import type {
 	SimpleStreamOptions,
 	TextContent,
 	ToolResultMessage,
-} from "mcpi-ai";
+} from "@sammorrowdrums/mcpi-ai";
 import type {
 	AutocompleteItem,
 	AutocompleteProvider,
@@ -227,7 +227,7 @@ export interface ExtensionUIContext {
 	 *
 	 * @example
 	 * ```ts
-	 * import { CustomEditor } from "mcpi";
+	 * import { CustomEditor } from "@sammorrowdrums/mcpi";
 	 *
 	 * class VimEditor extends CustomEditor {
 	 *   private mode: "normal" | "insert" = "insert";

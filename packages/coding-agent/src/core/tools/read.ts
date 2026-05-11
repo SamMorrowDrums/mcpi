@@ -1,5 +1,5 @@
-import type { AgentTool } from "mcpi-agent";
-import type { Api, ImageContent, Model, TextContent } from "mcpi-ai";
+import type { AgentTool } from "@sammorrowdrums/mcpi-agent";
+import type { Api, ImageContent, Model, TextContent } from "@sammorrowdrums/mcpi-ai";
 import { Text } from "@mariozechner/pi-tui";
 import { constants } from "fs";
 import { access as fsAccess, readFile as fsReadFile } from "fs/promises";

@@ -4,9 +4,9 @@
  * Uses @mariozechner/jiti fork with virtualModules support for compiled Bun binaries.
  */
 
-import * as _bundledPiAgentCore from "mcpi-agent";
-import * as _bundledPiAi from "mcpi-ai";
-import * as _bundledPiAiOauth from "mcpi-ai/oauth";
+import * as _bundledPiAgentCore from "@sammorrowdrums/mcpi-agent";
+import * as _bundledPiAi from "@sammorrowdrums/mcpi-ai";
+import * as _bundledPiAiOauth from "@sammorrowdrums/mcpi-ai/oauth";
 import * as fs from "node:fs";
 import { createRequire } from "node:module";
 import * as os from "node:os";
@@ -49,11 +49,11 @@ const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@sinclair/typebox": _bundledTypebox,
 	"@sinclair/typebox/compile": _bundledTypeboxCompile,
 	"@sinclair/typebox/value": _bundledTypeboxValue,
-	"mcpi-agent": _bundledPiAgentCore,
+	"@sammorrowdrums/mcpi-agent": _bundledPiAgentCore,
 	"@mariozechner/pi-tui": _bundledPiTui,
-	"mcpi-ai": _bundledPiAi,
+	"@sammorrowdrums/mcpi-ai": _bundledPiAi,
 	"mcpi-ai/oauth": _bundledPiAiOauth,
-	"mcpi": _bundledPiCodingAgent,
+	"@sammorrowdrums/mcpi": _bundledPiCodingAgent,
 };
 
 const require = createRequire(import.meta.url);
@@ -84,10 +84,10 @@ function getAliases(): Record<string, string> {
 	};
 
 	_aliases = {
-		"mcpi": packageIndex,
-		"mcpi-agent": resolveWorkspaceOrImport("agent/dist/index.js", "mcpi-agent"),
+		"@sammorrowdrums/mcpi": packageIndex,
+		"@sammorrowdrums/mcpi-agent": resolveWorkspaceOrImport("agent/dist/index.js", "@sammorrowdrums/mcpi-agent"),
 		"@mariozechner/pi-tui": resolveWorkspaceOrImport("tui/dist/index.js", "@mariozechner/pi-tui"),
-		"mcpi-ai": resolveWorkspaceOrImport("ai/dist/index.js", "mcpi-ai"),
+		"@sammorrowdrums/mcpi-ai": resolveWorkspaceOrImport("ai/dist/index.js", "@sammorrowdrums/mcpi-ai"),
 		"mcpi-ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "mcpi-ai/oauth"),
 		typebox: typeboxEntry,
 		"typebox/compile": typeboxCompileEntry,

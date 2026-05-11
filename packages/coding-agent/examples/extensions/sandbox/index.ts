@@ -41,8 +41,8 @@
  * Linux also requires: bubblewrap, socat, ripgrep
  */
 
-import type { ExtensionAPI } from "mcpi";
-import { type BashOperations, createBashTool, getAgentDir } from "mcpi";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
+import { type BashOperations, createBashTool, getAgentDir } from "@sammorrowdrums/mcpi";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

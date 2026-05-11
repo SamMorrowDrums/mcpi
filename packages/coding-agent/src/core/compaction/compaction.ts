@@ -5,9 +5,9 @@
  * and after compaction the session is reloaded.
  */
 
-import type { AgentMessage, ThinkingLevel } from "mcpi-agent";
-import type { AssistantMessage, Model, Usage } from "mcpi-ai";
-import { completeSimple } from "mcpi-ai";
+import type { AgentMessage, ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
+import type { AssistantMessage, Model, Usage } from "@sammorrowdrums/mcpi-ai";
+import { completeSimple } from "@sammorrowdrums/mcpi-ai";
 import {
 	convertToLlm,
 	createBranchSummaryMessage,

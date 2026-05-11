@@ -12,7 +12,7 @@ import {
 	getAgentDir,
 	SessionManager,
 	type Skill,
-} from "mcpi";
+} from "@sammorrowdrums/mcpi";
 
 // Or define custom skills inline
 const customSkill: Skill = {
