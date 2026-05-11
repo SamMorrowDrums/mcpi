@@ -17,7 +17,7 @@
  * - setEditorText() - via /rpc-prefill command
  */
 
-import type { ExtensionAPI } from "@SamMorrowDrums/mcpi";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 
 export default function (pi: ExtensionAPI) {
 	let turnCount = 0;

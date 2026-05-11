@@ -5,9 +5,9 @@
  * a summary of the branch being left so context isn't lost.
  */
 
-import type { AgentMessage } from "@SamMorrowDrums/mcpi-agent";
-import type { Model } from "@SamMorrowDrums/mcpi-ai";
-import { completeSimple } from "@SamMorrowDrums/mcpi-ai";
+import type { AgentMessage } from "@sammorrowdrums/mcpi-agent";
+import type { Model } from "@sammorrowdrums/mcpi-ai";
+import { completeSimple } from "@sammorrowdrums/mcpi-ai";
 import {
 	convertToLlm,
 	createBranchSummaryMessage,

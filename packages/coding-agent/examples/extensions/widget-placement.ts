@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "@SamMorrowDrums/mcpi";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 
 export default function widgetPlacementExtension(pi: ExtensionAPI) {
 	pi.on("session_start", (_event, ctx) => {

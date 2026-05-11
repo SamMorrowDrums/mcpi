@@ -13,7 +13,7 @@
  *   - bash on remote
  */
 
-import type { ExtensionAPI } from "@SamMorrowDrums/mcpi";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 import {
 	type BashOperations,
 	createBashTool,
@@ -23,7 +23,7 @@ import {
 	type EditOperations,
 	type ReadOperations,
 	type WriteOperations,
-} from "@SamMorrowDrums/mcpi";
+} from "@sammorrowdrums/mcpi";
 import { spawn } from "node:child_process";
 
 function sshExec(remote: string, command: string): Promise<Buffer> {

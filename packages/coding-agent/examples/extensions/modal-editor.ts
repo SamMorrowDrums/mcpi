@@ -9,7 +9,7 @@
  * - ctrl+c, ctrl+d, etc. work in both modes
  */
 
-import { CustomEditor, type ExtensionAPI } from "@SamMorrowDrums/mcpi";
+import { CustomEditor, type ExtensionAPI } from "@sammorrowdrums/mcpi";
 import { matchesKey, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 
 // Normal mode key mappings: key -> escape sequence (or null for mode switch)

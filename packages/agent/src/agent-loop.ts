@@ -10,7 +10,7 @@ import {
 	streamSimple,
 	type ToolResultMessage,
 	validateToolArguments,
-} from "@SamMorrowDrums/mcpi-ai";
+} from "@sammorrowdrums/mcpi-ai";
 import type {
 	AgentContext,
 	AgentEvent,

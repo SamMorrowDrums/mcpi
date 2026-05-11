@@ -4,8 +4,8 @@
  * Shows how to select a specific model and thinking level.
  */
 
-import { AuthStorage, createAgentSession, ModelRegistry } from "@SamMorrowDrums/mcpi";
-import { getModel } from "@SamMorrowDrums/mcpi-ai";
+import { AuthStorage, createAgentSession, ModelRegistry } from "@sammorrowdrums/mcpi";
+import { getModel } from "@sammorrowdrums/mcpi-ai";
 
 // Set up auth storage and model registry
 const authStorage = AuthStorage.create();

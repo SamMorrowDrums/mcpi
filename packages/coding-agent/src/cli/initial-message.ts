@@ -1,4 +1,4 @@
-import type { ImageContent } from "@SamMorrowDrums/mcpi-ai";
+import type { ImageContent } from "@sammorrowdrums/mcpi-ai";
 import type { Args } from "./args.js";
 
 export interface InitialMessageInput {

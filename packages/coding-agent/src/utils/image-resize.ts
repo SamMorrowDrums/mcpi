@@ -1,4 +1,4 @@
-import type { ImageContent } from "@SamMorrowDrums/mcpi-ai";
+import type { ImageContent } from "@sammorrowdrums/mcpi-ai";
 import { applyExifOrientation } from "./exif-orientation.js";
 import { loadPhoton } from "./photon.js";
 

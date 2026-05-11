@@ -5,7 +5,7 @@
  * and converting the ANSI output to HTML.
  */
 
-import type { ImageContent, TextContent } from "@SamMorrowDrums/mcpi-ai";
+import type { ImageContent, TextContent } from "@sammorrowdrums/mcpi-ai";
 import type { Component } from "@mariozechner/pi-tui";
 import type { Theme } from "../../modes/interactive/theme/theme.js";
 import type { ToolDefinition, ToolRenderContext } from "../extensions/types.js";

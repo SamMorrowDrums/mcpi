@@ -5,7 +5,7 @@
  *   pi -e examples/extensions/mac-system-theme.ts
  */
 
-import type { ExtensionAPI } from "@SamMorrowDrums/mcpi";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 

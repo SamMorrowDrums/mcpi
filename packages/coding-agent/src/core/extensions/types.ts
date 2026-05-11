@@ -14,7 +14,7 @@ import type {
 	AgentToolUpdateCallback,
 	ThinkingLevel,
 	ToolExecutionMode,
-} from "@SamMorrowDrums/mcpi-agent";
+} from "@sammorrowdrums/mcpi-agent";
 import type {
 	Api,
 	AssistantMessageEvent,
@@ -27,7 +27,7 @@ import type {
 	SimpleStreamOptions,
 	TextContent,
 	ToolResultMessage,
-} from "@SamMorrowDrums/mcpi-ai";
+} from "@sammorrowdrums/mcpi-ai";
 import type {
 	AutocompleteItem,
 	AutocompleteProvider,
@@ -222,12 +222,12 @@ export interface ExtensionUIContext {
 	 * - `keybindings`: KeybindingsManager for app-level keybindings
 	 *
 	 * For full app keybinding support (escape, ctrl+d, model switching, etc.),
-	 * extend `CustomEditor` from `@SamMorrowDrums/mcpi` and call
+	 * extend `CustomEditor` from `@sammorrowdrums/mcpi` and call
 	 * `super.handleInput(data)` for keys you don't handle.
 	 *
 	 * @example
 	 * ```ts
-	 * import { CustomEditor } from "@SamMorrowDrums/mcpi";
+	 * import { CustomEditor } from "@sammorrowdrums/mcpi";
 	 *
 	 * class VimEditor extends CustomEditor {
 	 *   private mode: "normal" | "insert" = "insert";

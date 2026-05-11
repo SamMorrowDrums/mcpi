@@ -2,8 +2,8 @@
  * Model resolution, scoping, and initial selection
  */
 
-import type { ThinkingLevel } from "@SamMorrowDrums/mcpi-agent";
-import { type Api, type KnownProvider, type Model, modelsAreEqual } from "@SamMorrowDrums/mcpi-ai";
+import type { ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
+import { type Api, type KnownProvider, type Model, modelsAreEqual } from "@sammorrowdrums/mcpi-ai";
 import chalk from "chalk";
 import { minimatch } from "minimatch";
 import { isValidThinkingLevel } from "../cli/args.js";

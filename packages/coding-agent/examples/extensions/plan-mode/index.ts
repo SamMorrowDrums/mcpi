@@ -12,9 +12,9 @@
  * - Progress tracking widget during execution
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@SamMorrowDrums/mcpi";
-import type { AgentMessage } from "@SamMorrowDrums/mcpi-agent";
-import type { AssistantMessage, TextContent } from "@SamMorrowDrums/mcpi-ai";
+import type { ExtensionAPI, ExtensionContext } from "@sammorrowdrums/mcpi";
+import type { AgentMessage } from "@sammorrowdrums/mcpi-agent";
+import type { AssistantMessage, TextContent } from "@sammorrowdrums/mcpi-ai";
 import { Key } from "@mariozechner/pi-tui";
 import { extractTodoItems, isSafeCommand, markCompletedSteps, type TodoItem } from "./utils.js";
 

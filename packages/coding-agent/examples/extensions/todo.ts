@@ -10,8 +10,8 @@
  * correct for that point in history.
  */
 
-import type { ExtensionAPI, ExtensionContext, Theme } from "@SamMorrowDrums/mcpi";
-import { StringEnum } from "@SamMorrowDrums/mcpi-ai";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@sammorrowdrums/mcpi";
+import { StringEnum } from "@sammorrowdrums/mcpi-ai";
 import { matchesKey, Text, truncateToWidth } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
 

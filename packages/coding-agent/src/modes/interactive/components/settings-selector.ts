@@ -1,5 +1,5 @@
-import type { ThinkingLevel } from "@SamMorrowDrums/mcpi-agent";
-import type { Transport } from "@SamMorrowDrums/mcpi-ai";
+import type { ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
+import type { Transport } from "@sammorrowdrums/mcpi-ai";
 import {
 	Container,
 	getCapabilities,

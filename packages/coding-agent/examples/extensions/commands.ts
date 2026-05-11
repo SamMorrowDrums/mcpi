@@ -10,7 +10,7 @@
  * 3. Use /commands extensions to filter by source
  */
 
-import type { ExtensionAPI, SlashCommandInfo } from "@SamMorrowDrums/mcpi";
+import type { ExtensionAPI, SlashCommandInfo } from "@sammorrowdrums/mcpi";
 
 export default function commandsExtension(pi: ExtensionAPI) {
 	pi.registerCommand("commands", {

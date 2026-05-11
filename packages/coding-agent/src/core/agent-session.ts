@@ -13,9 +13,9 @@
  * Modes use this class and add their own I/O layer on top.
  */
 
-import type { Agent, AgentEvent, AgentMessage, AgentState, AgentTool, ThinkingLevel } from "@SamMorrowDrums/mcpi-agent";
-import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@SamMorrowDrums/mcpi-ai";
-import { isContextOverflow, modelsAreEqual, resetApiProviders, supportsXhigh } from "@SamMorrowDrums/mcpi-ai";
+import type { Agent, AgentEvent, AgentMessage, AgentState, AgentTool, ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
+import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@sammorrowdrums/mcpi-ai";
+import { isContextOverflow, modelsAreEqual, resetApiProviders, supportsXhigh } from "@sammorrowdrums/mcpi-ai";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { theme } from "../modes/interactive/theme/theme.js";

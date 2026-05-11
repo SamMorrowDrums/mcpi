@@ -17,7 +17,7 @@
  * 3. Add .md files with your rules
  */
 
-import type { ExtensionAPI } from "@SamMorrowDrums/mcpi";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 import * as fs from "node:fs";
 import * as path from "node:path";
 

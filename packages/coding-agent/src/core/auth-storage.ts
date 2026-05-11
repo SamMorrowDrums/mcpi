@@ -12,8 +12,8 @@ import {
 	type OAuthCredentials,
 	type OAuthLoginCallbacks,
 	type OAuthProviderId,
-} from "@SamMorrowDrums/mcpi-ai";
-import { getOAuthApiKey, getOAuthProvider, getOAuthProviders } from "@SamMorrowDrums/mcpi-ai/oauth";
+} from "@sammorrowdrums/mcpi-ai";
+import { getOAuthApiKey, getOAuthProvider, getOAuthProviders } from "@sammorrowdrums/mcpi-ai/oauth";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import lockfile from "proper-lockfile";

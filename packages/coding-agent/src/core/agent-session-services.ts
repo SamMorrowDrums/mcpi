@@ -1,5 +1,5 @@
-import type { ThinkingLevel } from "@SamMorrowDrums/mcpi-agent";
-import type { Model } from "@SamMorrowDrums/mcpi-ai";
+import type { ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
+import type { Model } from "@sammorrowdrums/mcpi-ai";
 import { join } from "node:path";
 import { getAgentDir } from "../config.js";
 import { AuthStorage } from "./auth-storage.js";

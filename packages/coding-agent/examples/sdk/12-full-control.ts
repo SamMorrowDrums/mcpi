@@ -12,8 +12,8 @@ import {
 	type ResourceLoader,
 	SessionManager,
 	SettingsManager,
-} from "@SamMorrowDrums/mcpi";
-import { getModel } from "@SamMorrowDrums/mcpi-ai";
+} from "@sammorrowdrums/mcpi";
+import { getModel } from "@sammorrowdrums/mcpi-ai";
 
 // Custom auth storage location
 const authStorage = AuthStorage.create("/tmp/my-agent/auth.json");

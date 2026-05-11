@@ -2,7 +2,7 @@
  * List available models with optional fuzzy search
  */
 
-import type { Api, Model } from "@SamMorrowDrums/mcpi-ai";
+import type { Api, Model } from "@sammorrowdrums/mcpi-ai";
 import { fuzzyFilter } from "@mariozechner/pi-tui";
 import chalk from "chalk";
 import { formatNoModelsAvailableMessage } from "../core/auth-guidance.js";

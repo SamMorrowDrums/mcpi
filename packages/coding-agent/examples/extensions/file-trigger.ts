@@ -8,7 +8,7 @@
  *   echo "Run the tests" > /tmp/agent-trigger.txt
  */
 
-import type { ExtensionAPI } from "@SamMorrowDrums/mcpi";
+import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
 import * as fs from "node:fs";
 
 export default function (pi: ExtensionAPI) {

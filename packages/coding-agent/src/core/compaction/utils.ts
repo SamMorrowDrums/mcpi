@@ -2,8 +2,8 @@
  * Shared utilities for compaction and branch summarization.
  */
 
-import type { AgentMessage } from "@SamMorrowDrums/mcpi-agent";
-import type { Message } from "@SamMorrowDrums/mcpi-ai";
+import type { AgentMessage } from "@sammorrowdrums/mcpi-agent";
+import type { Message } from "@sammorrowdrums/mcpi-ai";
 
 // ============================================================================
 // File Operation Tracking

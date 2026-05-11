@@ -48,7 +48,7 @@
 	"version": "0.0.3",
 	"dependencies": {
 		"@mariozechner/jiti": "^2.6.5",
-		"@SamMorrowDrums/mcpi": "^0.70.0",
+		"@sammorrowdrums/mcpi": "^0.70.0",
 		"get-east-asian-width": "^1.4.0"
 	},
 	"overrides": {

@@ -1,4 +1,4 @@
-import type { AgentState } from "@SamMorrowDrums/mcpi-agent";
+import type { AgentState } from "@sammorrowdrums/mcpi-agent";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { basename, join } from "path";
 import { APP_NAME, getExportTemplateDir } from "../../config.js";

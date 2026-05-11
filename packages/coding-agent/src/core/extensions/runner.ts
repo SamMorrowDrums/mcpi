@@ -2,8 +2,8 @@
  * Extension runner - executes extensions and manages their lifecycle.
  */
 
-import type { AgentMessage } from "@SamMorrowDrums/mcpi-agent";
-import type { ImageContent, Model } from "@SamMorrowDrums/mcpi-ai";
+import type { AgentMessage } from "@sammorrowdrums/mcpi-agent";
+import type { ImageContent, Model } from "@sammorrowdrums/mcpi-ai";
 import type { KeyId } from "@mariozechner/pi-tui";
 import { type Theme, theme } from "../../modes/interactive/theme/theme.js";
 import type { ResourceDiagnostic } from "../diagnostics.js";
