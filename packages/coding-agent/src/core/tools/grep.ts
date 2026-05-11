@@ -1,4 +1,4 @@
-import type { AgentTool } from "@sammorrowdrums/mcpi-agent";
+import type { AgentTool } from "mcpi-agent";
 import { createInterface } from "node:readline";
 import { Text } from "@mariozechner/pi-tui";
 import { spawn } from "child_process";

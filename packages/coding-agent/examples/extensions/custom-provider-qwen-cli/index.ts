@@ -9,8 +9,8 @@
  *   # Then /login qwen-cli, or set QWEN_CLI_API_KEY=...
  */
 
-import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
-import type { OAuthCredentials, OAuthLoginCallbacks } from "@sammorrowdrums/mcpi-ai";
+import type { ExtensionAPI } from "mcpi";
+import type { OAuthCredentials, OAuthLoginCallbacks } from "mcpi-ai";
 
 // =============================================================================
 // Constants

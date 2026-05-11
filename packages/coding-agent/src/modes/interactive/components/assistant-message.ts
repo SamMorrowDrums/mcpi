@@ -1,4 +1,4 @@
-import type { AssistantMessage } from "@sammorrowdrums/mcpi-ai";
+import type { AssistantMessage } from "mcpi-ai";
 import { Container, Markdown, type MarkdownTheme, Spacer, Text } from "@mariozechner/pi-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
 

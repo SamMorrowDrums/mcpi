@@ -10,7 +10,7 @@
  * 3. When enabled, the agent will respond like a pirate
  */
 
-import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
+import type { ExtensionAPI } from "mcpi";
 
 export default function pirateExtension(pi: ExtensionAPI) {
 	let pirateMode = false;

@@ -21,7 +21,7 @@
  * Then use /model to select custom-anthropic/claude-sonnet-4-5
  */
 
-import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
+import type { ExtensionAPI } from "mcpi";
 import {
 	type Api,
 	type AssistantMessage,
@@ -41,7 +41,7 @@ import {
 	type Tool,
 	type ToolCall,
 	type ToolResultMessage,
-} from "@sammorrowdrums/mcpi-ai";
+} from "mcpi-ai";
 import Anthropic from "@anthropic-ai/sdk";
 import type { ContentBlockParam, MessageCreateParamsStreaming } from "@anthropic-ai/sdk/resources/messages.js";
 

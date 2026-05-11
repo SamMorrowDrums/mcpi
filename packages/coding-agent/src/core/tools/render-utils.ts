@@ -1,4 +1,4 @@
-import type { ImageContent, TextContent } from "@sammorrowdrums/mcpi-ai";
+import type { ImageContent, TextContent } from "mcpi-ai";
 import * as os from "node:os";
 import { getCapabilities, getImageDimensions, imageFallback } from "@mariozechner/pi-tui";
 import stripAnsi from "strip-ansi";

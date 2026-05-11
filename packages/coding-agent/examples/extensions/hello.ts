@@ -2,8 +2,8 @@
  * Hello Tool - Minimal custom tool example
  */
 
-import { defineTool, type ExtensionAPI } from "@sammorrowdrums/mcpi";
-import { Type } from "@sammorrowdrums/mcpi-ai";
+import { defineTool, type ExtensionAPI } from "mcpi";
+import { Type } from "mcpi-ai";
 
 const helloTool = defineTool({
 	name: "hello",

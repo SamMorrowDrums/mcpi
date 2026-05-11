@@ -2,7 +2,7 @@
  * Process @file CLI arguments into text content and image attachments
  */
 
-import type { ImageContent } from "@sammorrowdrums/mcpi-ai";
+import type { ImageContent } from "mcpi-ai";
 import { access, readFile, stat } from "node:fs/promises";
 import chalk from "chalk";
 import { resolve } from "path";

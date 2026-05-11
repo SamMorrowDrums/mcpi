@@ -1,4 +1,4 @@
-import type { AgentTool } from "@sammorrowdrums/mcpi-agent";
+import type { AgentTool } from "mcpi-agent";
 import type { ExtensionContext, ToolDefinition } from "../extensions/types.js";
 
 /** Wrap a ToolDefinition into an AgentTool for the core runtime. */

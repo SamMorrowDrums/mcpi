@@ -1,4 +1,4 @@
-import { type Model, modelsAreEqual } from "@sammorrowdrums/mcpi-ai";
+import { type Model, modelsAreEqual } from "mcpi-ai";
 import {
 	Container,
 	type Focusable,

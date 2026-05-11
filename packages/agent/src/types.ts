@@ -9,7 +9,7 @@ import type {
 	TextContent,
 	Tool,
 	ToolResultMessage,
-} from "@sammorrowdrums/mcpi-ai";
+} from "mcpi-ai";
 import type { Static, TSchema } from "typebox";
 
 /**
@@ -266,7 +266,7 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 
 /**
  * Thinking/reasoning level for models that support it.
- * Note: "xhigh" is only supported by selected model families. Use supportsXhigh() from @sammorrowdrums/mcpi-ai
+ * Note: "xhigh" is only supported by selected model families. Use supportsXhigh() from mcpi-ai
  * to detect support for a concrete model.
  */
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";

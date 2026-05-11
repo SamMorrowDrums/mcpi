@@ -12,7 +12,7 @@
  * 2. Use the extension — it automatically adapts to your active tools and skills
  */
 
-import type { BuildSystemPromptOptions, ExtensionAPI } from "@sammorrowdrums/mcpi";
+import type { BuildSystemPromptOptions, ExtensionAPI } from "mcpi";
 
 /**
  * Adds tool-specific guidance that adapts to the active tool set.

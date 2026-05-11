@@ -11,7 +11,7 @@ import {
 	getAgentDir,
 	type PromptTemplate,
 	SessionManager,
-} from "@sammorrowdrums/mcpi";
+} from "mcpi";
 
 // Define custom templates
 const deployTemplate: PromptTemplate = {

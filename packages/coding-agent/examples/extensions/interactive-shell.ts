@@ -20,7 +20,7 @@
  * If the agent runs an interactive command, it will fail (which is fine).
  */
 
-import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
+import type { ExtensionAPI } from "mcpi";
 import { spawnSync } from "node:child_process";
 
 // Default interactive commands - editors, pagers, git ops, TUIs

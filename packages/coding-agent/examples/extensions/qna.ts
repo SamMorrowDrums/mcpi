@@ -7,9 +7,9 @@
  * 3. Loads the result into the editor for user to fill in answers
  */
 
-import type { ExtensionAPI } from "@sammorrowdrums/mcpi";
-import { BorderedLoader } from "@sammorrowdrums/mcpi";
-import { complete, type UserMessage } from "@sammorrowdrums/mcpi-ai";
+import type { ExtensionAPI } from "mcpi";
+import { BorderedLoader } from "mcpi";
+import { complete, type UserMessage } from "mcpi-ai";
 
 const SYSTEM_PROMPT = `You are a question extractor. Given text from a conversation, extract any questions that need answering and format them for the user to fill in.
 

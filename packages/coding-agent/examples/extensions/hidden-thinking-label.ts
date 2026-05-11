@@ -18,7 +18,7 @@
  *   /thinking-label          Reset to the default label
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@sammorrowdrums/mcpi";
+import type { ExtensionAPI, ExtensionContext } from "mcpi";
 
 const DEFAULT_LABEL = "Pondering...";
 

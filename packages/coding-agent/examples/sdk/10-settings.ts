@@ -4,7 +4,7 @@
  * Override settings using SettingsManager.
  */
 
-import { createAgentSession, SessionManager, SettingsManager } from "@sammorrowdrums/mcpi";
+import { createAgentSession, SessionManager, SettingsManager } from "mcpi";
 
 const cwd = process.cwd();
 

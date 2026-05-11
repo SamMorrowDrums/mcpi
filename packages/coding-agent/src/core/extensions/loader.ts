@@ -4,9 +4,9 @@
  * Uses @mariozechner/jiti fork with virtualModules support for compiled Bun binaries.
  */
 
-import * as _bundledPiAgentCore from "@sammorrowdrums/mcpi-agent";
-import * as _bundledPiAi from "@sammorrowdrums/mcpi-ai";
-import * as _bundledPiAiOauth from "@sammorrowdrums/mcpi-ai/oauth";
+import * as _bundledPiAgentCore from "mcpi-agent";
+import * as _bundledPiAi from "mcpi-ai";
+import * as _bundledPiAiOauth from "mcpi-ai/oauth";
 import * as fs from "node:fs";
 import { createRequire } from "node:module";
 import * as os from "node:os";
@@ -23,7 +23,7 @@ import * as _bundledTypeboxCompile from "typebox/compile";
 import * as _bundledTypeboxValue from "typebox/value";
 import { CONFIG_DIR_NAME, getAgentDir, isBunBinary } from "../../config.js";
 // NOTE: This import works because loader.ts exports are NOT re-exported from index.ts,
-// avoiding a circular dependency. Extensions can import from @sammorrowdrums/mcpi.
+// avoiding a circular dependency. Extensions can import from mcpi.
 import * as _bundledPiCodingAgent from "../../index.js";
 import { createEventBus, type EventBus } from "../event-bus.js";
 import type { ExecOptions } from "../exec.js";
@@ -49,11 +49,11 @@ const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@sinclair/typebox": _bundledTypebox,
 	"@sinclair/typebox/compile": _bundledTypeboxCompile,
 	"@sinclair/typebox/value": _bundledTypeboxValue,
-	"@sammorrowdrums/mcpi-agent": _bundledPiAgentCore,
+	"mcpi-agent": _bundledPiAgentCore,
 	"@mariozechner/pi-tui": _bundledPiTui,
-	"@sammorrowdrums/mcpi-ai": _bundledPiAi,
-	"@sammorrowdrums/mcpi-ai/oauth": _bundledPiAiOauth,
-	"@sammorrowdrums/mcpi": _bundledPiCodingAgent,
+	"mcpi-ai": _bundledPiAi,
+	"mcpi-ai/oauth": _bundledPiAiOauth,
+	"mcpi": _bundledPiCodingAgent,
 };
 
 const require = createRequire(import.meta.url);
@@ -84,11 +84,11 @@ function getAliases(): Record<string, string> {
 	};
 
 	_aliases = {
-		"@sammorrowdrums/mcpi": packageIndex,
-		"@sammorrowdrums/mcpi-agent": resolveWorkspaceOrImport("agent/dist/index.js", "@sammorrowdrums/mcpi-agent"),
+		"mcpi": packageIndex,
+		"mcpi-agent": resolveWorkspaceOrImport("agent/dist/index.js", "mcpi-agent"),
 		"@mariozechner/pi-tui": resolveWorkspaceOrImport("tui/dist/index.js", "@mariozechner/pi-tui"),
-		"@sammorrowdrums/mcpi-ai": resolveWorkspaceOrImport("ai/dist/index.js", "@sammorrowdrums/mcpi-ai"),
-		"@sammorrowdrums/mcpi-ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "@sammorrowdrums/mcpi-ai/oauth"),
+		"mcpi-ai": resolveWorkspaceOrImport("ai/dist/index.js", "mcpi-ai"),
+		"mcpi-ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "mcpi-ai/oauth"),
 		typebox: typeboxEntry,
 		"typebox/compile": typeboxCompileEntry,
 		"typebox/value": typeboxValueEntry,

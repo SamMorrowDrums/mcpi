@@ -1,4 +1,4 @@
-import { getOAuthProviders } from "@sammorrowdrums/mcpi-ai/oauth";
+import { getOAuthProviders } from "mcpi-ai/oauth";
 import { Container, type Focusable, getKeybindings, Input, Spacer, Text, type TUI } from "@mariozechner/pi-tui";
 import { exec } from "child_process";
 import { theme } from "../theme/theme.js";

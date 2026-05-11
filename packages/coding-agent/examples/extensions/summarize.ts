@@ -1,6 +1,6 @@
-import type { ExtensionAPI, ExtensionCommandContext } from "@sammorrowdrums/mcpi";
-import { DynamicBorder, getMarkdownTheme } from "@sammorrowdrums/mcpi";
-import { complete, getModel } from "@sammorrowdrums/mcpi-ai";
+import type { ExtensionAPI, ExtensionCommandContext } from "mcpi";
+import { DynamicBorder, getMarkdownTheme } from "mcpi";
+import { complete, getModel } from "mcpi-ai";
 import { Container, Markdown, matchesKey, Text } from "@mariozechner/pi-tui";
 
 type ContentBlock = {

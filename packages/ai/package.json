@@ -1,5 +1,5 @@
 {
-	"name": "@sammorrowdrums/mcpi-ai",
+	"name": "mcpi-ai",
 	"version": "0.70.0",
 	"description": "Unified LLM API with automatic model discovery and provider configuration",
 	"type": "module",

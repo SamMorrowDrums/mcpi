@@ -10,7 +10,7 @@
  * extensions system using pi.registerTool().
  */
 
-import { createAgentSession, SessionManager } from "@sammorrowdrums/mcpi";
+import { createAgentSession, SessionManager } from "mcpi";
 
 // Read-only mode (no edit/write)
 await createAgentSession({

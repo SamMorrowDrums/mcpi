@@ -5,8 +5,8 @@
  * Responses and events are emitted as JSON lines on stdout.
  */
 
-import type { AgentMessage, ThinkingLevel } from "@sammorrowdrums/mcpi-agent";
-import type { ImageContent, Model } from "@sammorrowdrums/mcpi-ai";
+import type { AgentMessage, ThinkingLevel } from "mcpi-agent";
+import type { ImageContent, Model } from "mcpi-ai";
 import type { SessionStats } from "../../core/agent-session.js";
 import type { BashResult } from "../../core/bash-executor.js";
 import type { CompactionResult } from "../../core/compaction/index.js";

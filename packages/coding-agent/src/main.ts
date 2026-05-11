@@ -5,7 +5,7 @@
  * createAgentSession() options. The SDK does the heavy lifting.
  */
 
-import { type ImageContent, modelsAreEqual, supportsXhigh } from "@sammorrowdrums/mcpi-ai";
+import { type ImageContent, modelsAreEqual, supportsXhigh } from "mcpi-ai";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { ProcessTerminal, setKeybindings, TUI } from "@mariozechner/pi-tui";

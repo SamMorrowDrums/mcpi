@@ -12,10 +12,10 @@
  * Uses JSON mode to capture structured output from subagents.
  */
 
-import { type ExtensionAPI, getMarkdownTheme, withFileMutationQueue } from "@sammorrowdrums/mcpi";
-import type { AgentToolResult } from "@sammorrowdrums/mcpi-agent";
-import type { Message } from "@sammorrowdrums/mcpi-ai";
-import { StringEnum } from "@sammorrowdrums/mcpi-ai";
+import { type ExtensionAPI, getMarkdownTheme, withFileMutationQueue } from "mcpi";
+import type { AgentToolResult } from "mcpi-agent";
+import type { Message } from "mcpi-ai";
+import { StringEnum } from "mcpi-ai";
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";

@@ -1,4 +1,4 @@
-import type { Model } from "@sammorrowdrums/mcpi-ai";
+import type { Model } from "mcpi-ai";
 import {
 	Container,
 	type Focusable,

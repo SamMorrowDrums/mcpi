@@ -8,7 +8,7 @@
  *   pi --extension examples/extensions/titlebar-spinner.ts
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@sammorrowdrums/mcpi";
+import type { ExtensionAPI, ExtensionContext } from "mcpi";
 import path from "node:path";
 
 const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
