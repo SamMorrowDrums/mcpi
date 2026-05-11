@@ -91,7 +91,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/badlogic/pi-mono.git",
+    "url": "git+https://github.com/SamMorrowDrums/mcpi.git",
     "directory": "packages/coding-agent"
   },
   "engines": {
