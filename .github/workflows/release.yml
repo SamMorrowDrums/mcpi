@@ -40,7 +40,11 @@ jobs:
         run: npm install
 
       - name: Build
-        run: npm run build --workspaces
+        run: |
+          npm run build --workspace packages/ai
+          npm run build --workspace packages/agent
+          npm run build --workspace packages/tui
+          npm run build --workspace packages/coding-agent
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
