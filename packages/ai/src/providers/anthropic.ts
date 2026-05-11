@@ -1044,25 +1044,25 @@ function convertMessages(
 			const toolResults: ContentBlockParam[] = [];
 
 			// Add the current tool result
+			// Add the current tool result
 			const activated = (msg.details as { activatedTools?: string[] })?.activatedTools;
 			if (activated && activated.length > 0) {
-				// Inject tool_reference blocks inside tool_result content to
-				// activate deferred tools. tool_reference can't be mixed with
-				// text, so put references in the tool_result and skill body
-				// text as a separate block.
+				// Put tool_reference blocks inside tool_result.content to activate
+				// deferred tools. The API expands these into full schemas.
+				// tool_reference can't be mixed with text, so the skill body
+				// goes in a separate tool_result with the same ID.
 				toolResults.push({
 					type: "tool_result",
 					tool_use_id: msg.toolCallId,
 					content: activated.map((name) => ({ type: "tool_reference", tool_name: name })) as any,
-					is_error: msg.isError,
 				});
-				// Add the original text content as a separate text block
-				const textContent = msg.content
-					.filter((c) => c.type === "text")
-					.map((c) => (c as { text: string }).text)
-					.join("\n");
-				if (textContent) {
-					toolResults.push({ type: "text", text: textContent } as any);
+				// Original text content in a follow-up text block
+				const textParts = msg.content.filter((c) => c.type === "text");
+				if (textParts.length > 0) {
+					toolResults.push({
+						type: "text",
+						text: textParts.map((c) => (c as { text: string }).text).join("\n"),
+					} as any);
 				}
 			} else {
 				toolResults.push({
