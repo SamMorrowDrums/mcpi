@@ -1,6 +1,6 @@
 {
   "name": "@sammorrowdrums/mcpi",
-  "version": "0.70.8",
+  "version": "0.70.9",
   "description": "Coding agent CLI with read, bash, edit, write tools and session management",
   "type": "module",
   "piConfig": {
@@ -39,8 +39,8 @@
   },
   "dependencies": {
     "@mariozechner/jiti": "^2.6.2",
-    "@sammorrowdrums/mcpi-agent": "^0.70.8",
-    "@sammorrowdrums/mcpi-ai": "^0.70.8",
+    "@sammorrowdrums/mcpi-agent": "^0.70.9",
+    "@sammorrowdrums/mcpi-ai": "^0.70.9",
     "@silvia-odwyer/photon-node": "^0.3.4",
     "chalk": "^5.5.0",
     "cli-highlight": "^2.1.11",

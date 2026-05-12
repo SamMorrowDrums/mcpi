@@ -1158,6 +1158,20 @@ export interface ExtensionAPI {
 	getFlag(name: string): boolean | string | undefined;
 
 	// =========================================================================
+	// Subprocess Environment
+	// =========================================================================
+
+	/**
+	 * Set a session-scoped environment variable for agent-spawned subprocesses.
+	 * These are merged into the environment of bash tool invocations and exec() calls.
+	 * Does not modify `process.env`.
+	 */
+	setEnv(key: string, value: string): void;
+
+	/** Remove a session-scoped environment variable. */
+	unsetEnv(key: string): void;
+
+	// =========================================================================
 	// Message Rendering
 	// =========================================================================
 
@@ -1437,6 +1451,8 @@ export type SetLabelHandler = (entryId: string, label: string | undefined) => vo
  */
 export interface ExtensionRuntimeState {
 	flagValues: Map<string, boolean | string>;
+	/** Session-scoped env vars for agent-spawned subprocesses. */
+	sessionEnv: Map<string, string>;
 	/** Provider registrations queued during extension loading, processed when runner binds */
 	pendingProviderRegistrations: Array<{ name: string; config: ProviderConfig; extensionPath: string }>;
 	/** Throws when this extension instance is stale after runtime replacement. */

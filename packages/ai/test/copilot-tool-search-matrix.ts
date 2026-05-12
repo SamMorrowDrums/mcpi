@@ -7,7 +7,10 @@ import { getGitHubCopilotBaseUrl } from "../src/utils/oauth/github-copilot.js";
 import { resolveApiKey } from "./oauth.js";
 
 const oauthToken = await resolveApiKey("github-copilot");
-if (!oauthToken) { console.error("No token"); process.exit(1); }
+if (!oauthToken) {
+	console.error("No token");
+	process.exit(1);
+}
 
 const baseUrl = getGitHubCopilotBaseUrl(oauthToken);
 const client = new Anthropic({
@@ -58,9 +61,7 @@ async function test(label: string, extraTools: any[], extraHeaders?: Record<stri
 			max_tokens: 1024,
 			system: "You are helpful. Use tools when asked.",
 			tools: [...tools, ...extraTools],
-			messages: [
-				{ role: "user", content: "Get Apple stock price with history" },
-			],
+			messages: [{ role: "user", content: "Get Apple stock price with history" }],
 		};
 		const response = await client.messages.create(opts, extraHeaders ? { headers: extraHeaders } : undefined);
 		console.log("Stop:", response.stop_reason);
@@ -86,9 +87,11 @@ async function run() {
 	]);
 
 	// Test 2: tool_search with advanced-tool-use beta
-	await test("tool_search + advanced-tool-use beta", [
-		{ type: "tool_search_tool_regex_20251119", name: "tool_search_tool_regex" },
-	], { "anthropic-beta": "advanced-tool-use-2025-11-20" });
+	await test(
+		"tool_search + advanced-tool-use beta",
+		[{ type: "tool_search_tool_regex_20251119", name: "tool_search_tool_regex" }],
+		{ "anthropic-beta": "advanced-tool-use-2025-11-20" },
+	);
 
 	// Test 3: tool_reference in tool_result without tool_search
 	console.log("\n=== tool_reference without tool_search ===");

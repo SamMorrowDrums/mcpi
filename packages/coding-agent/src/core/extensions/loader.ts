@@ -169,6 +169,7 @@ export function createExtensionRuntime(): ExtensionRuntime {
 		getThinkingLevel: notInitialized,
 		setThinkingLevel: notInitialized,
 		flagValues: new Map(),
+		sessionEnv: new Map(),
 		pendingProviderRegistrations: [],
 		assertActive,
 		invalidate: (message) => {
@@ -259,6 +260,16 @@ function createExtensionAPI(
 			runtime.assertActive();
 			if (!extension.flags.has(name)) return undefined;
 			return runtime.flagValues.get(name);
+		},
+
+		setEnv(key: string, value: string): void {
+			runtime.assertActive();
+			runtime.sessionEnv.set(key, value);
+		},
+
+		unsetEnv(key: string): void {
+			runtime.assertActive();
+			runtime.sessionEnv.delete(key);
 		},
 
 		// Action methods - delegate to shared runtime

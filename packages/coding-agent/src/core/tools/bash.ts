@@ -144,8 +144,19 @@ export interface BashSpawnContext {
 
 export type BashSpawnHook = (context: BashSpawnContext) => BashSpawnContext;
 
-function resolveSpawnContext(command: string, cwd: string, spawnHook?: BashSpawnHook): BashSpawnContext {
-	const baseContext: BashSpawnContext = { command, cwd, env: { ...getShellEnv() } };
+function resolveSpawnContext(
+	command: string,
+	cwd: string,
+	spawnHook?: BashSpawnHook,
+	getSessionEnv?: () => Map<string, string>,
+): BashSpawnContext {
+	const env = { ...getShellEnv() };
+	if (getSessionEnv) {
+		for (const [k, v] of getSessionEnv()) {
+			env[k] = v;
+		}
+	}
+	const baseContext: BashSpawnContext = { command, cwd, env };
 	return spawnHook ? spawnHook(baseContext) : baseContext;
 }
 
@@ -158,6 +169,8 @@ export interface BashToolOptions {
 	shellPath?: string;
 	/** Hook to adjust command, cwd, or env before execution */
 	spawnHook?: BashSpawnHook;
+	/** Session-scoped env vars merged into subprocess environment */
+	getSessionEnv?: () => Map<string, string>;
 }
 
 const BASH_PREVIEW_LINES = 5;
@@ -277,6 +290,7 @@ export function createBashToolDefinition(
 	const ops = options?.operations ?? createLocalBashOperations({ shellPath: options?.shellPath });
 	const commandPrefix = options?.commandPrefix;
 	const spawnHook = options?.spawnHook;
+	const getSessionEnv = options?.getSessionEnv;
 	return {
 		name: "bash",
 		label: "bash",
@@ -291,7 +305,7 @@ export function createBashToolDefinition(
 			_ctx?,
 		) {
 			const resolvedCommand = commandPrefix ? `${commandPrefix}\n${command}` : command;
-			const spawnContext = resolveSpawnContext(resolvedCommand, cwd, spawnHook);
+			const spawnContext = resolveSpawnContext(resolvedCommand, cwd, spawnHook, getSessionEnv);
 			if (onUpdate) {
 				onUpdate({ content: [], details: undefined });
 			}

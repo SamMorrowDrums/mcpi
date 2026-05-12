@@ -409,6 +409,10 @@ export class ExtensionRunner {
 		return new Map(this.runtime.flagValues);
 	}
 
+	getSessionEnv(): Map<string, string> {
+		return this.runtime.sessionEnv;
+	}
+
 	getShortcuts(resolvedKeybindings: KeybindingsConfig): Map<KeyId, ExtensionShortcut> {
 		this.shortcutDiagnostics = [];
 		const builtinKeybindings = buildBuiltinKeybindings(resolvedKeybindings);
