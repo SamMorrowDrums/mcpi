@@ -228,9 +228,23 @@ function buildParams(model: Model<"openai-responses">, context: Context, options
 	}
 
 	if (context.tools) {
-		const tools = convertResponsesTools(context.tools);
-		// Auto-inject tool_search when deferred tools are present (OpenAI requires it)
-		if (context.tools.some((t) => (t as { deferred?: boolean }).deferred)) {
+		// Build namespace grouping map from tools that carry mcpServerName metadata.
+		// When present, deferred MCP tools are grouped into {type: "namespace"} objects
+		// and non-deferred tools form a stable cacheable prefix.
+		const toolsWithMcp = context.tools.filter(
+			(t) => (t as { deferred?: boolean }).deferred && (t as { mcpServerName?: string }).mcpServerName,
+		);
+		let namespaceGrouping: Record<string, string> | undefined;
+		if (toolsWithMcp.length > 0) {
+			namespaceGrouping = {};
+			for (const t of toolsWithMcp) {
+				namespaceGrouping[t.name] = (t as { mcpServerName?: string }).mcpServerName!;
+			}
+		}
+
+		const tools = convertResponsesTools(context.tools, { namespaceGrouping });
+		// If no namespace grouping (flat mode), still add tool_search for deferred tools
+		if (!namespaceGrouping && context.tools.some((t) => (t as { deferred?: boolean }).deferred)) {
 			tools.push({ type: "tool_search" } as any);
 		}
 		params.tools = tools;
