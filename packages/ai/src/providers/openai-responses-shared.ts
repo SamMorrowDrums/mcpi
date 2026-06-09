@@ -81,6 +81,17 @@ export interface ConvertResponsesMessagesOptions {
 
 export interface ConvertResponsesToolsOptions {
 	strict?: boolean | null;
+	/**
+	 * When provided, enables production-equivalent namespace grouping for
+	 * deferred MCP tools. Deferred tools whose name maps to a server in this
+	 * record are grouped into `{type: "namespace"}` objects keyed by server name.
+	 * Non-deferred tools are placed first (stable cacheable prefix).
+	 * A `{type: "tool_search"}` entry is appended when deferred tools exist.
+	 *
+	 * The map keys are tool names, values are MCP server names.
+	 * Tools not in the map are treated as standalone (non-MCP) deferred tools.
+	 */
+	namespaceGrouping?: Record<string, string>;
 }
 
 // =============================================================================
@@ -267,17 +278,82 @@ export function convertResponsesMessages<TApi extends Api>(
 
 export function convertResponsesTools(tools: Tool[], options?: ConvertResponsesToolsOptions): OpenAITool[] {
 	const strict = options?.strict === undefined ? false : options.strict;
-	return tools.map((tool) => {
+	const namespaceMap = options?.namespaceGrouping;
+
+	// Simple path: no namespace grouping, flat function tools
+	if (!namespaceMap) {
+		return tools.map((tool) => {
+			const deferred = (tool as { deferred?: boolean }).deferred;
+			return {
+				type: "function",
+				name: tool.name,
+				description: tool.description,
+				parameters: tool.parameters as any, // TypeBox already generates JSON Schema
+				strict,
+				...(deferred ? { defer_loading: true } : {}),
+			};
+		});
+	}
+
+	// Namespace grouping: partition tools into non-deferred prefix + deferred
+	// MCP namespaces + standalone deferred + tool_search
+	const nonDeferred: OpenAITool[] = [];
+	const deferredStandalone: OpenAITool[] = [];
+	const mcpGrouped = new Map<string, OpenAITool[]>();
+	let hasDeferredTools = false;
+
+	for (const tool of tools) {
 		const deferred = (tool as { deferred?: boolean }).deferred;
-		return {
+		const funcTool: OpenAITool = {
 			type: "function",
 			name: tool.name,
 			description: tool.description,
-			parameters: tool.parameters as any, // TypeBox already generates JSON Schema
+			parameters: tool.parameters as any,
 			strict,
 			...(deferred ? { defer_loading: true } : {}),
 		};
-	});
+
+		if (!deferred) {
+			nonDeferred.push(funcTool);
+		} else {
+			hasDeferredTools = true;
+			const serverName = namespaceMap[tool.name];
+			if (serverName) {
+				let group = mcpGrouped.get(serverName);
+				if (!group) {
+					group = [];
+					mcpGrouped.set(serverName, group);
+				}
+				group.push(funcTool);
+			} else {
+				deferredStandalone.push(funcTool);
+			}
+		}
+	}
+
+	// Build namespace objects for each MCP server group
+	const namespaceDefs: OpenAITool[] = [];
+	for (const [serverName, serverTools] of mcpGrouped) {
+		// Sanitize: OpenAI rejects namespace names containing dots
+		const sanitizedName = serverName.replace(/\./g, "-");
+		namespaceDefs.push({
+			type: "namespace",
+			name: sanitizedName,
+			description: `MCP server "${serverName}".`,
+			tools: serverTools,
+		} as unknown as OpenAITool);
+	}
+
+	return [
+		// Non-deferred tools first — stable cacheable prefix
+		...nonDeferred,
+		// Deferred standalone tools (no MCP server)
+		...deferredStandalone,
+		// Deferred MCP namespaces
+		...namespaceDefs,
+		// tool_search entry when deferred tools exist
+		...(hasDeferredTools ? [{ type: "tool_search" } as unknown as OpenAITool] : []),
+	];
 }
 
 // =============================================================================
