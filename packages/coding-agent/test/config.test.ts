@@ -208,17 +208,17 @@ describe("detectInstallMethod", () => {
 	test("self-updates renamed packages from the current install prefix", () => {
 		const { prefix } = createNpmPrefixInstall();
 
-		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/pi");
 
 		expect(command).toEqual({
 			command: "npm",
 			args: ["--prefix", prefix, "install", "-g", "--ignore-scripts", "--min-release-age=0", "@new-scope/pi"],
-			display: `npm --prefix ${prefix} uninstall -g @mariozechner/pi-coding-agent && npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @new-scope/pi`,
+			display: `npm --prefix ${prefix} uninstall -g @old-scope/mcpi && npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @new-scope/pi`,
 			steps: [
 				{
 					command: "npm",
-					args: ["--prefix", prefix, "uninstall", "-g", "@mariozechner/pi-coding-agent"],
-					display: `npm --prefix ${prefix} uninstall -g @mariozechner/pi-coding-agent`,
+					args: ["--prefix", prefix, "uninstall", "-g", "@old-scope/mcpi"],
+					display: `npm --prefix ${prefix} uninstall -g @old-scope/mcpi`,
 				},
 				{
 					command: "npm",
@@ -294,19 +294,19 @@ describe("detectInstallMethod", () => {
 	test("self-updates renamed pnpm global installs by removing the old package first", () => {
 		createPnpmGlobalInstall();
 
-		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/pi");
 
 		expect(detectInstallMethod()).toBe("pnpm");
 		expect(command).toEqual({
 			command: "pnpm",
 			args: ["install", "-g", "--ignore-scripts", "--config.minimumReleaseAge=0", "@new-scope/pi"],
 			display:
-				"pnpm remove -g @mariozechner/pi-coding-agent && pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @new-scope/pi",
+				"pnpm remove -g @old-scope/mcpi && pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @new-scope/pi",
 			steps: [
 				{
 					command: "pnpm",
-					args: ["remove", "-g", "@mariozechner/pi-coding-agent"],
-					display: "pnpm remove -g @mariozechner/pi-coding-agent",
+					args: ["remove", "-g", "@old-scope/mcpi"],
+					display: "pnpm remove -g @old-scope/mcpi",
 				},
 				{
 					command: "pnpm",
@@ -363,18 +363,18 @@ describe("detectInstallMethod", () => {
 	test("self-updates renamed yarn global installs by removing the old package first", () => {
 		createYarnGlobalInstall();
 
-		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/pi");
 
 		expect(detectInstallMethod()).toBe("yarn");
 		expect(command).toEqual({
 			command: "yarn",
 			args: ["global", "add", "--ignore-scripts", "@new-scope/pi"],
-			display: "yarn global remove @mariozechner/pi-coding-agent && yarn global add --ignore-scripts @new-scope/pi",
+			display: "yarn global remove @old-scope/mcpi && yarn global add --ignore-scripts @new-scope/pi",
 			steps: [
 				{
 					command: "yarn",
-					args: ["global", "remove", "@mariozechner/pi-coding-agent"],
-					display: "yarn global remove @mariozechner/pi-coding-agent",
+					args: ["global", "remove", "@old-scope/mcpi"],
+					display: "yarn global remove @old-scope/mcpi",
 				},
 				{
 					command: "yarn",
@@ -388,19 +388,19 @@ describe("detectInstallMethod", () => {
 	test("self-updates renamed bun global installs by removing the old package first", () => {
 		createBunGlobalInstall();
 
-		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/pi");
 
 		expect(detectInstallMethod()).toBe("bun");
 		expect(command).toEqual({
 			command: "bun",
 			args: ["install", "-g", "--ignore-scripts", "--minimum-release-age=0", "@new-scope/pi"],
 			display:
-				"bun uninstall -g @mariozechner/pi-coding-agent && bun install -g --ignore-scripts --minimum-release-age=0 @new-scope/pi",
+				"bun uninstall -g @old-scope/mcpi && bun install -g --ignore-scripts --minimum-release-age=0 @new-scope/pi",
 			steps: [
 				{
 					command: "bun",
-					args: ["uninstall", "-g", "@mariozechner/pi-coding-agent"],
-					display: "bun uninstall -g @mariozechner/pi-coding-agent",
+					args: ["uninstall", "-g", "@old-scope/mcpi"],
+					display: "bun uninstall -g @old-scope/mcpi",
 				},
 				{
 					command: "bun",

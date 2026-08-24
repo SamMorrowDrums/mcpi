@@ -42,7 +42,7 @@ test("synchronizes private dependencies without touching registry aliases, gener
 			private: true,
 			dependencies: {
 				"@sammorrowdrums/mcpi": "^1.0.0",
-				"@mariozechner/pi-ai": "npm:@sammorrowdrums/mcpi-ai@1.0.0",
+				"@legacy-scope/ai": "npm:@sammorrowdrums/mcpi-ai@1.0.0",
 			},
 		});
 		await writeManifest(root, "packages/coding-agent/install-lock", {
@@ -59,7 +59,7 @@ test("synchronizes private dependencies without touching registry aliases, gener
 
 		const evalsManifest = await readManifest(root, "packages/evals");
 		assert.equal(evalsManifest.dependencies["@sammorrowdrums/mcpi"], "^2.0.0");
-		assert.equal(evalsManifest.dependencies["@mariozechner/pi-ai"], "npm:@sammorrowdrums/mcpi-ai@1.0.0");
+		assert.equal(evalsManifest.dependencies["@legacy-scope/ai"], "npm:@sammorrowdrums/mcpi-ai@1.0.0");
 		const generatedManifest = await readManifest(root, "packages/coding-agent/install-lock");
 		assert.equal(generatedManifest.dependencies["@sammorrowdrums/mcpi"], "^1.0.0");
 
