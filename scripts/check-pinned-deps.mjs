@@ -22,7 +22,9 @@ function collectPackageJsonFiles(directory) {
 }
 
 function isInternalWorkspaceDependency(name) {
-	return name.startsWith("@earendil-works/pi-");
+	// The coding-agent package is published unsuffixed as "@sammorrowdrums/mcpi",
+	// so a bare prefix test would miss it.
+	return name === "@sammorrowdrums/mcpi" || name.startsWith("@sammorrowdrums/mcpi-");
 }
 
 function isNonRegistrySpecifier(specifier) {

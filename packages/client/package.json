@@ -1,5 +1,5 @@
 {
-	"name": "@earendil-works/pi-client",
+	"name": "@sammorrowdrums/mcpi-client",
 	"version": "0.84.2",
 	"description": "Transport-neutral client for remote pi sessions over framed CBOR bytes",
 	"type": "module",
@@ -40,14 +40,18 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/earendil-works/pi.git",
+		"url": "git+https://github.com/SamMorrowDrums/mcpi.git",
 		"directory": "packages/client"
+	},
+	"homepage": "https://github.com/SamMorrowDrums/mcpi/tree/main/packages/client#readme",
+	"bugs": {
+		"url": "https://github.com/SamMorrowDrums/mcpi/issues"
 	},
 	"engines": {
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"@earendil-works/pi-protocol": "^0.84.2"
+		"@sammorrowdrums/mcpi-protocol": "^0.84.2"
 	},
 	"devDependencies": {
 		"shx": "0.4.0",

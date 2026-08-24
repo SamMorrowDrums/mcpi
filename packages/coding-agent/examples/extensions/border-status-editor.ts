@@ -1,11 +1,6 @@
-import {
-	CustomEditor,
-	type ExtensionAPI,
-	type ExtensionContext,
-	type KeybindingsManager,
-} from "@earendil-works/pi-coding-agent";
-import type { Component, EditorTheme, TUI } from "@earendil-works/pi-tui";
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { CustomEditor, type ExtensionAPI, type ExtensionContext, type KeybindingsManager } from "@sammorrowdrums/mcpi";
+import type { Component, EditorTheme, TUI } from "@sammorrowdrums/mcpi-tui";
+import { truncateToWidth, visibleWidth } from "@sammorrowdrums/mcpi-tui";
 
 function fitBorder(
 	left: string,

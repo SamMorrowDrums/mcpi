@@ -2,8 +2,8 @@
  * List available models with optional fuzzy search
  */
 
-import type { Api, Model } from "@earendil-works/pi-ai";
-import { fuzzyFilter } from "@earendil-works/pi-tui";
+import type { Api, Model } from "@sammorrowdrums/mcpi-ai";
+import { fuzzyFilter } from "@sammorrowdrums/mcpi-tui";
 import chalk from "chalk";
 import { formatNoModelsAvailableMessage } from "../core/auth-guidance.ts";
 import type { ModelRuntime } from "../core/model-runtime.ts";

@@ -6,7 +6,7 @@
 		"moduleResolution": "NodeNext",
 		"types": ["node", "vitest"],
 		"paths": {
-			"@earendil-works/pi-protocol": ["../protocol/src/index.ts"]
+			"@sammorrowdrums/mcpi-protocol": ["../protocol/src/index.ts"]
 		}
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"]

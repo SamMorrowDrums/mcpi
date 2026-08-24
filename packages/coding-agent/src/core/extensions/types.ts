@@ -14,7 +14,7 @@ import type {
 	AgentToolUpdateCallback,
 	ThinkingLevel,
 	ToolExecutionMode,
-} from "@earendil-works/pi-agent-core";
+} from "@sammorrowdrums/mcpi-agent-core";
 import type {
 	Api,
 	AssistantMessageEvent,
@@ -32,7 +32,7 @@ import type {
 	TextContent,
 	ToolResultMessage,
 	Usage,
-} from "@earendil-works/pi-ai";
+} from "@sammorrowdrums/mcpi-ai";
 import type {
 	AutocompleteItem,
 	AutocompleteProvider,
@@ -43,7 +43,7 @@ import type {
 	OverlayHandle,
 	OverlayOptions,
 	TUI,
-} from "@earendil-works/pi-tui";
+} from "@sammorrowdrums/mcpi-tui";
 import type { Static, TSchema } from "typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import type { BashResult } from "../bash-executor.ts";
@@ -233,12 +233,12 @@ export interface ExtensionUIContext {
 	 * - `keybindings`: KeybindingsManager for app-level keybindings
 	 *
 	 * For full app keybinding support (escape, ctrl+d, model switching, etc.),
-	 * extend `CustomEditor` from `@earendil-works/pi-coding-agent` and call
+	 * extend `CustomEditor` from `@sammorrowdrums/mcpi` and call
 	 * `super.handleInput(data)` for keys you don't handle.
 	 *
 	 * @example
 	 * ```ts
-	 * import { CustomEditor } from "@earendil-works/pi-coding-agent";
+	 * import { CustomEditor } from "@sammorrowdrums/mcpi";
 	 *
 	 * class VimEditor extends CustomEditor {
 	 *   private mode: "normal" | "insert" = "insert";

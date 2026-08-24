@@ -1,4 +1,4 @@
-import type { Api, Model, ProviderHeaders } from "@earendil-works/pi-ai";
+import type { Api, Model, ProviderHeaders } from "@sammorrowdrums/mcpi-ai";
 import type { SettingsManager } from "./settings-manager.ts";
 import { isInstallTelemetryEnabled } from "./telemetry.ts";
 

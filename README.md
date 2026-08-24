@@ -5,7 +5,7 @@
 </p>
 <p align="center">
   <a href="https://discord.com/invite/3cU7Bz4UPx"><img alt="Discord" src="https://img.shields.io/badge/discord-community-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
-  <a href="https://www.npmjs.com/package/@earendil-works/pi-coding-agent"><img alt="npm" src="https://img.shields.io/npm/v/@earendil-works/pi-coding-agent?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/@sammorrowdrums/mcpi"><img alt="npm" src="https://img.shields.io/npm/v/@sammorrowdrums/mcpi?style=flat-square" /></a>
 </p>
 
 > New issues and PRs from new contributors are auto-closed by default. Maintainers review auto-closed issues daily. See [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -14,9 +14,9 @@
 
 This is the home of the Pi agent harness project including our self extensible coding agent.
 
-* **[@earendil-works/pi-coding-agent](packages/coding-agent)**: Interactive coding agent CLI
-* **[@earendil-works/pi-agent-core](packages/agent)**: Agent runtime with tool calling and state management
-* **[@earendil-works/pi-ai](packages/ai)**: Unified multi-provider LLM API (OpenAI, Anthropic, Google, …)
+* **[@sammorrowdrums/mcpi](packages/coding-agent)**: Interactive coding agent CLI
+* **[@sammorrowdrums/mcpi-agent-core](packages/agent)**: Agent runtime with tool calling and state management
+* **[@sammorrowdrums/mcpi-ai](packages/ai)**: Unified multi-provider LLM API (OpenAI, Anthropic, Google, …)
 
 To learn more about Pi:
 
@@ -27,11 +27,11 @@ To learn more about Pi:
 
 | Package | Description |
 |---------|-------------|
-| **[@earendil-works/pi-telemetry](packages/telemetry)** | Vendor-neutral telemetry contracts, reference adapter, conformance tests, and typed schemas |
-| **[@earendil-works/pi-ai](packages/ai)** | Unified multi-provider LLM API (OpenAI, Anthropic, Google, etc.) |
-| **[@earendil-works/pi-agent-core](packages/agent)** | Agent runtime with tool calling and state management |
-| **[@earendil-works/pi-coding-agent](packages/coding-agent)** | Interactive coding agent CLI |
-| **[@earendil-works/pi-tui](packages/tui)** | Terminal UI library with differential rendering |
+| **[@sammorrowdrums/mcpi-telemetry](packages/telemetry)** | Vendor-neutral telemetry contracts, reference adapter, conformance tests, and typed schemas |
+| **[@sammorrowdrums/mcpi-ai](packages/ai)** | Unified multi-provider LLM API (OpenAI, Anthropic, Google, etc.) |
+| **[@sammorrowdrums/mcpi-agent-core](packages/agent)** | Agent runtime with tool calling and state management |
+| **[@sammorrowdrums/mcpi](packages/coding-agent)** | Interactive coding agent CLI |
+| **[@sammorrowdrums/mcpi-tui](packages/tui)** | Terminal UI library with differential rendering |
 
 For Slack/chat automation and workflows see [earendil-works/pi-chat](https://github.com/earendil-works/pi-chat).
 

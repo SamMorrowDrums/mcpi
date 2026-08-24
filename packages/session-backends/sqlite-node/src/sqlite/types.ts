@@ -1,4 +1,4 @@
-import type { FileSystem, SessionCreateOptions, SessionMetadata } from "@earendil-works/pi-agent-core";
+import type { FileSystem, SessionCreateOptions, SessionMetadata } from "@sammorrowdrums/mcpi-agent-core";
 
 /** Result of a prepared SQLite statement execution. */
 export interface SqliteRunResult {

@@ -1,5 +1,5 @@
 {
-	"name": "@earendil-works/pi-tui",
+	"name": "@sammorrowdrums/mcpi-tui",
 	"version": "0.84.2",
 	"description": "Terminal User Interface library with differential rendering for efficient text-based applications",
 	"type": "module",
@@ -37,8 +37,12 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/earendil-works/pi.git",
+		"url": "git+https://github.com/SamMorrowDrums/mcpi.git",
 		"directory": "packages/tui"
+	},
+	"homepage": "https://github.com/SamMorrowDrums/mcpi/tree/main/packages/tui#readme",
+	"bugs": {
+		"url": "https://github.com/SamMorrowDrums/mcpi/issues"
 	},
 	"engines": {
 		"node": ">=22.19.0"

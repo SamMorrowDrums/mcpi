@@ -8,8 +8,15 @@ export default defineConfig({
 		reporters: process.env.GITHUB_ACTIONS ? ["dot", "github-actions"] : ["dot"],
 	},
 	resolve: {
-		alias: {
-			"@earendil-works/pi-protocol": fileURLToPath(new URL("../protocol/src/index.ts", import.meta.url)),
-		},
+		alias: [
+			{
+				find: /^@sammorrowdrums\/mcpi-protocol$/,
+				replacement: fileURLToPath(new URL("../protocol/src/index.ts", import.meta.url)),
+			},
+			{
+				find: /^@sammorrowdrums\/mcpi-ai$/,
+				replacement: fileURLToPath(new URL("../ai/src/index.ts", import.meta.url)),
+			},
+		],
 	},
 });

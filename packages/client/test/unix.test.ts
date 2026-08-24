@@ -7,7 +7,7 @@ import {
 	encodeServerMessage,
 	PROTOCOL_VERSION,
 	type ServerSnapshot,
-} from "@earendil-works/pi-protocol";
+} from "@sammorrowdrums/mcpi-protocol";
 import { describe, expect, test } from "vitest";
 import { PiClient } from "../src/index.ts";
 import { createUnixTransportFactory } from "../src/unix.ts";

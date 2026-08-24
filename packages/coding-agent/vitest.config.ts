@@ -23,11 +23,11 @@ export default mergeConfig(
 		resolve: {
 			alias: [
 				{
-					find: /^@earendil-works\/pi-client$/,
+					find: /^@sammorrowdrums\/mcpi-client$/,
 					replacement: fileURLToPath(new URL("../client/src/index.ts", import.meta.url)),
 				},
 				{
-					find: /^@earendil-works\/pi-protocol$/,
+					find: /^@sammorrowdrums\/mcpi-protocol$/,
 					replacement: fileURLToPath(new URL("../protocol/src/index.ts", import.meta.url)),
 				},
 				{ find: /^@mariozechner\/pi-ai$/, replacement: workspaceSourcePaths.aiIndex },

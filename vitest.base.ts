@@ -9,6 +9,7 @@ export const workspaceSourcePaths = {
 	aiOAuth: fileURLToPath(new URL("./packages/ai/src/oauth.ts", import.meta.url)),
 	aiProviders: fileURLToPath(new URL("./packages/ai/src/providers", import.meta.url)),
 	agentIndex: fileURLToPath(new URL("./packages/agent/src/index.ts", import.meta.url)),
+	agentNode: fileURLToPath(new URL("./packages/agent/src/node.ts", import.meta.url)),
 	codingAgentIndex: fileURLToPath(new URL("./packages/coding-agent/src/index.ts", import.meta.url)),
 	tuiIndex: fileURLToPath(new URL("./packages/tui/src/index.ts", import.meta.url)),
 } as const;
@@ -16,17 +17,18 @@ export const workspaceSourcePaths = {
 export default defineConfig({
 	resolve: {
 		alias: [
-			{ find: /^@earendil-works\/pi-telemetry$/, replacement: workspaceSourcePaths.telemetryIndex },
-			{ find: /^@earendil-works\/pi-telemetry\/testing$/, replacement: workspaceSourcePaths.telemetryTesting },
-			{ find: /^@earendil-works\/pi-ai$/, replacement: workspaceSourcePaths.aiIndex },
-			{ find: /^@earendil-works\/pi-ai\/compat$/, replacement: workspaceSourcePaths.aiCompat },
-			{ find: /^@earendil-works\/pi-ai\/oauth$/, replacement: workspaceSourcePaths.aiOAuth },
+			{ find: /^@sammorrowdrums\/mcpi-telemetry$/, replacement: workspaceSourcePaths.telemetryIndex },
+			{ find: /^@sammorrowdrums\/mcpi-telemetry\/testing$/, replacement: workspaceSourcePaths.telemetryTesting },
+			{ find: /^@sammorrowdrums\/mcpi-ai$/, replacement: workspaceSourcePaths.aiIndex },
+			{ find: /^@sammorrowdrums\/mcpi-ai\/compat$/, replacement: workspaceSourcePaths.aiCompat },
+			{ find: /^@sammorrowdrums\/mcpi-ai\/oauth$/, replacement: workspaceSourcePaths.aiOAuth },
 			{
-				find: /^@earendil-works\/pi-ai\/providers\/(.+)$/,
+				find: /^@sammorrowdrums\/mcpi-ai\/providers\/(.+)$/,
 				replacement: `${workspaceSourcePaths.aiProviders}/$1.ts`,
 			},
-			{ find: /^@earendil-works\/pi-agent-core$/, replacement: workspaceSourcePaths.agentIndex },
-			{ find: /^@earendil-works\/pi-tui$/, replacement: workspaceSourcePaths.tuiIndex },
+			{ find: /^@sammorrowdrums\/mcpi-agent-core\/node$/, replacement: workspaceSourcePaths.agentNode },
+			{ find: /^@sammorrowdrums\/mcpi-agent-core$/, replacement: workspaceSourcePaths.agentIndex },
+			{ find: /^@sammorrowdrums\/mcpi-tui$/, replacement: workspaceSourcePaths.tuiIndex },
 		],
 	},
 });

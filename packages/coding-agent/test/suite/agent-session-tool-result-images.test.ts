@@ -1,7 +1,7 @@
 import { crc32, deflateSync } from "node:zlib";
-import type { AgentTool } from "@earendil-works/pi-agent-core";
-import type { ImageContent } from "@earendil-works/pi-ai";
-import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
+import type { AgentTool } from "@sammorrowdrums/mcpi-agent-core";
+import type { ImageContent } from "@sammorrowdrums/mcpi-ai";
+import { fauxAssistantMessage, fauxToolCall } from "@sammorrowdrums/mcpi-ai";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHarness, type Harness } from "./harness.ts";

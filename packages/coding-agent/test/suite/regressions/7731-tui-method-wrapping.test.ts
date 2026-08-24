@@ -1,4 +1,4 @@
-import type { TUI } from "@earendil-works/pi-tui";
+import type { TUI } from "@sammorrowdrums/mcpi-tui";
 import { describe, expect, it, vi } from "vitest";
 import { createInteractiveTuiReference } from "../../../src/modes/interactive/interactive-mode.ts";
 

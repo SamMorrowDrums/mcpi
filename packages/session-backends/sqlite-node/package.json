@@ -1,7 +1,7 @@
 {
-	"name": "@earendil-works/pi-session-backend-sqlite-node",
+	"name": "@sammorrowdrums/mcpi-session-backend-sqlite-node",
 	"version": "0.84.2",
-	"description": "Node sqlite session backend for @earendil-works/pi-agent-core sessions",
+	"description": "Node sqlite session backend for @sammorrowdrums/mcpi-agent-core sessions",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -27,15 +27,19 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/earendil-works/pi.git",
+		"url": "git+https://github.com/SamMorrowDrums/mcpi.git",
 		"directory": "packages/session-backends/sqlite-node"
+	},
+	"homepage": "https://github.com/SamMorrowDrums/mcpi/tree/main/packages/session-backends/sqlite-node#readme",
+	"bugs": {
+		"url": "https://github.com/SamMorrowDrums/mcpi/issues"
 	},
 	"engines": {
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"@earendil-works/pi-ai": "^0.84.2",
-		"@earendil-works/pi-agent-core": "^0.84.2"
+		"@sammorrowdrums/mcpi-ai": "^0.84.2",
+		"@sammorrowdrums/mcpi-agent-core": "^0.84.2"
 	},
 	"devDependencies": {
 		"@vitest/coverage-v8": "4.1.9",

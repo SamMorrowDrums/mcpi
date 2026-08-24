@@ -3,14 +3,14 @@
 	"compilerOptions": {
 		"outDir": "./dist",
 		"paths": {
-			"@earendil-works/pi-agent-core": ["../agent/dist/index.d.ts"],
-			"@earendil-works/pi-agent-core/*": ["../agent/dist/*.d.ts"],
-			"@earendil-works/pi-ai": ["../ai/dist/index.d.ts"],
-			"@earendil-works/pi-ai/*": ["../ai/dist/*.d.ts", "../ai/dist/providers/*.d.ts"],
-			"@earendil-works/pi-client": ["../client/dist/index.d.ts"],
-			"@earendil-works/pi-protocol": ["../protocol/dist/index.d.ts"],
-			"@earendil-works/pi-tui": ["../tui/dist/index.d.ts"],
-			"@earendil-works/pi-tui/*": ["../tui/dist/*.d.ts", "../tui/dist/components/*.d.ts"]
+			"@sammorrowdrums/mcpi-agent-core": ["../agent/dist/index.d.ts"],
+			"@sammorrowdrums/mcpi-agent-core/*": ["../agent/dist/*.d.ts"],
+			"@sammorrowdrums/mcpi-ai": ["../ai/dist/index.d.ts"],
+			"@sammorrowdrums/mcpi-ai/*": ["../ai/dist/*.d.ts", "../ai/dist/providers/*.d.ts"],
+			"@sammorrowdrums/mcpi-client": ["../client/dist/index.d.ts"],
+			"@sammorrowdrums/mcpi-protocol": ["../protocol/dist/index.d.ts"],
+			"@sammorrowdrums/mcpi-tui": ["../tui/dist/index.d.ts"],
+			"@sammorrowdrums/mcpi-tui/*": ["../tui/dist/*.d.ts", "../tui/dist/components/*.d.ts"]
 		},
 		"rootDir": "./src"
 	},

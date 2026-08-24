@@ -1,5 +1,5 @@
 {
-	"name": "@earendil-works/pi-telemetry",
+	"name": "@sammorrowdrums/mcpi-telemetry",
 	"version": "0.84.2",
 	"description": "Vendor-neutral telemetry contracts and typed schema utilities for pi",
 	"type": "module",
@@ -34,8 +34,12 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/earendil-works/pi.git",
+		"url": "git+https://github.com/SamMorrowDrums/mcpi.git",
 		"directory": "packages/telemetry"
+	},
+	"homepage": "https://github.com/SamMorrowDrums/mcpi/tree/main/packages/telemetry#readme",
+	"bugs": {
+		"url": "https://github.com/SamMorrowDrums/mcpi/issues"
 	},
 	"engines": {
 		"node": ">=22.19.0"

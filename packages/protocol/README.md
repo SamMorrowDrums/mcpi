@@ -1,4 +1,4 @@
-# @earendil-works/pi-protocol
+# @sammorrowdrums/mcpi-protocol
 
 Runtime-neutral schemas, types, CBOR encoding, and byte-stream framing for the experimental pi protocol.
 
@@ -21,7 +21,7 @@ import {
   createServerMessageDecoder,
   encodeClientMessage,
   type ClientHello,
-} from "@earendil-works/pi-protocol";
+} from "@sammorrowdrums/mcpi-protocol";
 
 const hello: ClientHello = {
   type: "hello",

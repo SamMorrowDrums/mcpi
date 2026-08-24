@@ -4,7 +4,7 @@ import {
 	PROTOCOL_VERSION,
 	type ServerSnapshot,
 	type SessionMetadata,
-} from "@earendil-works/pi-protocol";
+} from "@sammorrowdrums/mcpi-protocol";
 import type { ConnectionState } from "./connection.ts";
 import type { PiServerService } from "./types.ts";
 

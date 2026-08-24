@@ -1,6 +1,6 @@
-import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
-import type { Transport } from "@earendil-works/pi-ai";
-import type { TuiMode as RendererTuiMode, ScrollViewScrollbar } from "@earendil-works/pi-tui";
+import type { ThinkingLevel } from "@sammorrowdrums/mcpi-agent-core";
+import type { Transport } from "@sammorrowdrums/mcpi-ai";
+import type { TuiMode as RendererTuiMode, ScrollViewScrollbar } from "@sammorrowdrums/mcpi-tui";
 import { randomUUID } from "crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";

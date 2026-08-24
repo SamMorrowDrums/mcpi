@@ -1,5 +1,5 @@
 {
-	"name": "@earendil-works/pi-protocol",
+	"name": "@sammorrowdrums/mcpi-protocol",
 	"version": "0.84.2",
 	"description": "Transport-neutral CBOR protocol for remote pi sessions",
 	"type": "module",
@@ -32,8 +32,12 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/earendil-works/pi.git",
+		"url": "git+https://github.com/SamMorrowDrums/mcpi.git",
 		"directory": "packages/protocol"
+	},
+	"homepage": "https://github.com/SamMorrowDrums/mcpi/tree/main/packages/protocol#readme",
+	"bugs": {
+		"url": "https://github.com/SamMorrowDrums/mcpi/issues"
 	},
 	"engines": {
 		"node": ">=22.19.0"

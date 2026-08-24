@@ -20,7 +20,7 @@ import {
 	type Model,
 	type SimpleStreamOptions,
 	Type,
-} from "@earendil-works/pi-ai/compat";
+} from "@sammorrowdrums/mcpi-ai/compat";
 import {
 	getOpenAICodexWebSocketDebugStats,
 	streamSimple as streamSimpleOpenAICodexResponses,

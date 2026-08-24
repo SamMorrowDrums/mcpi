@@ -1,0 +1,86 @@
+name: Release mcpi
+
+# Publishes the mcpi npm packages on a version tag.
+#
+# The public GitHub Release for the same tag is created by build-binaries.yml,
+# which also stages the standalone binary assets. This workflow deliberately
+# does not create or edit the release, so the two never race for the same tag.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
+      - name: Validate version matches tag
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          PKG_VERSION=$(node -p "require('./packages/coding-agent/package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) doesn't match package.json version ($PKG_VERSION)"
+            exit 1
+          fi
+          echo "Version $PKG_VERSION matches tag"
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # Pre-flight build in dependency order. This hydrates the model catalog and
+      # fails the run before anything is published, so a broken build cannot leave
+      # the registry in a partially published state.
+      - name: Build
+        run: npm run build
+
+      # Publish in dependency order. Each package's prepublishOnly rebuilds it and,
+      # for the coding agent, regenerates npm-shrinkwrap.json, so scripts must run.
+      - name: Publish packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          for workspace in \
+            packages/tui \
+            packages/telemetry \
+            packages/ai \
+            packages/agent \
+            packages/session-backends/sqlite-node \
+            packages/protocol \
+            packages/client \
+            packages/server \
+            packages/coding-agent
+          do
+            echo "::group::npm publish ${workspace}"
+            npm publish --workspace "${workspace}" --provenance --access public
+            echo "::endgroup::"
+          done

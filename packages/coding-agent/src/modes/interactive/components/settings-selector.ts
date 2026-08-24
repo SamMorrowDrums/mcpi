@@ -1,5 +1,5 @@
-import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
-import type { Transport } from "@earendil-works/pi-ai";
+import type { ThinkingLevel } from "@sammorrowdrums/mcpi-agent-core";
+import type { Transport } from "@sammorrowdrums/mcpi-ai";
 import {
 	type Component,
 	Container,
@@ -12,7 +12,7 @@ import {
 	SettingsList,
 	Spacer,
 	Text,
-} from "@earendil-works/pi-tui";
+} from "@sammorrowdrums/mcpi-tui";
 import { formatHttpIdleTimeoutMs, HTTP_IDLE_TIMEOUT_CHOICES } from "../../../core/http-dispatcher.ts";
 import type {
 	DefaultProjectTrust,

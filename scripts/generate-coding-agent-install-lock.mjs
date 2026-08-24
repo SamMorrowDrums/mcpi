@@ -11,8 +11,11 @@ const outputDir = join(codingAgentDir, "install-lock");
 const rootLockfilePath = join(repoRoot, "package-lock.json");
 const outputPackageJsonPath = join(outputDir, "package.json");
 const outputLockfilePath = join(outputDir, "package-lock.json");
-const internalPackagePrefix = "@earendil-works/pi-";
-const installPackageName = "@earendil-works/pi-coding-agent-install";
+const internalPackagePrefix = "@sammorrowdrums/mcpi-";
+// The coding-agent package is published unsuffixed as "@sammorrowdrums/mcpi",
+// so a bare prefix test would miss it.
+const isInternalPackage = (name) => name === "@sammorrowdrums/mcpi" || name.startsWith(internalPackagePrefix);
+const installPackageName = "@sammorrowdrums/mcpi-install";
 const allowedInstallScriptPackages = new Map([
 	["@google/genai@1.52.0", "preinstall is a no-op in the published package"],
 	["protobufjs@7.6.5", "postinstall only warns about protobufjs version scheme mismatches"],
@@ -143,7 +146,7 @@ function getInternalWorkspaces(lockPackages) {
 		if (!lockPath.startsWith("packages/") || lockPath.includes("/node_modules/") || !entry.name || !entry.version) {
 			continue;
 		}
-		if (!entry.name.startsWith(internalPackagePrefix)) {
+		if (!isInternalPackage(entry.name)) {
 			continue;
 		}
 
@@ -294,7 +297,7 @@ function validateGeneratedFiles(installerPackageJson, installLock, internalNames
 		if (entry.dev || entry.devOptional || entry.extraneous) {
 			errors.push(`${lockPath || "root"} contains dev/extraneous metadata`);
 		}
-		if (packageName?.startsWith(internalPackagePrefix) && entry.version !== installerPackageJson.version) {
+		if (packageName && isInternalPackage(packageName) && entry.version !== installerPackageJson.version) {
 			errors.push(`${lockPath} internal package version ${entry.version} does not match ${installerPackageJson.version}`);
 		}
 		if (entry.hasInstallScript) {

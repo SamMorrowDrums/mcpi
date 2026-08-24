@@ -1,4 +1,9 @@
-import { type AssistantMessage, type AssistantMessageEvent, EventStream, getModel } from "@earendil-works/pi-ai/compat";
+import {
+	type AssistantMessage,
+	type AssistantMessageEvent,
+	EventStream,
+	getModel,
+} from "@sammorrowdrums/mcpi-ai/compat";
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 import {

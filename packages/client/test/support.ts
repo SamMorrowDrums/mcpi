@@ -7,7 +7,7 @@ import {
 	type ServerMessage,
 	type ServerSnapshot,
 	type SessionSnapshot,
-} from "@earendil-works/pi-protocol";
+} from "@sammorrowdrums/mcpi-protocol";
 import type { ByteTransport, ByteTransportHandlers, PiSessionHandle } from "../src/index.ts";
 import { PiClient } from "../src/index.ts";
 
