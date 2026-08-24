@@ -64,13 +64,6 @@ const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@sammorrowdrums/mcpi-ai/oauth": _bundledPiAiOauth,
 	"@sammorrowdrums/mcpi-ai/providers/all": _bundledPiAiProviders,
 	"@sammorrowdrums/mcpi": _bundledPiCodingAgent,
-	"@mariozechner/pi-agent-core": _bundledPiAgentCore,
-	"@mariozechner/pi-tui": _bundledPiTui,
-	"@mariozechner/pi-ai": _bundledPiAiCompat,
-	"@mariozechner/pi-ai/compat": _bundledPiAiCompat,
-	"@mariozechner/pi-ai/oauth": _bundledPiAiOauth,
-	"@mariozechner/pi-ai/providers/all": _bundledPiAiProviders,
-	"@mariozechner/pi-coding-agent": _bundledPiCodingAgent,
 };
 
 const require = createRequire(import.meta.url);
@@ -123,13 +116,6 @@ function getAliases(): Record<string, string> {
 		"@sammorrowdrums/mcpi-ai/compat": piAiCompatEntry,
 		"@sammorrowdrums/mcpi-ai/oauth": piAiOauthEntry,
 		"@sammorrowdrums/mcpi-ai": piAiCompatEntry,
-		"@mariozechner/pi-coding-agent": piCodingAgentEntry,
-		"@mariozechner/pi-agent-core": piAgentCoreEntry,
-		"@mariozechner/pi-tui": piTuiEntry,
-		"@mariozechner/pi-ai/providers/all": piAiProvidersEntry,
-		"@mariozechner/pi-ai/compat": piAiCompatEntry,
-		"@mariozechner/pi-ai/oauth": piAiOauthEntry,
-		"@mariozechner/pi-ai": piAiCompatEntry,
 		typebox: typeboxEntry,
 		"typebox/compile": typeboxCompileEntry,
 		"typebox/value": typeboxValueEntry,

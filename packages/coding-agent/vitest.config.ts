@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig, mergeConfig } from "vitest/config";
-import baseConfig, { workspaceSourcePaths } from "../../vitest.base.ts";
+import baseConfig from "../../vitest.base.ts";
 
 export default mergeConfig(
 	baseConfig,
@@ -30,10 +30,6 @@ export default mergeConfig(
 					find: /^@sammorrowdrums\/mcpi-protocol$/,
 					replacement: fileURLToPath(new URL("../protocol/src/index.ts", import.meta.url)),
 				},
-				{ find: /^@mariozechner\/pi-ai$/, replacement: workspaceSourcePaths.aiIndex },
-				{ find: /^@mariozechner\/pi-ai\/oauth$/, replacement: workspaceSourcePaths.aiOAuth },
-				{ find: /^@mariozechner\/pi-agent-core$/, replacement: workspaceSourcePaths.agentIndex },
-				{ find: /^@mariozechner\/pi-tui$/, replacement: workspaceSourcePaths.tuiIndex },
 			],
 		},
 	}),
