@@ -1,4 +1,4 @@
-> pi can create prompt templates. Ask it to build one for your workflow.
+> mcpi can create prompt templates. Ask it to build one for your workflow.
 
 # Prompt Templates
 
@@ -6,10 +6,10 @@ Prompt templates are Markdown snippets that expand into full prompts. Type `/nam
 
 ## Locations
 
-Pi loads prompt templates from:
+mcpi loads prompt templates from:
 
-- Global: `~/.pi/agent/prompts/*.md`
-- Project: `.pi/prompts/*.md` (only after the project is trusted)
+- Global: `$XDG_CONFIG_HOME/mcpi/prompts/*.md` (fallback `~/.config/mcpi/prompts/*.md`; `%APPDATA%\mcpi\prompts\*.md` on Windows)
+- Project: `.mcpi/prompts/*.md` (only after the project is trusted)
 - Packages: `prompts/` directories or `pi.prompts` entries in `package.json`
 - Settings: `prompts` array with files or directories
 - CLI: `--prompt-template <path>` (repeatable)

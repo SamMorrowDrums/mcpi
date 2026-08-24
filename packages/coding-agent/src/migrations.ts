@@ -5,7 +5,7 @@
 import chalk from "chalk";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
-import { CONFIG_DIR_NAME, getAgentDir, getBinDir } from "./config.ts";
+import { CONFIG_DIR_NAME, getAgentDir, getBinDir, getSessionsDir } from "./config.ts";
 import { migrateKeybindingsConfig } from "./core/keybindings.ts";
 
 const MIGRATION_GUIDE_URL =
@@ -72,11 +72,11 @@ export function migrateAuthToAuthJson(): string[] {
 }
 
 /**
- * Migrate sessions from ~/.pi/agent/*.jsonl to proper session directories.
+ * Migrate sessions misplaced in the mcpi config root to the state sessions tree.
  *
- * Bug in v0.30.0: Sessions were saved to ~/.pi/agent/ instead of
- * ~/.pi/agent/sessions/<encoded-cwd>/. This migration moves them
- * to the correct location based on the cwd in their session header.
+ * Upstream v0.30.0 saved sessions in the config root instead of the
+ * sessions tree. This migration moves already-migrated mcpi data to the
+ * correct location based on the cwd in each session header.
  *
  * See: https://github.com/earendil-works/pi-mono/issues/320
  */
@@ -109,7 +109,7 @@ export function migrateSessionsFromAgentRoot(): void {
 
 			// Compute the correct session directory (same encoding as session-manager.ts)
 			const safePath = `--${cwd.replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`;
-			const correctDir = join(agentDir, "sessions", safePath);
+			const correctDir = join(getSessionsDir(), safePath);
 
 			// Create directory if needed
 			if (!existsSync(correctDir)) {
@@ -216,7 +216,7 @@ function migrateToolsToBin(): void {
 
 /**
  * Check for deprecated hooks/ and tools/ directories.
- * Note: tools/ may contain fd/rg binaries extracted by pi, so only warn if it has other files.
+ * Note: tools/ may contain fd/rg binaries extracted by mcpi, so only warn if it has other files.
  */
 function checkDeprecatedExtensionDirs(baseDir: string, label: string): string[] {
 	const hooksDir = join(baseDir, "hooks");

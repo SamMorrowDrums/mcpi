@@ -238,7 +238,7 @@ export class TestServerService implements PiServerService {
 	seed(
 		id = "session-1",
 		name = `Session ${id}`,
-		cwd = "/tmp/pi-server-conformance",
+		cwd = "/tmp/mcpi-server-conformance",
 		model: ModelRef = { provider: TEST_MODEL.provider, id: TEST_MODEL.id },
 		thinkingLevel: ThinkingLevel = "off",
 	): void {

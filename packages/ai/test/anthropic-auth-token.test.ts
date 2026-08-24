@@ -196,7 +196,7 @@ describe("Anthropic auth token env", () => {
 });
 
 describe("Anthropic-compatible user agents", () => {
-	it("enforces the pi runtime user agent for Kimi Coding", async () => {
+	it("enforces the mcpi runtime user agent for Kimi Coding", async () => {
 		await streamAnthropic(kimiCodingModel, context, {
 			apiKey: "kimi-key",
 			headers: { "user-agent": "custom-client" },
@@ -204,10 +204,10 @@ describe("Anthropic-compatible user agents", () => {
 
 		const headers = mockState.constructorOpts?.defaultHeaders as Record<string, string>;
 		const userAgentHeaders = Object.entries(headers).filter(([name]) => name.toLowerCase() === "user-agent");
-		expect(userAgentHeaders).toEqual([["User-Agent", `pi (${platform()} ${release()}; ${arch()})`]]);
+		expect(userAgentHeaders).toEqual([["User-Agent", `mcpi (${platform()} ${release()}; ${arch()})`]]);
 	});
 
-	it("does not apply the pi runtime user agent to Anthropic", async () => {
+	it("does not apply the mcpi runtime user agent to Anthropic", async () => {
 		await streamAnthropic(anthropicModel, context, { apiKey: "anthropic-key" }).result();
 
 		const headers = mockState.constructorOpts?.defaultHeaders as Record<string, string>;

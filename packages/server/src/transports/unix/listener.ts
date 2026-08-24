@@ -63,7 +63,7 @@ class UnixListener implements PiServerListener {
 		this.accept = accept;
 
 		const ownedBindPath = getOwnedBindPath(this.path);
-		validateUnixSocketPath(ownedBindPath, "PiServer private Unix bind path");
+		validateUnixSocketPath(ownedBindPath, "mcpi server private Unix bind path");
 		await mkdir(dirname(this.path), { recursive: true, mode: 0o700 });
 		await removeStaleSocket(this.path);
 		await removeStaleSocket(ownedBindPath);
@@ -403,18 +403,18 @@ export function createUnixListener(options: UnixListenerOptions): PiServerListen
 }
 
 function resolveUnixListenerOptions(options: UnixListenerOptions): ResolvedUnixListenerOptions {
-	validateUnixSocketPath(options.path, "PiServer Unix socket path");
+	validateUnixSocketPath(options.path, "mcpi server Unix socket path");
 	const mode = options.mode ?? DEFAULT_SOCKET_MODE;
 	if (!Number.isInteger(mode) || mode < 0 || mode > 0o777) {
-		throw new TypeError("PiServer Unix socket mode must be an integer between 0 and 0o777");
+		throw new TypeError("mcpi server Unix socket mode must be an integer between 0 and 0o777");
 	}
 	const maxFrameLength = options.maxFrameLength ?? DEFAULT_MAX_FRAME_LENGTH;
 	if (!Number.isSafeInteger(maxFrameLength) || maxFrameLength <= 0 || maxFrameLength > MAX_UINT32) {
-		throw new TypeError(`PiServer maxFrameLength must be an integer between 1 and ${MAX_UINT32}`);
+		throw new TypeError(`mcpi server maxFrameLength must be an integer between 1 and ${MAX_UINT32}`);
 	}
 	const maxPendingBytes = options.maxPendingBytes ?? maxFrameLength * 4;
 	if (!Number.isSafeInteger(maxPendingBytes) || maxPendingBytes < maxFrameLength + 4) {
-		throw new TypeError("PiServer maxPendingBytes must be a safe integer at least maxFrameLength + 4");
+		throw new TypeError("mcpi server maxPendingBytes must be a safe integer at least maxFrameLength + 4");
 	}
 	const gracefulCloseTimeoutMs = options.gracefulCloseTimeoutMs ?? DEFAULT_GRACEFUL_CLOSE_TIMEOUT_MS;
 	if (
@@ -422,7 +422,7 @@ function resolveUnixListenerOptions(options: UnixListenerOptions): ResolvedUnixL
 		gracefulCloseTimeoutMs <= 0 ||
 		gracefulCloseTimeoutMs > MAX_TIMER_DELAY_MS
 	) {
-		throw new TypeError(`PiServer gracefulCloseTimeoutMs must be an integer between 1 and ${MAX_TIMER_DELAY_MS}`);
+		throw new TypeError(`mcpi server gracefulCloseTimeoutMs must be an integer between 1 and ${MAX_TIMER_DELAY_MS}`);
 	}
 	return {
 		path: options.path,

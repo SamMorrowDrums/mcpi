@@ -1,6 +1,5 @@
-import { join } from "node:path";
 import type { ModelsStore, ModelsStoreEntry, ModelsStoreOperationOptions } from "@sammorrowdrums/mcpi-ai";
-import { getAgentDir } from "../config.ts";
+import { getModelsStorePath } from "../config.ts";
 import { raceWithAbortSignal } from "../utils/abort.ts";
 import { getFileRevision, normalizePath } from "../utils/paths.ts";
 import { type AuthStorageBackend, FileAuthStorageBackend } from "./auth-storage.ts";
@@ -48,7 +47,7 @@ export class FileModelsStore implements ModelsStore {
 	private readonly path: string;
 	private readonly readState: ModelsFileReadState;
 
-	constructor(path: string = join(getAgentDir(), "models-store.json")) {
+	constructor(path: string = getModelsStorePath()) {
 		this.path = normalizePath(path);
 		this.storage = new FileAuthStorageBackend(this.path);
 		this.readState =

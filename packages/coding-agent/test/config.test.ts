@@ -13,7 +13,7 @@ import {
 
 const execPathDescriptor = Object.getOwnPropertyDescriptor(process, "execPath");
 const originalPath = process.env.PATH;
-const originalPiPackageDir = process.env.PI_PACKAGE_DIR;
+const originalMcpiPackageDir = process.env.MCPI_PACKAGE_DIR;
 const originalArgv1 = process.argv[1];
 let tempDir: string | undefined;
 
@@ -33,10 +33,10 @@ afterEach(() => {
 	} else {
 		process.env.PATH = originalPath;
 	}
-	if (originalPiPackageDir === undefined) {
-		delete process.env.PI_PACKAGE_DIR;
+	if (originalMcpiPackageDir === undefined) {
+		delete process.env.MCPI_PACKAGE_DIR;
 	} else {
-		process.env.PI_PACKAGE_DIR = originalPiPackageDir;
+		process.env.MCPI_PACKAGE_DIR = originalMcpiPackageDir;
 	}
 	if (originalArgv1 === undefined) {
 		process.argv.splice(1, 1);
@@ -50,75 +50,66 @@ afterEach(() => {
 	}
 });
 
-function createNpmPrefixInstall(template = "pi-prefix-"): { prefix: string; packageDir: string } {
+function createNpmPrefixInstall(template = "mcpi-prefix-"): { prefix: string; packageDir: string } {
 	const prefix = mkdtempSync(join(tmpdir(), template));
 	const root = join(prefix, "lib", "node_modules");
-	const scopeDir = join(root, "@earendil-works");
-	const packageDir = join(scopeDir, "pi-coding-agent");
+	const scopeDir = join(root, "@sammorrowdrums");
+	const packageDir = join(scopeDir, "mcpi");
 	mkdirSync(packageDir, { recursive: true });
 	tempDir = prefix;
-	process.env.PI_PACKAGE_DIR = packageDir;
+	process.env.MCPI_PACKAGE_DIR = packageDir;
 	setExecPath(join(packageDir, "dist", "cli.js"));
 	return { prefix, packageDir };
 }
 
 function createPnpmGlobalInstall(): { root: string; packageDir: string } {
-	const temp = mkdtempSync(join(tmpdir(), "pi-pnpm-"));
+	const temp = mkdtempSync(join(tmpdir(), "mcpi-pnpm-"));
 	const binDir = join(temp, "bin");
 	const root = join(temp, "pnpm", "global", "5", "node_modules");
-	const packageDir = join(root, "@mariozechner", "pi-coding-agent");
+	const packageDir = join(root, "@sammorrowdrums", "mcpi");
 	mkdirSync(packageDir, { recursive: true });
 	mkdirSync(binDir, { recursive: true });
 	writeFileSync(join(binDir, process.platform === "win32" ? "pnpm.cmd" : "pnpm"), createFakePnpmScript(root));
 	chmodSync(join(binDir, process.platform === "win32" ? "pnpm.cmd" : "pnpm"), 0o755);
 	tempDir = temp;
 	process.env.PATH = `${binDir}${delimiter}${originalPath ?? ""}`;
-	process.env.PI_PACKAGE_DIR = packageDir;
+	process.env.MCPI_PACKAGE_DIR = packageDir;
 	setExecPath(
-		join(
-			root,
-			".pnpm",
-			"@mariozechner+pi-coding-agent@0.0.0",
-			"node_modules",
-			"@mariozechner",
-			"pi-coding-agent",
-			"dist",
-			"cli.js",
-		),
+		join(root, ".pnpm", "@sammorrowdrums+mcpi@0.0.0", "node_modules", "@sammorrowdrums", "mcpi", "dist", "cli.js"),
 	);
 	return { root, packageDir };
 }
 
 function createYarnGlobalInstall(): { globalDir: string; packageDir: string } {
-	const temp = mkdtempSync(join(tmpdir(), "pi-yarn-"));
+	const temp = mkdtempSync(join(tmpdir(), "mcpi-yarn-"));
 	const binDir = join(temp, "bin");
 	const globalDir = join(temp, "yarn", "global");
-	const packageDir = join(globalDir, "node_modules", "@mariozechner", "pi-coding-agent");
+	const packageDir = join(globalDir, "node_modules", "@sammorrowdrums", "mcpi");
 	mkdirSync(packageDir, { recursive: true });
 	mkdirSync(binDir, { recursive: true });
 	writeFileSync(join(binDir, process.platform === "win32" ? "yarn.cmd" : "yarn"), createFakeYarnScript(globalDir));
 	chmodSync(join(binDir, process.platform === "win32" ? "yarn.cmd" : "yarn"), 0o755);
 	tempDir = temp;
 	process.env.PATH = `${binDir}${delimiter}${originalPath ?? ""}`;
-	process.env.PI_PACKAGE_DIR = packageDir;
-	setExecPath(join(globalDir, ".yarn", "@mariozechner", "pi-coding-agent", "dist", "cli.js"));
+	process.env.MCPI_PACKAGE_DIR = packageDir;
+	setExecPath(join(globalDir, ".yarn", "@sammorrowdrums", "mcpi", "dist", "cli.js"));
 	return { globalDir, packageDir };
 }
 
 function createBunGlobalInstall(): { packageDir: string } {
-	const temp = mkdtempSync(join(tmpdir(), "pi-bun-"));
+	const temp = mkdtempSync(join(tmpdir(), "mcpi-bun-"));
 	const prefix = join(temp, ".bun");
 	const bunBin = join(prefix, "bin");
 	const root = join(prefix, "install", "global", "node_modules");
-	const scopeDir = join(root, "@earendil-works");
-	const packageDir = join(scopeDir, "pi-coding-agent");
+	const scopeDir = join(root, "@sammorrowdrums");
+	const packageDir = join(scopeDir, "mcpi");
 	mkdirSync(packageDir, { recursive: true });
 	mkdirSync(bunBin, { recursive: true });
 	writeFileSync(join(bunBin, process.platform === "win32" ? "bun.cmd" : "bun"), createFakeBunScript(bunBin));
 	chmodSync(join(bunBin, process.platform === "win32" ? "bun.cmd" : "bun"), 0o755);
 	tempDir = temp;
 	process.env.PATH = `${bunBin}${delimiter}${originalPath ?? ""}`;
-	process.env.PI_PACKAGE_DIR = packageDir;
+	process.env.MCPI_PACKAGE_DIR = packageDir;
 	setExecPath(join(packageDir, "dist", "cli.js"));
 	return { packageDir };
 }
@@ -150,7 +141,7 @@ function createFakeBunScript(bunBin: string): string {
 describe("detectInstallMethod", () => {
 	test("detects pnpm from Windows .pnpm install paths", () => {
 		setExecPath(
-			"C:\\Users\\Admin\\Documents\\pnpm-repository\\global\\5\\.pnpm\\@earendil-works+pi-coding-agent@0.67.68\\node_modules\\@earendil-works\\pi-coding-agent\\dist\\cli.js",
+			"C:\\Users\\Admin\\Documents\\pnpm-repository\\global\\5\\.pnpm\\@sammorrowdrums+mcpi@0.84.2\\node_modules\\@sammorrowdrums\\mcpi\\dist\\cli.js",
 		);
 
 		expect(detectInstallMethod()).toBe("pnpm");
@@ -208,12 +199,12 @@ describe("detectInstallMethod", () => {
 	test("self-updates renamed packages from the current install prefix", () => {
 		const { prefix } = createNpmPrefixInstall();
 
-		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/mcpi");
 
 		expect(command).toEqual({
 			command: "npm",
-			args: ["--prefix", prefix, "install", "-g", "--ignore-scripts", "--min-release-age=0", "@new-scope/pi"],
-			display: `npm --prefix ${prefix} uninstall -g @old-scope/mcpi && npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @new-scope/pi`,
+			args: ["--prefix", prefix, "install", "-g", "--ignore-scripts", "--min-release-age=0", "@new-scope/mcpi"],
+			display: `npm --prefix ${prefix} uninstall -g @old-scope/mcpi && npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @new-scope/mcpi`,
 			steps: [
 				{
 					command: "npm",
@@ -222,8 +213,16 @@ describe("detectInstallMethod", () => {
 				},
 				{
 					command: "npm",
-					args: ["--prefix", prefix, "install", "-g", "--ignore-scripts", "--min-release-age=0", "@new-scope/pi"],
-					display: `npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @new-scope/pi`,
+					args: [
+						"--prefix",
+						prefix,
+						"install",
+						"-g",
+						"--ignore-scripts",
+						"--min-release-age=0",
+						"@new-scope/mcpi",
+					],
+					display: `npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @new-scope/mcpi`,
 				},
 			],
 		});
@@ -258,7 +257,7 @@ describe("detectInstallMethod", () => {
 	});
 
 	test("quotes npm self-update display paths", () => {
-		const { prefix } = createNpmPrefixInstall("pi prefix ");
+		const { prefix } = createNpmPrefixInstall("mcpi prefix ");
 
 		const command = getSelfUpdateCommand("@sammorrowdrums/mcpi");
 
@@ -268,8 +267,8 @@ describe("detectInstallMethod", () => {
 	});
 
 	test("does not infer Windows npm custom prefixes from package paths", () => {
-		const packageDir = "C:\\Users\\Admin\\npm prefix\\node_modules\\@earendil-works\\pi-coding-agent";
-		process.env.PI_PACKAGE_DIR = packageDir;
+		const packageDir = "C:\\Users\\Admin\\npm prefix\\node_modules\\@sammorrowdrums\\mcpi";
+		process.env.MCPI_PACKAGE_DIR = packageDir;
 		setExecPath(`${packageDir}\\dist\\cli.js`);
 
 		expect(detectInstallMethod()).toBe("npm");
@@ -294,14 +293,14 @@ describe("detectInstallMethod", () => {
 	test("self-updates renamed pnpm global installs by removing the old package first", () => {
 		createPnpmGlobalInstall();
 
-		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/mcpi");
 
 		expect(detectInstallMethod()).toBe("pnpm");
 		expect(command).toEqual({
 			command: "pnpm",
-			args: ["install", "-g", "--ignore-scripts", "--config.minimumReleaseAge=0", "@new-scope/pi"],
+			args: ["install", "-g", "--ignore-scripts", "--config.minimumReleaseAge=0", "@new-scope/mcpi"],
 			display:
-				"pnpm remove -g @old-scope/mcpi && pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @new-scope/pi",
+				"pnpm remove -g @old-scope/mcpi && pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @new-scope/mcpi",
 			steps: [
 				{
 					command: "pnpm",
@@ -310,19 +309,19 @@ describe("detectInstallMethod", () => {
 				},
 				{
 					command: "pnpm",
-					args: ["install", "-g", "--ignore-scripts", "--config.minimumReleaseAge=0", "@new-scope/pi"],
-					display: "pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @new-scope/pi",
+					args: ["install", "-g", "--ignore-scripts", "--config.minimumReleaseAge=0", "@new-scope/mcpi"],
+					display: "pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @new-scope/mcpi",
 				},
 			],
 		});
 	});
 
 	test("self-updates pnpm v11 global installs resolved through the store", () => {
-		const temp = mkdtempSync(join(tmpdir(), "pi-pnpm11-"));
+		const temp = mkdtempSync(join(tmpdir(), "mcpi-pnpm11-"));
 		const binDir = join(temp, "bin");
 		const root = join(temp, "Library", "pnpm", "global", "v11");
 		const packageName = "@sammorrowdrums/mcpi";
-		const globalPackageDir = join(root, "11e9a", "node_modules", "@earendil-works", "pi-coding-agent");
+		const globalPackageDir = join(root, "11e9a", "node_modules", "@sammorrowdrums", "mcpi");
 		const storePackageDir = join(
 			temp,
 			"Library",
@@ -330,13 +329,13 @@ describe("detectInstallMethod", () => {
 			"store",
 			"v11",
 			"links",
-			"@earendil-works",
-			"pi-coding-agent",
+			"@sammorrowdrums",
+			"mcpi",
 			"0.75.0",
 			"hash",
 			"node_modules",
-			"@earendil-works",
-			"pi-coding-agent",
+			"@sammorrowdrums",
+			"mcpi",
 		);
 		mkdirSync(globalPackageDir, { recursive: true });
 		mkdirSync(storePackageDir, { recursive: true });
@@ -346,7 +345,7 @@ describe("detectInstallMethod", () => {
 		chmodSync(join(binDir, process.platform === "win32" ? "pnpm.cmd" : "pnpm"), 0o755);
 		tempDir = temp;
 		process.env.PATH = `${binDir}${delimiter}${originalPath ?? ""}`;
-		process.env.PI_PACKAGE_DIR = storePackageDir;
+		process.env.MCPI_PACKAGE_DIR = storePackageDir;
 		process.argv[1] = join(globalPackageDir, "dist", "cli.js");
 		setExecPath(join(storePackageDir, "dist", "cli.js"));
 
@@ -363,13 +362,13 @@ describe("detectInstallMethod", () => {
 	test("self-updates renamed yarn global installs by removing the old package first", () => {
 		createYarnGlobalInstall();
 
-		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/mcpi");
 
 		expect(detectInstallMethod()).toBe("yarn");
 		expect(command).toEqual({
 			command: "yarn",
-			args: ["global", "add", "--ignore-scripts", "@new-scope/pi"],
-			display: "yarn global remove @old-scope/mcpi && yarn global add --ignore-scripts @new-scope/pi",
+			args: ["global", "add", "--ignore-scripts", "@new-scope/mcpi"],
+			display: "yarn global remove @old-scope/mcpi && yarn global add --ignore-scripts @new-scope/mcpi",
 			steps: [
 				{
 					command: "yarn",
@@ -378,8 +377,8 @@ describe("detectInstallMethod", () => {
 				},
 				{
 					command: "yarn",
-					args: ["global", "add", "--ignore-scripts", "@new-scope/pi"],
-					display: "yarn global add --ignore-scripts @new-scope/pi",
+					args: ["global", "add", "--ignore-scripts", "@new-scope/mcpi"],
+					display: "yarn global add --ignore-scripts @new-scope/mcpi",
 				},
 			],
 		});
@@ -388,14 +387,14 @@ describe("detectInstallMethod", () => {
 	test("self-updates renamed bun global installs by removing the old package first", () => {
 		createBunGlobalInstall();
 
-		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@old-scope/mcpi", undefined, "@new-scope/mcpi");
 
 		expect(detectInstallMethod()).toBe("bun");
 		expect(command).toEqual({
 			command: "bun",
-			args: ["install", "-g", "--ignore-scripts", "--minimum-release-age=0", "@new-scope/pi"],
+			args: ["install", "-g", "--ignore-scripts", "--minimum-release-age=0", "@new-scope/mcpi"],
 			display:
-				"bun uninstall -g @old-scope/mcpi && bun install -g --ignore-scripts --minimum-release-age=0 @new-scope/pi",
+				"bun uninstall -g @old-scope/mcpi && bun install -g --ignore-scripts --minimum-release-age=0 @new-scope/mcpi",
 			steps: [
 				{
 					command: "bun",
@@ -404,8 +403,8 @@ describe("detectInstallMethod", () => {
 				},
 				{
 					command: "bun",
-					args: ["install", "-g", "--ignore-scripts", "--minimum-release-age=0", "@new-scope/pi"],
-					display: "bun install -g --ignore-scripts --minimum-release-age=0 @new-scope/pi",
+					args: ["install", "-g", "--ignore-scripts", "--minimum-release-age=0", "@new-scope/mcpi"],
+					display: "bun install -g --ignore-scripts --minimum-release-age=0 @new-scope/mcpi",
 				},
 			],
 		});

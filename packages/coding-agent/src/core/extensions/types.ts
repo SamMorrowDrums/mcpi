@@ -336,7 +336,7 @@ export interface ExtensionContext {
 	abort(): void;
 	/** Whether there are queued messages waiting */
 	hasPendingMessages(): boolean;
-	/** Gracefully shutdown pi and exit. Available in all contexts. */
+	/** Gracefully shut down mcpi and exit. Available in all contexts. */
 	shutdown(): void;
 	/** Get current context usage for the active model. */
 	getContextUsage(): ContextUsage | undefined;
@@ -704,7 +704,7 @@ export interface BeforeAgentStartEvent {
 	images?: ImageContent[];
 	/** The fully assembled system prompt string. */
 	systemPrompt: string;
-	/** Structured options used to build the system prompt. Extensions can inspect this to understand what Pi loaded without re-discovering resources. */
+	/** Structured options used to build the system prompt. Extensions can inspect this to understand what mcpi loaded without re-discovering resources. */
 	systemPromptOptions: BuildSystemPromptOptions;
 }
 
@@ -1288,7 +1288,7 @@ export interface ExtensionAPI {
 	/** Register a custom renderer for CustomMessageEntry. */
 	registerMessageRenderer<T = unknown>(customType: string, renderer: MessageRenderer<T>): void;
 
-	/** Register a transformer for user and assistant Markdown before Pi renders it in the interactive transcript. */
+	/** Register a transformer for user and assistant Markdown before mcpi renders it in the interactive transcript. */
 	registerMarkdownTransformer(transformer: MarkdownTransformer): void;
 
 	/** Register a custom renderer for CustomEntry. Custom entries do not participate in LLM context. */
@@ -1338,14 +1338,14 @@ export interface ExtensionAPI {
 	 *
 	 * Applies to the `bash` tool and to `pi.exec()`. The value is scoped to the
 	 * session and is never written to `process.env`, so it cannot leak into
-	 * other sessions or into pi itself.
+	 * other sessions or into mcpi itself.
 	 */
 	setEnv(key: string, value: string): void;
 
 	/**
 	 * Remove an environment variable from subprocesses spawned by this session.
 	 *
-	 * This masks the variable even when it is inherited from pi's own
+	 * This masks the variable even when it is inherited from mcpi's own
 	 * environment, so it can be used to keep a variable out of subprocesses
 	 * entirely rather than only undoing a previous `setEnv()`.
 	 */
@@ -1517,7 +1517,7 @@ export interface ProviderModelConfig {
 	baseUrl?: string;
 	/** Whether the model supports extended thinking. */
 	reasoning: boolean;
-	/** Maps pi thinking levels to provider/model-specific values; null marks a level unsupported. */
+	/** Maps mcpi thinking levels to provider/model-specific values; null marks a level unsupported. */
 	thinkingLevelMap?: Model<Api>["thinkingLevelMap"];
 	/** Supported input types. */
 	input: ("text" | "image")[];
@@ -1619,13 +1619,13 @@ export interface ExtensionRuntimeState {
 	flagValues: Map<string, boolean | string>;
 	/**
 	 * Session-scoped environment mutations applied to spawned subprocesses.
-	 * `null` masks a variable inherited from pi's own environment.
+	 * `null` masks a variable inherited from mcpi's own environment.
 	 * Shared across all extensions loaded into the session.
 	 */
 	sessionEnv: Map<string, string | null>;
 	/** Legacy provider-config registrations queued during extension loading, processed when runner binds. */
 	pendingProviderRegistrations: Array<{ name: string; config: ProviderConfig; extensionPath: string }>;
-	/** Native pi-ai provider registrations queued during extension loading, processed when runner binds. */
+	/** Native mcpi-ai provider registrations queued during extension loading, processed when runner binds. */
 	pendingNativeProviderRegistrations: Array<{ provider: Provider; extensionPath: string }>;
 	/** Throws when this extension instance is stale after runtime replacement. */
 	assertActive: () => void;

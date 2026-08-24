@@ -83,9 +83,9 @@ export class PiServer {
 	}
 
 	start(): Promise<this> {
-		if (this.started) return Promise.reject(new Error("PiServer is already started"));
-		if (this.startPromise) return Promise.reject(new Error("PiServer is already starting"));
-		if (this.closing) return Promise.reject(new Error("PiServer is closing or closed"));
+		if (this.started) return Promise.reject(new Error("mcpi server is already started"));
+		if (this.startPromise) return Promise.reject(new Error("mcpi server is already starting"));
+		if (this.closing) return Promise.reject(new Error("mcpi server is closing or closed"));
 		this.startPromise = this.startInternal();
 		return this.startPromise;
 	}
@@ -378,11 +378,11 @@ export class PiServer {
 }
 
 function resolveOptions(options: PiServerOptions): { maxFrameLength: number; handshakeTimeoutMs: number } {
-	if (!Array.isArray(options.listeners)) throw new TypeError("PiServer listeners must be an array");
-	if (options.serverId === "") throw new TypeError("PiServer serverId must not be empty");
+	if (!Array.isArray(options.listeners)) throw new TypeError("mcpi server listeners must be an array");
+	if (options.serverId === "") throw new TypeError("mcpi server serverId must not be empty");
 	const maxFrameLength = options.maxFrameLength ?? DEFAULT_MAX_FRAME_LENGTH;
 	if (!Number.isSafeInteger(maxFrameLength) || maxFrameLength <= 0 || maxFrameLength > MAX_UINT32) {
-		throw new TypeError(`PiServer maxFrameLength must be an integer between 1 and ${MAX_UINT32}`);
+		throw new TypeError(`mcpi server maxFrameLength must be an integer between 1 and ${MAX_UINT32}`);
 	}
 	const handshakeTimeoutMs = options.handshakeTimeoutMs ?? DEFAULT_HANDSHAKE_TIMEOUT_MS;
 	if (
@@ -390,7 +390,7 @@ function resolveOptions(options: PiServerOptions): { maxFrameLength: number; han
 		handshakeTimeoutMs <= 0 ||
 		handshakeTimeoutMs > MAX_TIMER_DELAY_MS
 	) {
-		throw new TypeError(`PiServer handshakeTimeoutMs must be an integer between 1 and ${MAX_TIMER_DELAY_MS}`);
+		throw new TypeError(`mcpi server handshakeTimeoutMs must be an integer between 1 and ${MAX_TIMER_DELAY_MS}`);
 	}
 	return { maxFrameLength, handshakeTimeoutMs };
 }

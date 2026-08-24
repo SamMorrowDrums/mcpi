@@ -177,7 +177,7 @@ describe("PiServer Unix integration", () => {
 				updatedAt: 1,
 				parentSessionId: "parent-1",
 				sessionName: "Live name",
-				cwd: "/tmp/pi-server-conformance",
+				cwd: "/tmp/mcpi-server-conformance",
 			},
 		]);
 	});
@@ -271,7 +271,7 @@ describe("PiServer Unix integration", () => {
 				createdAt: 1,
 				updatedAt: 1,
 				sessionName: "Session session-1",
-				cwd: "/tmp/pi-server-conformance",
+				cwd: "/tmp/mcpi-server-conformance",
 			},
 		]);
 		await attach(second, "session-1");

@@ -493,7 +493,7 @@ export class ExtensionRunner {
 
 	/**
 	 * Session-scoped environment mutations set by extensions via `pi.setEnv()`.
-	 * A `null` value masks a variable inherited from pi's own environment.
+	 * A `null` value masks a variable inherited from mcpi's own environment.
 	 */
 	getSessionEnv(): Map<string, string | null> {
 		return new Map(this.runtime.sessionEnv);

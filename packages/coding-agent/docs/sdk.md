@@ -1,8 +1,8 @@
-> pi can help you use the SDK. Ask it to build an integration for your use case.
+> mcpi can help you use the SDK. Ask it to build an integration for your use case.
 
 # SDK
 
-The SDK provides programmatic access to pi's agent capabilities. Use it to embed pi in other applications, build custom interfaces, or integrate with automated workflows.
+The SDK provides programmatic access to mcpi's agent capabilities. Use it to embed mcpi in other applications, build custom interfaces, or integrate with automated workflows.
 
 **Example use cases:**
 - Build a custom UI (web, desktop, mobile)
@@ -337,23 +337,23 @@ const { session } = await createAgentSession({
   cwd: process.cwd(), // default
   
   // Global config directory
-  agentDir: "~/.pi/agent", // default (expands ~)
+  agentDir: "~/.config/mcpi", // explicit config root (expands ~)
 });
 ```
 
 `cwd` is used by `DefaultResourceLoader` for:
-- Project extensions (`.pi/extensions/`)
+- Project extensions (`.mcpi/extensions/`)
 - Project skills:
-  - `.pi/skills/`
+  - `.mcpi/skills/`
   - `.agents/skills/` in `cwd` and ancestor directories (up to git repo root, or filesystem root when not in a repo)
-- Project prompts (`.pi/prompts/`)
+- Project prompts (`.mcpi/prompts/`)
 - Context files (`AGENTS.md` walking up from cwd)
 - Session directory naming
 
 `agentDir` is used by `DefaultResourceLoader` for:
 - Global extensions (`extensions/`)
 - Global skills:
-  - `skills/` under `agentDir` (for example `~/.pi/agent/skills/`)
+  - `skills/` under `agentDir` (for example `~/.config/mcpi/skills/`)
   - `~/.agents/skills/`
 - Global prompts (`prompts/`)
 - Global context file (`AGENTS.md`)
@@ -409,7 +409,7 @@ If no model is provided:
 2. Uses default from settings
 3. Falls back to first available model
 
-Remote catalogs are persisted locally so later runtimes can restore them without a network request. The default file is `~/.pi/agent/models-store.json`; set `modelsStorePath` to choose another location, or inject `modelsStore` to control persistence. Network refreshes are throttled to once per provider every four hours unless forced. To force an immediate refresh, call `await modelRuntime.refresh({ allowNetwork: true, force: true, signal })`. Setting `PI_OFFLINE` disables model network access.
+Remote catalogs are persisted locally so later runtimes can restore them without a network request. The default file is the cache directory's `models-store.json`; set `modelsStorePath` to choose another location, or inject `modelsStore` to control persistence. Network refreshes are throttled to once per provider every four hours unless forced. To force an immediate refresh, call `await modelRuntime.refresh({ allowNetwork: true, force: true, signal })`. Setting `MCPI_OFFLINE` disables model network access.
 
 To match CLI model parsing, use the exported resolver helpers:
 
@@ -451,7 +451,7 @@ Authentication resolution priority (handled by `ModelRuntime`):
 import { InMemoryCredentialStore } from "@sammorrowdrums/mcpi-ai";
 import { createAgentSession, ModelRuntime } from "@sammorrowdrums/mcpi";
 
-// Default: uses ~/.pi/agent/auth.json and ~/.pi/agent/models.json
+// Default: uses auth.json and models.json under the mcpi config directory
 const modelRuntime = await ModelRuntime.create();
 
 // Provider-owned auth methods and current status
@@ -525,7 +525,7 @@ Specify which built-in tools to enable:
 - `noTools: "builtin"` disables default built-ins while keeping extension and custom tools enabled
 - `excludeTools` disables specific built-in, extension, or custom tool names after any `tools` allowlist is applied
 
-The `edit` tool returns `details.diff` for Pi's TUI display and `details.patch` as a standard unified patch for SDK consumers.
+The `edit` tool returns `details.diff` for mcpi's TUI display and `details.patch` as a standard unified patch for SDK consumers.
 
 ```typescript
 import { createAgentSession } from "@sammorrowdrums/mcpi";
@@ -607,7 +607,7 @@ If you pass `tools`, include each custom or extension tool name you want enabled
 
 ### Extensions
 
-Extensions are loaded by the `ResourceLoader`. `DefaultResourceLoader` discovers extensions from `~/.pi/agent/extensions/`, `.pi/extensions/`, and settings.json extension sources.
+Extensions are loaded by the `ResourceLoader`. `DefaultResourceLoader` discovers extensions from the config directory's `extensions/`, `.mcpi/extensions/`, and settings.json extension sources.
 
 ```typescript
 import { createAgentSession, DefaultResourceLoader } from "@sammorrowdrums/mcpi";
@@ -886,8 +886,8 @@ const { session } = await createAgentSession({
 **Project-specific settings:**
 
 Settings load from two locations and merge:
-1. Global: `~/.pi/agent/settings.json`
-2. Project: `<cwd>/.pi/settings.json`
+1. Global: the config directory's `settings.json`
+2. Project: `<cwd>/.mcpi/settings.json`
 
 Project overrides global. Nested objects merge keys. Setters modify global settings by default.
 
@@ -1142,7 +1142,7 @@ See [RPC documentation](rpc.md) for the JSON protocol.
 For subprocess-based integration without building with the SDK, use the CLI directly:
 
 ```bash
-pi --mode rpc --no-session
+mcpi --mode rpc --no-session
 ```
 
 See [RPC documentation](rpc.md) for the JSON protocol.

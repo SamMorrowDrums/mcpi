@@ -1,7 +1,7 @@
 {
 	"name": "@sammorrowdrums/mcpi-client",
 	"version": "0.84.2",
-	"description": "Transport-neutral client for remote pi sessions over framed CBOR bytes",
+	"description": "Transport-neutral client for remote mcpi sessions over framed CBOR bytes",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -30,7 +30,7 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"keywords": [
-		"pi",
+		"mcpi",
 		"client",
 		"protocol",
 		"cbor",

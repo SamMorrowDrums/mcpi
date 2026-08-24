@@ -17,7 +17,7 @@ Run from source:
 /path/to/mcpi/mcpi-test.sh
 ```
 
-The script can be run from any directory. Pi keeps the caller's current working directory.
+The script can be run from any directory. mcpi keeps the caller's current working directory.
 
 ## Forking / Rebranding
 
@@ -25,9 +25,9 @@ Configure via `package.json`:
 
 ```json
 {
-  "piConfig": {
-    "name": "pi",
-    "configDir": ".pi"
+  "mcpiConfig": {
+    "name": "mcpi",
+    "configDir": ".mcpi"
   }
 }
 ```
@@ -48,7 +48,7 @@ Never use `__dirname` directly for package assets.
 
 ## Debug Command
 
-`/debug` (hidden) writes to `~/.pi/agent/pi-debug.log`:
+`/debug` (hidden) writes `mcpi-debug.log` under the state directory:
 - Rendered TUI lines with ANSI codes
 - Last messages sent to the LLM
 

@@ -51,7 +51,7 @@ export class Connection {
 			this.#maxFrameLength <= 0 ||
 			this.#maxFrameLength > MAX_UINT32
 		) {
-			throw new TypeError(`PiClient maxFrameLength must be an integer between 1 and ${MAX_UINT32}`);
+			throw new TypeError(`mcpi client maxFrameLength must be an integer between 1 and ${MAX_UINT32}`);
 		}
 	}
 
@@ -65,7 +65,7 @@ export class Connection {
 
 	connect(): Promise<ServerSnapshot> {
 		if (this.#lifecycle.state !== "disconnected") {
-			return Promise.reject(new PiDisconnectedError(`PiClient is already ${this.#lifecycle.state}`));
+			return Promise.reject(new PiDisconnectedError(`mcpi client is already ${this.#lifecycle.state}`));
 		}
 		const id = ++this.#sequence;
 		const handshake = createPromiseResolvers<ServerSnapshot>();

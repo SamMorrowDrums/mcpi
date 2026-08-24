@@ -366,7 +366,7 @@ describe("AI Providers Unicode Surrogate Pair Tests", () => {
 	});
 
 	// =========================================================================
-	// OAuth-based providers (credentials from ~/.pi/agent/oauth.json)
+	// OAuth-based providers (credentials from mcpi's config directory)
 	// =========================================================================
 
 	describe("Anthropic OAuth Provider Unicode Handling", () => {

@@ -1,7 +1,7 @@
 /**
  * Minimal Kimi deferred-tool loading demo.
  *
- *   pi -e ./kimi-deferred-tools.ts
+ *   mcpi -e ./kimi-deferred-tools.ts
  *    example prompt: Use the available tools to calculate 100 + 500. Do not calculate it yourself.
  */
 

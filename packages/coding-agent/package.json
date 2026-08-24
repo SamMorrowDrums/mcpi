@@ -3,8 +3,9 @@
 	"version": "0.84.2",
 	"description": "Coding agent CLI with read, bash, edit, write tools and session management",
 	"type": "module",
-	"piConfig": {
-		"configDir": ".pi"
+	"mcpiConfig": {
+		"name": "mcpi",
+		"configDir": ".mcpi"
 	},
 	"bin": {
 		"mcpi": "dist/cli.js"

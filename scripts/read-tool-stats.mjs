@@ -6,7 +6,12 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
 
-const DEFAULT_SESSIONS_DIR = path.join(homedir(), ".pi/agent/sessions");
+const codingAgentDir = process.env.MCPI_CODING_AGENT_DIR?.trim();
+const stateHome =
+	process.platform === "win32"
+		? process.env.LOCALAPPDATA?.trim() || path.join(homedir(), "AppData", "Local")
+		: process.env.XDG_STATE_HOME?.trim() || path.join(homedir(), ".local", "state");
+const DEFAULT_SESSIONS_DIR = path.join(codingAgentDir || path.join(stateHome, "mcpi"), "sessions");
 const DEFAULT_ACTIVE_READ_TOOL_PATH = path.join(process.cwd(), "packages/coding-agent/src/core/tools/read.ts");
 const DEFAULT_TOP = 20;
 const CHART_WIDTH = 40;
@@ -56,7 +61,7 @@ function printHelp() {
 	console.log(`Usage: node scripts/read-tool-stats.mjs [options]
 
 Options:
-  --sessions-dir <path>  Sessions directory (default: ~/.pi/agent/sessions)
+  --sessions-dir <path>  Sessions directory (default: ${DEFAULT_SESSIONS_DIR})
   --model <substring>    Filter provider/model by substring
   --top <n>              Number of examples to show (default: ${DEFAULT_TOP})
   --since <iso>          Only scan session files created at or after this ISO time

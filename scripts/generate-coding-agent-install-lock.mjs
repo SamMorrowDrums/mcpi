@@ -236,7 +236,7 @@ function createInstallerPackageJson(codingAgentPackage) {
 		name: installPackageName,
 		version: codingAgentPackage.version,
 		private: true,
-		description: "Lockfile root used by the Pi installer and updater.",
+		description: "Lockfile root used by the mcpi installer and updater.",
 		dependencies: {
 			[codingAgentPackage.name]: codingAgentPackage.version,
 		},

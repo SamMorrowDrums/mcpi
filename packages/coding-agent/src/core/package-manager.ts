@@ -28,7 +28,7 @@ import { globSync } from "glob";
 import ignore from "ignore";
 import { minimatch } from "minimatch";
 import { maxSatisfying, rcompare, satisfies, valid, validRange } from "semver";
-import { CONFIG_DIR_NAME } from "../config.ts";
+import { CONFIG_DIR_NAME, getAgentDir, getCacheDir } from "../config.ts";
 import { spawnProcess, spawnProcessSync } from "../utils/child-process.ts";
 import { type GitSource, parseGitUrl } from "../utils/git.ts";
 import { canonicalizePath, isLocalPath, markPathIgnoredByCloudSync, resolvePath } from "../utils/paths.ts";
@@ -41,7 +41,7 @@ const UPDATE_CHECK_CONCURRENCY = 4;
 const GIT_UPDATE_CONCURRENCY = 4;
 
 function isOfflineModeEnabled(): boolean {
-	const value = process.env.PI_OFFLINE;
+	const value = process.env.MCPI_OFFLINE;
 	if (!value) return false;
 	return value === "1" || value.toLowerCase() === "true" || value.toLowerCase() === "yes";
 }
@@ -120,6 +120,7 @@ export interface PackageManager {
 interface PackageManagerOptions {
 	cwd: string;
 	agentDir: string;
+	cacheDir?: string;
 	settingsManager: SettingsManager;
 }
 
@@ -338,7 +339,7 @@ function collectFiles(
 	return files;
 }
 
-type SkillDiscoveryMode = "pi" | "agents";
+type SkillDiscoveryMode = "mcpi" | "agents";
 
 function collectSkillEntries(
 	dir: string,
@@ -397,7 +398,7 @@ function collectSkillEntries(
 			}
 
 			const relPath = toPosixPath(relative(root, fullPath));
-			if (mode === "pi" && dir === root && isFile && entry.name.endsWith(".md") && !ig.ignores(relPath)) {
+			if (mode === "mcpi" && dir === root && isFile && entry.name.endsWith(".md") && !ig.ignores(relPath)) {
 				entries.push(fullPath);
 				continue;
 			}
@@ -617,7 +618,7 @@ function collectAutoExtensionEntries(dir: string): string[] {
  */
 function collectResourceFiles(dir: string, resourceType: ResourceType): string[] {
 	if (resourceType === "skills") {
-		return collectSkillEntries(dir, "pi");
+		return collectSkillEntries(dir, "mcpi");
 	}
 	if (resourceType === "extensions") {
 		return collectAutoExtensionEntries(dir);
@@ -779,6 +780,7 @@ function applyAutoloadDisabledPatterns(allPaths: string[], patterns: string[], b
 export class DefaultPackageManager implements PackageManager {
 	private cwd: string;
 	private agentDir: string;
+	private cacheDir: string;
 	private settingsManager: SettingsManager;
 	private globalNpmRoot: string | undefined;
 	private globalNpmRootCommandKey: string | undefined;
@@ -787,6 +789,12 @@ export class DefaultPackageManager implements PackageManager {
 	constructor(options: PackageManagerOptions) {
 		this.cwd = resolvePath(options.cwd);
 		this.agentDir = resolvePath(options.agentDir);
+		this.cacheDir =
+			options.cacheDir !== undefined
+				? resolvePath(options.cacheDir)
+				: this.agentDir === resolvePath(getAgentDir())
+					? getCacheDir()
+					: this.agentDir;
 		this.settingsManager = options.settingsManager;
 	}
 
@@ -1757,10 +1765,10 @@ export class DefaultPackageManager implements PackageManager {
 
 	private getNpmInstallArgs(specs: string[], installRoot: string): string[] {
 		const packageManagerName = this.getPackageManagerName();
-		// Extension packages run inside pi and resolve pi APIs through loader aliases/virtual modules.
+		// Extension packages run inside mcpi and resolve mcpi APIs through loader aliases/virtual modules.
 		// Disable peer dependency resolution for managed installs (npm's --legacy-peer-deps, and
 		// equivalent bun/pnpm settings) so package managers do not install or solve host-provided
-		// @sammorrowdrums/mcpi-* peers. Stale auto-installed pi peers can otherwise block updates.
+		// @sammorrowdrums/mcpi-* peers. Stale auto-installed upstream peers can otherwise block updates.
 		if (packageManagerName === "bun") {
 			return ["install", ...specs, "--cwd", installRoot, "--omit=peer"];
 		}
@@ -1882,7 +1890,7 @@ export class DefaultPackageManager implements PackageManager {
 	}
 
 	private getGitUpdateMarkerPath(targetDir: string): string {
-		return join(dirname(targetDir), `.${basename(targetDir)}.pi-update-incomplete`);
+		return join(dirname(targetDir), `.${basename(targetDir)}.mcpi-update-incomplete`);
 	}
 
 	private async cleanAndInstallGitDependencies(targetDir: string, markerPath: string): Promise<void> {
@@ -1980,7 +1988,7 @@ export class DefaultPackageManager implements PackageManager {
 		this.ensureGitIgnore(installRoot);
 		const packageJsonPath = join(installRoot, "package.json");
 		if (!existsSync(packageJsonPath)) {
-			const pkgJson = { name: "pi-extensions", private: true };
+			const pkgJson = { name: "mcpi-extensions", private: true };
 			writeFileSync(packageJsonPath, JSON.stringify(pkgJson, null, 2), "utf-8");
 		}
 	}
@@ -2003,7 +2011,7 @@ export class DefaultPackageManager implements PackageManager {
 			this.assertProjectTrustedForScope(scope);
 			return join(this.cwd, CONFIG_DIR_NAME, "npm");
 		}
-		return join(this.agentDir, "npm");
+		return join(this.cacheDir, "npm");
 	}
 
 	private getGlobalNpmRoot(): string {
@@ -2044,7 +2052,7 @@ export class DefaultPackageManager implements PackageManager {
 			this.assertProjectTrustedForScope(scope);
 			return join(this.cwd, CONFIG_DIR_NAME, "npm", "node_modules", source.name);
 		}
-		return join(this.agentDir, "npm", "node_modules", source.name);
+		return join(this.cacheDir, "npm", "node_modules", source.name);
 	}
 
 	private getLegacyGlobalNpmInstallPath(source: NpmSource): string | undefined {
@@ -2083,11 +2091,11 @@ export class DefaultPackageManager implements PackageManager {
 			this.assertProjectTrustedForScope(scope);
 			return join(this.cwd, CONFIG_DIR_NAME, "git");
 		}
-		return join(this.agentDir, "git");
+		return join(this.cacheDir, "git");
 	}
 
 	private getTemporaryDir(prefix: string, suffix?: string): string {
-		const root = this.resolveManagedPath(getExtensionTempFolder(this.agentDir), prefix);
+		const root = this.resolveManagedPath(getExtensionTempFolder(this.cacheDir), prefix);
 		const hash = createHash("sha256")
 			.update(`${prefix}-${suffix ?? ""}`)
 			.digest("hex")
@@ -2393,7 +2401,7 @@ export class DefaultPackageManager implements PackageManager {
 		};
 
 		if (projectTrusted) {
-			// Project extensions from .pi/
+			// Project extensions from .mcpi/
 			addResources(
 				"extensions",
 				collectAutoExtensionEntries(projectDirs.extensions),
@@ -2402,10 +2410,10 @@ export class DefaultPackageManager implements PackageManager {
 				projectBaseDir,
 			);
 
-			// Project skills from .pi/
+			// Project skills from .mcpi/
 			addResources(
 				"skills",
-				collectAutoSkillEntries(projectDirs.skills, "pi"),
+				collectAutoSkillEntries(projectDirs.skills, "mcpi"),
 				projectMetadata,
 				projectOverrides.skills,
 				projectBaseDir,
@@ -2445,7 +2453,7 @@ export class DefaultPackageManager implements PackageManager {
 			);
 		}
 
-		// User extensions from ~/.pi/agent/
+		// User extensions from the mcpi config directory
 		addResources(
 			"extensions",
 			collectAutoExtensionEntries(userDirs.extensions),
@@ -2454,10 +2462,10 @@ export class DefaultPackageManager implements PackageManager {
 			globalBaseDir,
 		);
 
-		// User skills from ~/.pi/agent/
+		// User skills from the mcpi config directory
 		addResources(
 			"skills",
-			collectAutoSkillEntries(userDirs.skills, "pi"),
+			collectAutoSkillEntries(userDirs.skills, "mcpi"),
 			userMetadata,
 			userOverrides.skills,
 			globalBaseDir,

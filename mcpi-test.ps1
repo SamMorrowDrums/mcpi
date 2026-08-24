@@ -55,7 +55,7 @@ if ($noEnv) {
 		Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue
 	}
 
-	Write-Host "Running without API keys..."
+	Write-Host "Running mcpi without API keys..."
 }
 
 $tsxBin = Join-Path $scriptDir "node_modules/.bin/tsx.cmd"

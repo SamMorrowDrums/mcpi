@@ -23,34 +23,34 @@ import {
 	type TranscriptEvent,
 	toJsonValue,
 } from "vitest-evals/harness";
-import { PI_SESSION_SNAPSHOT_ARTIFACT } from "./vitest-evals/artifacts.ts";
+import { MCPI_SESSION_SNAPSHOT_ARTIFACT } from "./vitest-evals/artifacts.ts";
 
-export type PiCodingAgentInput = string | Array<{ type: "prompt"; content: string } | { type: "reload" }>;
+export type McpiCodingAgentInput = string | Array<{ type: "prompt"; content: string } | { type: "reload" }>;
 
-type PiCodingAgentModelSelection = {
+type McpiCodingAgentModelSelection = {
 	provider: string;
 	id: string;
 };
 
-type PiCodingAgentHarnessOptions = {
+type McpiCodingAgentHarnessOptions = {
 	name?: string;
-	model?: PiCodingAgentModelSelection;
+	model?: McpiCodingAgentModelSelection;
 	noTools?: CreateAgentSessionOptions["noTools"];
 	transformSystemPrompt?: (defaultPrompt: string) => string;
 };
 
-type PiCodingAgentHarnessWithOutput<TOutput extends JsonValue> = PiCodingAgentHarnessOptions & {
+type McpiCodingAgentHarnessWithOutput<TOutput extends JsonValue> = McpiCodingAgentHarnessOptions & {
 	output: (args: { response: string; session: AgentSession }) => TOutput | Promise<TOutput>;
 };
 
 export function resolveModelSelection(
-	explicitModel: PiCodingAgentModelSelection | undefined,
-	environment: { PI_PROVIDER?: string; PI_MODEL?: string } = process.env,
-): PiCodingAgentModelSelection {
-	const provider = (explicitModel?.provider ?? environment.PI_PROVIDER)?.trim();
-	const id = (explicitModel?.id ?? environment.PI_MODEL)?.trim();
+	explicitModel: McpiCodingAgentModelSelection | undefined,
+	environment: { MCPI_PROVIDER?: string; MCPI_MODEL?: string } = process.env,
+): McpiCodingAgentModelSelection {
+	const provider = (explicitModel?.provider ?? environment.MCPI_PROVIDER)?.trim();
+	const id = (explicitModel?.id ?? environment.MCPI_MODEL)?.trim();
 	if (!provider || !id) {
-		throw new Error("Select a harness model explicitly or set both PI_PROVIDER and PI_MODEL as defaults.");
+		throw new Error("Select a harness model explicitly or set both MCPI_PROVIDER and MCPI_MODEL as defaults.");
 	}
 	return { provider, id };
 }
@@ -106,11 +106,11 @@ async function promptAgent(session: AgentSession, input: string, signal: AbortSi
 	return output;
 }
 
-async function runPiCodingAgent<TOutput extends JsonValue>(
-	input: PiCodingAgentInput,
+async function runMcpiCodingAgent<TOutput extends JsonValue>(
+	input: McpiCodingAgentInput,
 	signal: AbortSignal | undefined,
 	setArtifact: HarnessContext["setArtifact"],
-	options: PiCodingAgentHarnessOptions | PiCodingAgentHarnessWithOutput<TOutput>,
+	options: McpiCodingAgentHarnessOptions | McpiCodingAgentHarnessWithOutput<TOutput>,
 ): Promise<SimpleHarnessResult<string | TOutput>> {
 	const startedAt = performance.now();
 	signal?.throwIfAborted();
@@ -119,7 +119,7 @@ async function runPiCodingAgent<TOutput extends JsonValue>(
 	const model = modelRuntime.getModel(selection.provider, selection.id);
 	if (!model) throw new Error(`Eval model not found: ${selection.provider}/${selection.id}`);
 
-	const root = await mkdtemp(join(tmpdir(), "pi-eval-"));
+	const root = await mkdtemp(join(tmpdir(), "mcpi-eval-"));
 	const cwd = join(root, "workspace");
 	const agentDir = join(root, "agent");
 	let transformedSystemPrompt: string | undefined;
@@ -175,7 +175,7 @@ async function runPiCodingAgent<TOutput extends JsonValue>(
 					await evalSession.reload();
 				}
 			}
-			if (response === undefined) throw new Error("Pi eval input must include at least one prompt step.");
+			if (response === undefined) throw new Error("mcpi eval input must include at least one prompt step.");
 			const output = "output" in options ? await options.output({ response, session: evalSession }) : response;
 			const stats = evalSession.getSessionStats();
 			const hasPricing = [model.cost, ...(model.cost.tiers ?? [])].some(
@@ -214,7 +214,7 @@ async function runPiCodingAgent<TOutput extends JsonValue>(
 		try {
 			const sessionPath = sessionManager.getSessionFile();
 			if (sessionPath && existsSync(sessionPath)) {
-				setArtifact(PI_SESSION_SNAPSHOT_ARTIFACT, await readFile(sessionPath, "utf8"));
+				setArtifact(MCPI_SESSION_SNAPSHOT_ARTIFACT, await readFile(sessionPath, "utf8"));
 			}
 		} catch (error) {
 			cleanupErrors.push(error);
@@ -243,15 +243,17 @@ async function runPiCodingAgent<TOutput extends JsonValue>(
 	};
 }
 
-export function createPiCodingAgentHarness<TOutput extends JsonValue>(
-	options: PiCodingAgentHarnessWithOutput<TOutput>,
-): Harness<PiCodingAgentInput, TOutput>;
-export function createPiCodingAgentHarness(options?: PiCodingAgentHarnessOptions): Harness<PiCodingAgentInput, string>;
-export function createPiCodingAgentHarness<TOutput extends JsonValue>(
-	options: PiCodingAgentHarnessOptions | PiCodingAgentHarnessWithOutput<TOutput> = {},
+export function createMcpiCodingAgentHarness<TOutput extends JsonValue>(
+	options: McpiCodingAgentHarnessWithOutput<TOutput>,
+): Harness<McpiCodingAgentInput, TOutput>;
+export function createMcpiCodingAgentHarness(
+	options?: McpiCodingAgentHarnessOptions,
+): Harness<McpiCodingAgentInput, string>;
+export function createMcpiCodingAgentHarness<TOutput extends JsonValue>(
+	options: McpiCodingAgentHarnessOptions | McpiCodingAgentHarnessWithOutput<TOutput> = {},
 ) {
-	return createHarness<PiCodingAgentInput, string | TOutput>({
-		name: options.name ?? "pi-coding-agent",
-		run: ({ input, signal, setArtifact }) => runPiCodingAgent(input, signal, setArtifact, options),
+	return createHarness<McpiCodingAgentInput, string | TOutput>({
+		name: options.name ?? "mcpi-coding-agent",
+		run: ({ input, signal, setArtifact }) => runMcpiCodingAgent(input, signal, setArtifact, options),
 	});
 }

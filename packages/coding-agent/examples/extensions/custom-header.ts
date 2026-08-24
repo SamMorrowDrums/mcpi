@@ -2,18 +2,18 @@
  * Custom Header Extension
  *
  * Demonstrates ctx.ui.setHeader() for replacing the built-in header
- * (logo + keybinding hints) with a custom component showing the pi mascot.
+ * (logo + keybinding hints) with a custom component showing the mcpi mascot.
  */
 
 import type { ExtensionAPI, Theme } from "@sammorrowdrums/mcpi";
 import { VERSION } from "@sammorrowdrums/mcpi";
 
-// --- PI MASCOT ---
-// Based on pi_mascot.ts - the pi agent character
+// --- MCPI MASCOT ---
+// Based on upstream pi_mascot.ts - adapted for mcpi
 function getPiMascot(theme: Theme): string[] {
 	// --- COLORS ---
 	// 3b1b Blue: R=80, G=180, B=230
-	const piBlue = (text: string) => theme.fg("accent", text);
+	const mcpiBlue = (text: string) => theme.fg("accent", text);
 	const white = (text: string) => text; // Use plain white (or theme.fg("text", text))
 	const black = (text: string) => theme.fg("dim", text); // Use dim for contrast
 
@@ -33,12 +33,12 @@ function getPiMascot(theme: Theme): string[] {
 
 	// 3. Line 2: The Wide Top Bar (The "Overhang")
 	// 14 blocks wide for that serif-style roof
-	const lineBar = `  ${piBlue(BLOCK.repeat(14))}`;
+	const lineBar = `  ${mcpiBlue(BLOCK.repeat(14))}`;
 
 	// 4. Lines 3-6: The Legs
 	// Indented 5 spaces relative to the very left edge
 	// Leg width: 2 blocks | Gap: 4 blocks
-	const lineLeg = `     ${piBlue(BLOCK.repeat(2))}    ${piBlue(BLOCK.repeat(2))}`;
+	const lineLeg = `     ${mcpiBlue(BLOCK.repeat(2))}    ${mcpiBlue(BLOCK.repeat(2))}`;
 
 	// --- ASSEMBLY ---
 	return ["", lineEyes, lineBar, lineLeg, lineLeg, lineLeg, lineLeg, ""];

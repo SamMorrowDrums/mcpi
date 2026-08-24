@@ -1,6 +1,6 @@
 # @sammorrowdrums/mcpi-client
 
-Transport-neutral client for remote pi sessions. `PiClient` exchanges length-prefixed CBOR messages through a small `ByteTransport` interface. The package has no Node-specific imports.
+Transport-neutral client for remote mcpi sessions. The compatibility-named `PiClient` API exchanges length-prefixed CBOR messages through a small `ByteTransport` interface. The package has no Node-specific imports.
 
 ```ts
 import { PiClient, type ByteTransportFactory } from "@sammorrowdrums/mcpi-client";
@@ -51,7 +51,7 @@ import { createUnixTransportFactory } from "@sammorrowdrums/mcpi-client/unix";
 
 const client = new PiClient({
   transportFactory: createUnixTransportFactory({
-    path: "/tmp/pi.sock",
+    path: "/tmp/mcpi.sock",
   }),
 });
 

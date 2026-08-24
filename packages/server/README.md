@@ -2,7 +2,7 @@
 
 Experimental. This package is under active development and may change or be removed without notice. Its APIs and behavior are not yet stable.
 
-Server package for pi.
+Server package for mcpi.
 
 ## Session server core
 
@@ -28,7 +28,7 @@ const service: PiServerService = {
 };
 
 const server = createUnixServer(service, {
-  path: "/tmp/pi/server.sock",
+  path: "/tmp/mcpi/server.sock",
 });
 await server.start();
 ```
@@ -43,8 +43,8 @@ This package does not provide a standalone CLI or coding-agent service. Applicat
 
 Custom transports can use `@sammorrowdrums/mcpi-server/testing` for deterministic protocol conformance tests. It exports `createTestServer()`, `TestServerService`, `ProtocolTestClient`, and the transport-neutral `WireChannel` contract. `connectUnixTestClient()` is provided for Unix transport tests.
 
-## `pi-ai` protocol bridge
+## `mcpi-ai` protocol bridge
 
 `@sammorrowdrums/mcpi-ai` domain objects and `@sammorrowdrums/mcpi-protocol` wire DTOs remain independent. This package owns their boundary and exports `toProtocolModelMetadata()`, `toProtocolAssistantMessage()`, `toProtocolUserMessage()`, and `toProtocolToolResultMessage()`.
 
-The adapters reject invalid tool inputs, identifiers, timestamps, and mismatched tool results; `toProtocolToolResultMessage()` requires the original `ToolCall` so it can verify the association and convert its arguments itself. Diagnostic details are explicitly sanitized. Closed `pi-ai` unions are mapped exhaustively, and compile-time field manifests enumerate current `pi-ai` properties so additions require an explicit review. The protocol mirrors `pi-ai` vocabulary such as `toolCall` and `toolUse` where the semantics are identical. Protocol schemas enforce consistent lifecycle states, and tests encode adapter output through the runtime schemas so incompatible changes fail in the bridging package.
+The adapters reject invalid tool inputs, identifiers, timestamps, and mismatched tool results; `toProtocolToolResultMessage()` requires the original `ToolCall` so it can verify the association and convert its arguments itself. Diagnostic details are explicitly sanitized. Closed `mcpi-ai` unions are mapped exhaustively, and compile-time field manifests enumerate current `mcpi-ai` properties so additions require an explicit review. The protocol mirrors `mcpi-ai` vocabulary such as `toolCall` and `toolUse` where the semantics are identical. Protocol schemas enforce consistent lifecycle states, and tests encode adapter output through the runtime schemas so incompatible changes fail in the bridging package.

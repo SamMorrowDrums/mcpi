@@ -1,7 +1,7 @@
 /**
  * pi-messages API implementation.
  *
- * Streams pi's own message protocol directly to a backend: the request is a
+ * Streams the established `pi-messages` protocol directly to a backend: the request is a
  * single POST of `{ model, context, options }` to `<baseUrl>/messages`, the
  * response is an SSE stream of serialized assistant-message events plus a
  * terminal `done`/`error` event. This is the wire protocol spoken by the
@@ -339,7 +339,7 @@ function resolveCacheRetention(cacheRetention?: CacheRetention, env?: ProviderEn
 		return cacheRetention;
 	}
 	// Backend defaults apply when unset; only the legacy env opt-in is mapped.
-	return getProviderEnvValue("PI_CACHE_RETENTION", env) === "long" ? "long" : undefined;
+	return getProviderEnvValue("MCPI_CACHE_RETENTION", env) === "long" ? "long" : undefined;
 }
 
 export const stream: StreamFunction<"pi-messages", PiMessagesOptions> = (

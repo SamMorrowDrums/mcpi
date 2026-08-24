@@ -13,6 +13,20 @@ upstream's version numbering. Upstream's website is [pi.dev](https://pi.dev) and
 documentation at [pi.dev/docs/latest](https://pi.dev/docs/latest) still describes most
 behaviour accurately; where this fork differs, the documentation in this repository wins.
 
+## Configuration and data
+
+mcpi separates global data by purpose:
+
+| Data | Linux and macOS | Windows |
+|------|-----------------|---------|
+| Config (settings, auth, models, trust, user resources) | `$XDG_CONFIG_HOME/mcpi`, fallback `~/.config/mcpi` | `%APPDATA%\mcpi` |
+| State (sessions and logs) | `$XDG_STATE_HOME/mcpi`, fallback `~/.local/state/mcpi` | `%LOCALAPPDATA%\mcpi` |
+| Cache (packages, binaries, catalogs) | `$XDG_CACHE_HOME/mcpi`, fallback `~/.cache/mcpi` | `%LOCALAPPDATA%\mcpi` |
+
+Project resources live in `.mcpi/`. `MCPI_CODING_AGENT_DIR` explicitly replaces all three global roots with one directory.
+
+The public command, paths, and environment variables use the `mcpi`/`MCPI_*` identity. The extension API parameter and identifier `pi`, `pi.setEnv()`/`pi.unsetEnv()`, the extension package manifest `pi` field, internal upstream API/protocol symbols, Radius, `@mariozechner/clipboard`, and upstream attribution/licensing deliberately retain their established names.
+
 * **[@sammorrowdrums/mcpi](packages/coding-agent)**: Interactive coding agent CLI
 * **[@sammorrowdrums/mcpi-agent-core](packages/agent)**: Agent runtime with tool calling and state management
 * **[@sammorrowdrums/mcpi-ai](packages/ai)**: Unified multi-provider LLM API (OpenAI, Anthropic, Google, …)
@@ -73,11 +87,11 @@ We treat npm dependency changes as reviewed code changes.
 
 - Direct external dependencies are pinned to exact versions. Internal workspace packages remain version-ranged.
 - `.npmrc` sets `save-exact=true` and `min-release-age=2` to avoid same-day dependency releases during npm resolution.
-- `package-lock.json` is the dependency ground truth. Pre-commit blocks accidental lockfile commits unless `PI_ALLOW_LOCKFILE_CHANGE=1` is set.
+- `package-lock.json` is the dependency ground truth. Pre-commit blocks accidental lockfile commits unless `MCPI_ALLOW_LOCKFILE_CHANGE=1` is set.
 - `npm run check` verifies pinned direct deps, native TypeScript import compatibility, and the generated coding-agent shrinkwrap.
 - The published CLI package includes `packages/coding-agent/npm-shrinkwrap.json`, generated from the root lockfile, to pin transitive deps for npm users.
 - Release smoke tests use `npm run release:local` to build, pack, and create isolated npm and Bun installs outside the repo before tagging a release.
-- Local release installs, documented npm installs, and `pi update --self` use `--ignore-scripts` where supported.
+- Local release installs, documented npm installs, and `mcpi update --self` use `--ignore-scripts` where supported.
 - CI installs with `npm ci --ignore-scripts`, and a scheduled GitHub workflow runs `npm audit --omit=dev` plus `npm audit signatures --omit=dev`.
 - Shrinkwrap generation has an explicit allowlist for dependency lifecycle scripts; new lifecycle-script deps fail checks until reviewed.
 

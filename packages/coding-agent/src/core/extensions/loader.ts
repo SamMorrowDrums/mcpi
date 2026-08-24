@@ -56,7 +56,7 @@ const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@sinclair/typebox/value": _bundledTypeboxValue,
 	"@sammorrowdrums/mcpi-agent-core": _bundledPiAgentCore,
 	"@sammorrowdrums/mcpi-tui": _bundledPiTui,
-	// Extensions resolve the pi-ai root to the compat entrypoint (a strict
+	// Extensions resolve the mcpi-ai root to the compat entrypoint (a strict
 	// superset of the core entrypoint): existing extensions using the old
 	// global API keep working at runtime until compat is removed.
 	"@sammorrowdrums/mcpi-ai": _bundledPiAiCompat,
@@ -98,7 +98,7 @@ function getAliases(): Record<string, string> {
 	const piCodingAgentEntry = packageIndex;
 	const piAgentCoreEntry = resolveWorkspaceOrImport("agent/dist/index.js", "@sammorrowdrums/mcpi-agent-core");
 	const piTuiEntry = resolveWorkspaceOrImport("tui/dist/index.js", "@sammorrowdrums/mcpi-tui");
-	// Extensions resolve the pi-ai root to the compat entrypoint (a strict
+	// Extensions resolve the mcpi-ai root to the compat entrypoint (a strict
 	// superset of the core entrypoint): existing extensions using the old
 	// global API keep working at runtime until compat is removed.
 	const piAiCompatEntry = resolveWorkspaceOrImport("ai/dist/compat.js", "@sammorrowdrums/mcpi-ai/compat");

@@ -2,7 +2,7 @@
 	"name": "@sammorrowdrums/mcpi-install",
 	"version": "0.84.2",
 	"private": true,
-	"description": "Lockfile root used by the Pi installer and updater.",
+	"description": "Lockfile root used by the mcpi installer and updater.",
 	"dependencies": {
 		"@sammorrowdrums/mcpi": "0.84.2"
 	},

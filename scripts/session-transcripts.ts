@@ -4,7 +4,7 @@
  * optionally spawns subagents to analyze patterns.
  *
  * Usage: node scripts/session-transcripts.ts [--analyze] [--output <dir>] [cwd]
- *   --analyze      Spawn pi subagents to analyze each transcript file
+ *   --analyze      Spawn mcpi subagents to analyze each transcript file
  *   --output <dir> Output directory for transcript files (defaults to ./session-transcripts)
  *   cwd            Working directory to extract sessions for (defaults to current)
  */
@@ -20,8 +20,24 @@ import chalk from "chalk";
 const MAX_CHARS_PER_FILE = 100_000; // ~20k tokens, leaving room for prompt + analysis + output
 
 function cwdToSessionDir(cwd: string): string {
-	const normalized = resolve(cwd).replace(/\//g, "-");
-	return `--${normalized.slice(1)}--`; // Remove leading slash, wrap with --
+	const normalized = resolve(cwd).replace(/^[/\\]/, "").replace(/[/\\:]/g, "-");
+	return `--${normalized}--`;
+}
+
+function getDefaultRoot(kind: "config" | "state"): string {
+	const codingAgentDir = process.env.MCPI_CODING_AGENT_DIR?.trim();
+	if (codingAgentDir) return codingAgentDir;
+	if (process.platform === "win32") {
+		const windowsHome =
+			kind === "config"
+				? process.env.APPDATA?.trim() || join(homedir(), "AppData", "Roaming")
+				: process.env.LOCALAPPDATA?.trim() || join(homedir(), "AppData", "Local");
+		return join(windowsHome, "mcpi");
+	}
+	const xdgName = kind === "config" ? "XDG_CONFIG_HOME" : "XDG_STATE_HOME";
+	const xdgHome = process.env[xdgName]?.trim();
+	if (xdgHome) return join(xdgHome, "mcpi");
+	return join(homedir(), kind === "config" ? ".config" : join(".local", "state"), "mcpi");
 }
 
 function extractTextContent(content: string | Array<{ type: string; text?: string }>): string {
@@ -77,7 +93,7 @@ interface JsonEvent {
 
 function runSubagent(prompt: string, cwd: string): Promise<{ success: boolean }> {
 	return new Promise((resolve) => {
-		const child = spawn("pi", ["--mode", "json", "--tools", "read,write", "-p", prompt], {
+		const child = spawn("mcpi", ["--mode", "json", "--tools", "read,write", "-p", prompt], {
 			cwd,
 			stdio: ["ignore", "pipe", "pipe"],
 		});
@@ -134,7 +150,7 @@ function runSubagent(prompt: string, cwd: string): Promise<{ success: boolean }>
 		});
 
 		child.on("error", (err) => {
-			console.error(chalk.red(`  Failed to spawn pi: ${err.message}`));
+			console.error(chalk.red(`  Failed to spawn mcpi: ${err.message}`));
 			resolve({ success: false });
 		});
 	});
@@ -162,7 +178,7 @@ async function main() {
 	const cwd = resolve(cwdArg || process.cwd());
 
 	mkdirSync(outputDir, { recursive: true });
-	const sessionsBase = join(homedir(), ".pi/agent/sessions");
+	const sessionsBase = join(getDefaultRoot("state"), "sessions");
 	const sessionDirName = cwdToSessionDir(cwd);
 	const sessionDir = join(sessionsBase, sessionDirName);
 
@@ -243,12 +259,12 @@ async function main() {
 	console.log(`\nCreated ${outputFiles.length} transcript file(s) in ${outputDir}`);
 
 	if (!analyzeFlag) {
-		console.log("\nRun with --analyze to spawn pi subagents for pattern analysis.");
+		console.log("\nRun with --analyze to spawn mcpi subagents for pattern analysis.");
 		return;
 	}
 
 	// Find AGENTS.md files to compare against
-	const globalAgentsMd = join(homedir(), ".pi/agent/AGENTS.md");
+	const globalAgentsMd = join(getDefaultRoot("config"), "AGENTS.md");
 	const localAgentsMd = join(cwd, "AGENTS.md");
 	const agentsMdFiles = [globalAgentsMd, localAgentsMd].filter(existsSync);
 	const agentsMdSection =

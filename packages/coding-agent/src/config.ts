@@ -366,7 +366,7 @@ export function getUpdateInstruction(packageName: string): string {
  */
 export function getPackageDir(): string {
 	// Allow override via environment variable (useful for Nix/Guix where store paths tokenize poorly)
-	const envDir = process.env.PI_PACKAGE_DIR;
+	const envDir = process.env.MCPI_PACKAGE_DIR;
 	if (envDir) {
 		return normalizePath(envDir);
 	}
@@ -444,13 +444,13 @@ export function getChangelogPath(): string {
 }
 
 // =============================================================================
-// App Config (from package.json piConfig)
+// App Config (from package.json mcpiConfig)
 // =============================================================================
 
 interface PackageJson {
 	name?: string;
 	version?: string;
-	piConfig?: {
+	mcpiConfig?: {
 		name?: string;
 		configDir?: string;
 	};
@@ -464,14 +464,12 @@ try {
 	if (err.code !== "ENOENT") throw e;
 }
 
-const piConfigName: string | undefined = pkg.piConfig?.name;
 export const PACKAGE_NAME: string = pkg.name || "@sammorrowdrums/mcpi";
-export const APP_NAME: string = piConfigName || "pi";
-export const APP_TITLE: string = piConfigName ? APP_NAME : "π";
-export const CONFIG_DIR_NAME: string = pkg.piConfig?.configDir || ".pi";
+export const APP_NAME: string = pkg.mcpiConfig?.name || "mcpi";
+export const APP_TITLE: string = APP_NAME;
+export const CONFIG_DIR_NAME: string = pkg.mcpiConfig?.configDir || ".mcpi";
 export const VERSION: string = pkg.version || "0.0.0";
 
-// e.g., PI_CODING_AGENT_DIR or TAU_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;
 export const ENV_SESSION_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_SESSION_DIR`;
 
@@ -495,16 +493,45 @@ export function getShareViewerUrl(gistId: string): string | undefined {
 }
 
 // =============================================================================
-// User Config Paths (~/.pi/agent/*)
+// User paths
 // =============================================================================
 
-/** Get the agent config directory (e.g., ~/.pi/agent/) */
+function getPlatformDirectory(envName: "XDG_CONFIG_HOME" | "XDG_STATE_HOME" | "XDG_CACHE_HOME"): string {
+	const configured = process.env[envName]?.trim();
+	if (configured) return expandTildePath(configured);
+
+	if (process.platform === "win32") {
+		const windowsDirectory = envName === "XDG_CONFIG_HOME" ? process.env.APPDATA : process.env.LOCALAPPDATA;
+		if (windowsDirectory?.trim()) return expandTildePath(windowsDirectory);
+		return join(homedir(), "AppData", envName === "XDG_CONFIG_HOME" ? "Roaming" : "Local");
+	}
+
+	const fallback =
+		envName === "XDG_CONFIG_HOME" ? ".config" : envName === "XDG_STATE_HOME" ? join(".local", "state") : ".cache";
+	return join(homedir(), fallback);
+}
+
+/** Get the mcpi config directory. */
 export function getAgentDir(): string {
 	const envDir = process.env[ENV_AGENT_DIR];
 	if (envDir) {
 		return expandTildePath(envDir);
 	}
-	return join(homedir(), CONFIG_DIR_NAME, "agent");
+	return join(getPlatformDirectory("XDG_CONFIG_HOME"), APP_NAME);
+}
+
+/** Get the mcpi state directory. */
+export function getStateDir(): string {
+	const envDir = process.env[ENV_AGENT_DIR];
+	if (envDir) return expandTildePath(envDir);
+	return join(getPlatformDirectory("XDG_STATE_HOME"), APP_NAME);
+}
+
+/** Get the mcpi cache directory. */
+export function getCacheDir(): string {
+	const envDir = process.env[ENV_AGENT_DIR];
+	if (envDir) return expandTildePath(envDir);
+	return join(getPlatformDirectory("XDG_CACHE_HOME"), APP_NAME);
 }
 
 /** Get path to user's custom themes directory */
@@ -534,7 +561,7 @@ export function getToolsDir(): string {
 
 /** Get path to managed binaries directory (fd, rg) */
 export function getBinDir(): string {
-	return join(getAgentDir(), "bin");
+	return join(getCacheDir(), "bin");
 }
 
 /** Get path to prompt templates directory */
@@ -544,10 +571,15 @@ export function getPromptsDir(): string {
 
 /** Get path to sessions directory */
 export function getSessionsDir(): string {
-	return join(getAgentDir(), "sessions");
+	return join(getStateDir(), "sessions");
+}
+
+/** Get path to the persisted remote model catalog cache. */
+export function getModelsStorePath(): string {
+	return join(getCacheDir(), "models-store.json");
 }
 
 /** Get path to debug log file */
 export function getDebugLogPath(): string {
-	return join(getAgentDir(), `${APP_NAME}-debug.log`);
+	return join(getStateDir(), `${APP_NAME}-debug.log`);
 }

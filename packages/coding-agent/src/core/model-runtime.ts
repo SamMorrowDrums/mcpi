@@ -37,7 +37,7 @@ import {
 	type StreamOptions,
 } from "@sammorrowdrums/mcpi-ai";
 import * as builtinProviderCatalog from "@sammorrowdrums/mcpi-ai/providers/all";
-import { getAgentDir } from "../config.ts";
+import { getModelsPath, getModelsStorePath } from "../config.ts";
 import { operationSignal, raceWithAbortSignal } from "../utils/abort.ts";
 import { AuthStorage as DefaultAuthStorage } from "./auth-storage.ts";
 import { ModelConfig } from "./model-config.ts";
@@ -126,7 +126,7 @@ function mergeHeaders(
 	return merged;
 }
 
-/** Configured pi-ai Models collection used by coding-agent and SDK consumers. */
+/** Configured mcpi-ai Models collection used by coding-agent and SDK consumers. */
 export class ModelRuntime implements Models {
 	private readonly models: MutableModels;
 	private readonly credentials: RuntimeCredentials;
@@ -171,13 +171,17 @@ export class ModelRuntime implements Models {
 
 	static async create(options: CreateModelRuntimeOptions = {}): Promise<ModelRuntime> {
 		const credentials = new RuntimeCredentials(options.credentials ?? DefaultAuthStorage.create(options.authPath));
-		const modelsPath =
-			options.modelsPath === null ? undefined : (options.modelsPath ?? join(getAgentDir(), "models.json"));
+		const modelsPath = options.modelsPath === null ? undefined : (options.modelsPath ?? getModelsPath());
 		const config = await ModelConfig.load(modelsPath);
 		const modelsStore =
 			options.modelsStore ??
 			(modelsPath
-				? new FileModelsStore(options.modelsStorePath ?? join(dirname(modelsPath), "models-store.json"))
+				? new FileModelsStore(
+						options.modelsStorePath ??
+							(options.modelsPath === undefined
+								? getModelsStorePath()
+								: join(dirname(modelsPath), "models-store.json")),
+					)
 				: new InMemoryCodingAgentModelsStore());
 		const builtinModelDataGeneratedAt = builtinProviderCatalog.getBuiltinModelDataGeneratedAt();
 		const providers = builtinProviderCatalog
@@ -197,7 +201,7 @@ export class ModelRuntime implements Models {
 			modelsPath,
 			modelsStore,
 			providers,
-			process.env.PI_OFFLINE === undefined,
+			process.env.MCPI_OFFLINE === undefined,
 		);
 		runtime.configureRadiusProviders();
 		runtime.rebuildProviders();
@@ -704,7 +708,7 @@ export class ModelRuntime implements Models {
 			...options,
 			allowNetwork: options.allowNetwork ?? this.modelNetworkEnabled,
 		};
-		// Published pi-ai builds before ModelsStore returned void and accepted a provider ID.
+		// Published mcpi-ai builds before ModelsStore returned void and accepted a provider ID.
 		// The fallback keeps source-mode CLI tests working without rebuilding workspace dependencies.
 		const result = ((await this.models.refresh(refreshOptions)) as ModelsRefreshResult | undefined) ?? {
 			aborted: refreshOptions.signal?.aborted ?? false,

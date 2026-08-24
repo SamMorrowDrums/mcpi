@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { Agent, type AgentMessage, setDefaultStreamFn, type ThinkingLevel } from "@sammorrowdrums/mcpi-agent-core";
 import { clampThinkingLevel, type Message, type Model, streamSimple } from "@sammorrowdrums/mcpi-ai/compat";
-import { getAgentDir } from "../config.ts";
+import { getAgentDir, getCacheDir } from "../config.ts";
 import { resolvePath } from "../utils/paths.ts";
 import { AgentSession } from "./agent-session.ts";
 import { formatNoModelsAvailableMessage } from "./auth-guidance.ts";
@@ -32,13 +32,13 @@ import {
 
 // Preserve the pre-0.81 fallback for extensions that construct Agent instances
 // or invoke low-level agent loops without supplying streamFn. Agent core remains
-// provider-agnostic and does not import pi-ai/compat itself.
+// provider-agnostic and does not import mcpi-ai/compat itself.
 setDefaultStreamFn(streamSimple);
 
 export interface CreateAgentSessionOptions {
 	/** Working directory for project-local discovery. Default: process.cwd() */
 	cwd?: string;
-	/** Global config directory. Default: ~/.pi/agent */
+	/** Global config directory. Default: $XDG_CONFIG_HOME/mcpi */
 	agentDir?: string;
 
 	/** Canonical model/auth runtime. Defaults to a runtime using agentDir/auth.json and models.json. */
@@ -62,7 +62,7 @@ export interface CreateAgentSessionOptions {
 	/**
 	 * Optional allowlist of tool names.
 	 *
-	 * When omitted, pi uses the `defaultTools` setting for the initial built-in
+	 * When omitted, mcpi uses the `defaultTools` setting for the initial built-in
 	 * selection when configured. Otherwise it enables the default built-in tools
 	 * (read, bash, edit, write). Extension/custom tools remain enabled unless
 	 * `noTools` changes that default. When provided, only the listed tool names are
@@ -178,10 +178,17 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	const modelRuntime = options.modelRuntime ?? (await ModelRuntime.create({ authPath, modelsPath }));
 
 	const settingsManager = options.settingsManager ?? SettingsManager.create(cwd, agentDir);
-	const sessionManager = options.sessionManager ?? SessionManager.create(cwd, getDefaultSessionDir(cwd, agentDir));
+	const sessionManager =
+		options.sessionManager ??
+		SessionManager.create(cwd, getDefaultSessionDir(cwd, options.agentDir ? agentDir : undefined));
 
 	if (!resourceLoader) {
-		resourceLoader = new DefaultResourceLoader({ cwd, agentDir, settingsManager });
+		resourceLoader = new DefaultResourceLoader({
+			cwd,
+			agentDir,
+			cacheDir: options.agentDir ? agentDir : getCacheDir(),
+			settingsManager,
+		});
 		await resourceLoader.reload();
 		time("resourceLoader.reload");
 	}

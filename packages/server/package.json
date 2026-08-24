@@ -1,7 +1,7 @@
 {
 	"name": "@sammorrowdrums/mcpi-server",
 	"version": "0.84.2",
-	"description": "experimental server package for pi",
+	"description": "Experimental server package for mcpi",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -33,7 +33,7 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"keywords": [
-		"pi",
+		"mcpi",
 		"server"
 	],
 	"author": "Earendil Works",

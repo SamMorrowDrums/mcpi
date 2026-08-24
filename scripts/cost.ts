@@ -2,6 +2,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { homedir } from "node:os";
 
 // Parse args
 const args = process.argv.slice(2);
@@ -30,12 +31,16 @@ if (!directory || !days) {
 
 // Encode directory path to session folder name
 function encodeSessionDir(dir: string): string {
-	// Remove leading slash, replace remaining slashes with dashes
-	const normalized = dir.startsWith("/") ? dir.slice(1) : dir;
-	return "--" + normalized.replace(/\//g, "-") + "--";
+	const normalized = path.resolve(dir).replace(/^[/\\]/, "").replace(/[/\\:]/g, "-");
+	return `--${normalized}--`;
 }
 
-const sessionsBase = path.join(process.env.HOME!, ".pi/agent/sessions");
+const codingAgentDir = process.env.MCPI_CODING_AGENT_DIR?.trim();
+const stateHome =
+	process.platform === "win32"
+		? process.env.LOCALAPPDATA?.trim() || path.join(homedir(), "AppData", "Local")
+		: process.env.XDG_STATE_HOME?.trim() || path.join(homedir(), ".local", "state");
+const sessionsBase = path.join(codingAgentDir || path.join(stateHome, "mcpi"), "sessions");
 const encodedDir = encodeSessionDir(directory);
 const sessionsDir = path.join(sessionsBase, encodedDir);
 

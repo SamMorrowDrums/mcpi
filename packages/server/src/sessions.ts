@@ -210,7 +210,7 @@ export class LiveSessionManager {
 		const runtime = await acquireRuntime();
 		if (this.options.isClosing()) {
 			await runtime.dispose();
-			throw new Error("PiServer closed while acquiring a session runtime");
+			throw new Error("mcpi server closed while acquiring a session runtime");
 		}
 		let live: LiveSession | undefined;
 		try {

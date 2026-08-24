@@ -30,7 +30,7 @@ type ProtocolModelInput = ModelMetadata["input"][number];
 type _AiModelInputsFitProtocol = Assert<AiModelInput extends ProtocolModelInput ? true : false>;
 type _ProtocolModelInputsFitAi = Assert<ProtocolModelInput extends AiModelInput ? true : false>;
 /**
- * Enumerate mapped and intentionally omitted pi-ai fields so additions fail compilation here.
+ * Enumerate mapped and intentionally omitted mcpi-ai fields so additions fail compilation here.
  * Provider replay metadata, diagnostics, cache-write retention splits, model transport settings,
  * model sampling defaults, pricing tiers, and deferred-tool availability remain intentionally
  * server-side.

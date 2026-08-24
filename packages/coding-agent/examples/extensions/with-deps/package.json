@@ -1,5 +1,5 @@
 {
-  "name": "pi-extension-with-deps",
+  "name": "mcpi-extension-with-deps",
   "private": true,
   "version": "0.84.2",
   "type": "module",

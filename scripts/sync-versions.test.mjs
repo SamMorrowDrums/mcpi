@@ -26,7 +26,7 @@ function runSyncVersions(root) {
 }
 
 test("synchronizes private dependencies without touching registry aliases, generated manifests, or published lockstep", async () => {
-	const root = await mkdtemp(join(tmpdir(), "pi-sync-versions-"));
+	const root = await mkdtemp(join(tmpdir(), "mcpi-sync-versions-"));
 	try {
 		await writeManifest(root, "packages/ai", {
 			name: "@sammorrowdrums/mcpi-ai",

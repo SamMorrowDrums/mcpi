@@ -1,14 +1,14 @@
 /**
  * CredentialStore implementation backed by auth.json.
- * Provider auth orchestration belongs to ModelRuntime and pi-ai Models.
+ * Provider auth orchestration belongs to ModelRuntime and mcpi-ai Models.
  */
 
 import type { AuthOperationOptions, Credential, CredentialInfo, CredentialStore } from "@sammorrowdrums/mcpi-ai";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
+import { dirname } from "path";
 import lockfile from "proper-lockfile";
 import { setTimeout as sleep } from "timers/promises";
-import { getAgentDir } from "../config.ts";
+import { getAuthPath } from "../config.ts";
 import { raceWithAbortSignal } from "../utils/abort.ts";
 import { getFileRevision, normalizePath } from "../utils/paths.ts";
 import { isCommandConfigValue, resolveConfigValue } from "./resolve-config-value.ts";
@@ -47,7 +47,7 @@ export interface AuthStorageBackend {
 export class FileAuthStorageBackend implements AuthStorageBackend {
 	private authPath: string;
 
-	constructor(authPath: string = join(getAgentDir(), "auth.json")) {
+	constructor(authPath: string = getAuthPath()) {
 		this.authPath = normalizePath(authPath);
 	}
 
@@ -205,7 +205,7 @@ export class ReadOnlyAuthStorage implements CredentialStore {
 	private readonly authPath: string;
 	private data: AuthStorageData | undefined;
 
-	constructor(authPath: string = join(getAgentDir(), "auth.json")) {
+	constructor(authPath: string = getAuthPath()) {
 		this.authPath = normalizePath(authPath);
 	}
 
@@ -345,7 +345,7 @@ export class AuthStorage implements CredentialStore {
 		this.reload();
 	}
 
-	static create(authPath: string = join(getAgentDir(), "auth.json")): AuthStorage {
+	static create(authPath: string = getAuthPath()): AuthStorage {
 		const normalizedAuthPath = normalizePath(authPath);
 		return new AuthStorage(new FileAuthStorageBackend(normalizedAuthPath), normalizedAuthPath);
 	}
@@ -494,10 +494,7 @@ export class AuthStorage implements CredentialStore {
  * One-off synchronous read of a stored credential from an auth.json file,
  * without instantiating a store or resolving configured key values.
  */
-export function readStoredCredential(
-	providerId: string,
-	authPath: string = join(getAgentDir(), "auth.json"),
-): Credential | undefined {
+export function readStoredCredential(providerId: string, authPath: string = getAuthPath()): Credential | undefined {
 	try {
 		const data = JSON.parse(readFileSync(normalizePath(authPath), "utf-8")) as AuthStorageData;
 		return data[providerId];

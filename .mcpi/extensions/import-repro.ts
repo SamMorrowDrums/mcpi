@@ -1,5 +1,5 @@
 /**
- * Import a pi session shared as a gist by the issue-analysis CI workflow
+ * Import an mcpi session shared as a gist by the issue-analysis CI workflow
  * (.github/workflows/issue-analysis.yml) and switch to it.
  *
  * The CI job runs in a high-entropy checkout directory; this command rewrites
@@ -12,7 +12,7 @@
  *   /ir https://pi.dev/session/#b4d100022aefb12f25dd2d8485e0a82a
  *   /ir https://github.com/SamMorrowDrums/mcpi/issues/123
  *
- *   pi "/ir <gist-id>"
+ *   mcpi "/ir <gist-id>"
  */
 
 import { Buffer } from "node:buffer";
@@ -74,7 +74,9 @@ function parseRef(
 
 	if (GIST_ID_RE.test(ref)) return { type: "gist", id: ref };
 
-	throw new Error(`expected a gist ID, gist URL, pi.dev share URL, issue URL, .html file, or .jsonl file: ${ref}`);
+	throw new Error(
+		`expected a gist ID, gist URL, upstream pi.dev share URL, issue URL, .html file, or .jsonl file: ${ref}`,
+	);
 }
 
 function parseSessionJsonl(raw: string): { header: SessionHeader; jsonl: string } {
@@ -95,22 +97,22 @@ function parseSessionJsonl(raw: string): { header: SessionHeader; jsonl: string 
 
 function decodeExportedHtml(html: string): { header: SessionHeader; jsonl: string } {
 	const match = html.match(SESSION_DATA_RE);
-	if (!match) throw new Error("HTML does not contain embedded pi session data");
+	if (!match) throw new Error("HTML does not contain embedded mcpi session data");
 
 	let data: unknown;
 	try {
 		data = JSON.parse(Buffer.from(match[1], "base64").toString("utf8"));
 	} catch {
-		throw new Error("embedded pi session data is not valid JSON");
+		throw new Error("embedded mcpi session data is not valid JSON");
 	}
 
 	const sessionData = data as Partial<ExportedSessionData>;
 	const header = sessionData.header;
 	if (!header || header.type !== "session" || typeof header.id !== "string" || typeof header.cwd !== "string") {
-		throw new Error("embedded pi session data has no valid session header");
+		throw new Error("embedded mcpi session data has no valid session header");
 	}
 	if (!Array.isArray(sessionData.entries)) {
-		throw new Error("embedded pi session data has no entries array");
+		throw new Error("embedded mcpi session data has no entries array");
 	}
 
 	const lines = [header, ...sessionData.entries].map((entry) => JSON.stringify(entry));
@@ -171,7 +173,7 @@ function getCwdRewriteVariants(sourceCwd: string): string[] {
 
 function getCiWorkdirName(sourceCwd: string): string | undefined {
 	const name = getPathTailName(sourceCwd);
-	return /^pi-ci-[0-9a-f]{32}$/i.test(name) ? name : undefined;
+	return /^mcpi-ci-[0-9a-f]{32}$/i.test(name) ? name : undefined;
 }
 
 function detectSessionPlatform(cwd: string): SessionPlatform {
@@ -286,7 +288,7 @@ export default function (pi: ExtensionAPI) {
 		handler: async (args: string, ctx: ExtensionCommandContext) => {
 			const ref = args.trim();
 			if (!ref) {
-				ctx.ui.notify("Usage: /ir <gist-id | gist-url | pi.dev/session URL | issue URL>", "error");
+				ctx.ui.notify("Usage: /ir <gist-id | gist-url | upstream pi.dev/session URL | issue URL>", "error");
 				return;
 			}
 

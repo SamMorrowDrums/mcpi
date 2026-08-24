@@ -4,12 +4,13 @@ import { createModelRegistry, getModelRuntime } from "./model-runtime-test-utils
  */
 
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { Agent } from "@sammorrowdrums/mcpi-agent-core";
 import type { OAuthCredentials } from "@sammorrowdrums/mcpi-ai";
 import { getModel, streamSimple } from "@sammorrowdrums/mcpi-ai/compat";
 import { builtinProviders } from "@sammorrowdrums/mcpi-ai/providers/all";
+import { getAgentDir, getAuthPath } from "../src/config.ts";
 import { AgentSession } from "../src/core/agent-session.ts";
 import { AuthStorage } from "../src/core/auth-storage.ts";
 import { createEventBus } from "../src/core/event-bus.ts";
@@ -32,10 +33,10 @@ import { createCodingTools } from "../src/index.ts";
 export const API_KEY = process.env.ANTHROPIC_OAUTH_TOKEN || process.env.ANTHROPIC_API_KEY;
 
 // ============================================================================
-// OAuth API key resolution from ~/.pi/agent/auth.json
+// OAuth API key resolution from the mcpi config directory
 // ============================================================================
 
-const AUTH_PATH = join(homedir(), ".pi", "agent", "auth.json");
+const AUTH_PATH = getAuthPath();
 
 type ApiKeyCredential = {
 	type: "api_key";
@@ -72,7 +73,7 @@ function saveAuthStorage(storage: AuthStorageData): void {
 }
 
 /**
- * Resolve API key for a provider from ~/.pi/agent/auth.json
+ * Resolve API key for a provider from mcpi's auth.json
  *
  * For API key credentials, returns the key directly.
  * For OAuth credentials, returns the access token (refreshing if expired and saving back).
@@ -104,18 +105,18 @@ export async function resolveApiKey(provider: string): Promise<string | undefine
 }
 
 /**
- * Check if a provider has credentials in ~/.pi/agent/auth.json
+ * Check if a provider has credentials in mcpi's auth.json
  */
 export function hasAuthForProvider(provider: string): boolean {
 	const storage = loadAuthStorage();
 	return provider in storage;
 }
 
-/** Path to the real pi agent config directory */
-export const PI_AGENT_DIR = join(homedir(), ".pi", "agent");
+/** Path to the real mcpi config directory */
+export const MCPI_AGENT_DIR = getAgentDir();
 
 /**
- * Get an AuthStorage instance backed by ~/.pi/agent/auth.json
+ * Get an AuthStorage instance backed by mcpi's auth.json
  * Use this for tests that need real OAuth credentials.
  */
 export function getRealAuthStorage(): AuthStorage {
@@ -237,7 +238,7 @@ export function createTestResourceLoader(options: CreateTestResourceLoaderOption
  * Use this for e2e tests that need real LLM calls.
  */
 export async function createTestSession(options: TestSessionOptions = {}): Promise<TestSessionContext> {
-	const tempDir = join(tmpdir(), `pi-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+	const tempDir = join(tmpdir(), `mcpi-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	mkdirSync(tempDir, { recursive: true });
 
 	const model = getModel("anthropic", "claude-sonnet-4-5")!;

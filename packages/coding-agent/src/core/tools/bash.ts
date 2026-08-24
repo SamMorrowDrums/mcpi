@@ -80,9 +80,9 @@ export interface BashOperations {
 }
 
 /**
- * Create bash operations using pi's built-in local shell execution backend.
+ * Create bash operations using mcpi's built-in local shell execution backend.
  *
- * This is useful for extensions that intercept user_bash and still want pi's
+ * This is useful for extensions that intercept user_bash and still want mcpi's
  * standard local shell behavior while wrapping or rewriting commands.
  */
 export function createLocalBashOperations(options?: { shellPath?: string }): BashOperations {
@@ -169,21 +169,21 @@ function resolveSpawnContext(
 	ctx: ExtensionContext | undefined,
 ): BashSpawnContext {
 	const env = { ...getShellEnv() };
-	delete env.PI_SESSION_ID;
-	delete env.PI_SESSION_FILE;
-	delete env.PI_PROVIDER;
-	delete env.PI_MODEL;
-	delete env.PI_REASONING_LEVEL;
+	delete env.MCPI_SESSION_ID;
+	delete env.MCPI_SESSION_FILE;
+	delete env.MCPI_PROVIDER;
+	delete env.MCPI_MODEL;
+	delete env.MCPI_REASONING_LEVEL;
 	if (exposeSessionEnvironment && ctx) {
 		const model = ctx.model;
-		env.PI_SESSION_ID = ctx.sessionManager.getSessionId();
+		env.MCPI_SESSION_ID = ctx.sessionManager.getSessionId();
 		const sessionFile = ctx.sessionManager.getSessionFile();
-		if (sessionFile) env.PI_SESSION_FILE = sessionFile;
+		if (sessionFile) env.MCPI_SESSION_FILE = sessionFile;
 		if (model) {
-			env.PI_PROVIDER = model.provider;
-			env.PI_MODEL = model.id;
+			env.MCPI_PROVIDER = model.provider;
+			env.MCPI_MODEL = model.id;
 		}
-		if (ctx.thinkingLevel) env.PI_REASONING_LEVEL = ctx.thinkingLevel;
+		if (ctx.thinkingLevel) env.MCPI_REASONING_LEVEL = ctx.thinkingLevel;
 	}
 	const baseContext: BashSpawnContext = { command, cwd, env };
 	return spawnHook ? spawnHook(baseContext) : baseContext;
@@ -196,7 +196,7 @@ export interface BashToolOptions {
 	commandPrefix?: string;
 	/** Optional explicit shell path from settings */
 	shellPath?: string;
-	/** Expose current Pi session metadata as PI_* environment variables. Default: true */
+	/** Expose current mcpi session metadata as MCPI_* environment variables. Default: true */
 	exposeSessionEnvironment?: boolean;
 	/** Hook to adjust command, cwd, or env before execution */
 	spawnHook?: BashSpawnHook;
@@ -344,7 +344,7 @@ export function createBashToolDefinition(
 		) {
 			const resolvedCommand = commandPrefix ? `${commandPrefix}\n${command}` : command;
 			const spawnContext = resolveSpawnContext(resolvedCommand, cwd, spawnHook, exposeSessionEnvironment, ctx);
-			const output = new OutputAccumulator({ tempFilePrefix: "pi-bash" });
+			const output = new OutputAccumulator({ tempFilePrefix: "mcpi-bash" });
 			let acceptingOutput = true;
 			let updateTimer: NodeJS.Timeout | undefined;
 			let updateDirty = false;

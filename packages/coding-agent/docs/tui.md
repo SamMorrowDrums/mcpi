@@ -1,4 +1,4 @@
-> pi can create TUI components. Ask it to build one for your use case.
+> mcpi can create TUI components. Ask it to build one for your use case.
 
 # TUI Components
 
@@ -52,7 +52,7 @@ When a `Focusable` component has focus, TUI:
 3. Positions the hardware terminal cursor at that location
 4. Shows the hardware cursor only when `showHardwareCursor` is enabled
 
-The cursor remains hidden by default. This keeps the fake cursor rendering, while still positioning the hardware cursor for terminals that track IME candidate windows with hidden cursors. Some terminals require a visible hardware cursor for IME positioning; enable it with `showHardwareCursor`, `setShowHardwareCursor(true)`, or `PI_HARDWARE_CURSOR=1`. The `Editor` and `Input` built-in components already implement this interface.
+The cursor remains hidden by default. This keeps the fake cursor rendering, while still positioning the hardware cursor for terminals that track IME candidate windows with hidden cursors. Some terminals require a visible hardware cursor for IME positioning; enable it with `showHardwareCursor`, `setShowHardwareCursor(true)`, or `MCPI_HARDWARE_CURSOR=1`. The `Editor` and `Input` built-in components already implement this interface.
 
 ### Container Components with Embedded Inputs
 
@@ -469,10 +469,10 @@ interface MyTheme {
 
 ## Debug logging
 
-Set `PI_TUI_WRITE_LOG` to capture the raw ANSI stream written to stdout.
+Set `MCPI_TUI_WRITE_LOG` to capture the raw ANSI stream written to stdout.
 
 ```bash
-PI_TUI_WRITE_LOG=/tmp/tui-ansi.log npx tsx packages/tui/test/chat-simple.ts
+MCPI_TUI_WRITE_LOG="${XDG_STATE_HOME:-$HOME/.local/state}/mcpi/tui-ansi.log" npx tsx packages/tui/test/chat-simple.ts
 ```
 
 ## Performance
@@ -761,7 +761,7 @@ ctx.ui.setStatus("my-ext", undefined);
 
 ### Pattern 4b: Working Indicator Customization
 
-Customize the inline working indicator shown while pi is streaming a response.
+Customize the inline working indicator shown while mcpi is streaming a response.
 
 ```typescript
 // Static indicator
@@ -781,7 +781,7 @@ ctx.ui.setWorkingIndicator({
 // Hide the indicator entirely
 ctx.ui.setWorkingIndicator({ frames: [] });
 
-// Restore pi's default spinner
+// Restore mcpi's default spinner
 ctx.ui.setWorkingIndicator();
 ```
 

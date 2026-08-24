@@ -8,11 +8,11 @@ describe("resource formatting helpers", () => {
 			name: "inspect",
 			description: "Inspect things",
 			content: "Use inspection tools.",
-			filePath: "/project/.pi/skills/inspect/SKILL.md",
+			filePath: "/project/.mcpi/skills/inspect/SKILL.md",
 		};
 
 		expect(formatSkillInvocation(skill, "Check errors.")).toBe(
-			'<skill name="inspect" location="/project/.pi/skills/inspect/SKILL.md">\nReferences are relative to /project/.pi/skills/inspect.\n\nUse inspection tools.\n</skill>\n\nCheck errors.',
+			'<skill name="inspect" location="/project/.mcpi/skills/inspect/SKILL.md">\nReferences are relative to /project/.mcpi/skills/inspect.\n\nUse inspection tools.\n</skill>\n\nCheck errors.',
 		);
 	});
 

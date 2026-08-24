@@ -2,9 +2,13 @@
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- mcpi no longer reads the legacy single-root layout or old names as a silent fallback. Move settings, auth, models, trust data, and user extensions/skills/prompts/themes to the platform config directory (`$XDG_CONFIG_HOME/mcpi`, fallback `~/.config/mcpi`; `%APPDATA%\mcpi` on Windows); move sessions to the platform state directory's `sessions/` subdirectory (`$XDG_STATE_HOME/mcpi`, fallback `~/.local/state/mcpi`; `%LOCALAPPDATA%\mcpi` on Windows); and recreate disposable package installs, binaries, and catalog caches under the platform cache directory (`$XDG_CACHE_HOME/mcpi`, fallback `~/.cache/mcpi`; `%LOCALAPPDATA%\mcpi` on Windows). Rename project `.pi` directories to `.mcpi` and every public `PI_*` variable or secret to `MCPI_*`. `MCPI_CODING_AGENT_DIR` remains an explicit single-root override. The extension API identifier and parameter `pi`, `pi.setEnv()`/`pi.unsetEnv()`, the extension package manifest `pi` field, internal upstream API/protocol symbols, Radius, `@mariozechner/clipboard`, and upstream attribution/licensing deliberately retain their existing names.
+
 ### Added
 
-- Added `pi.setEnv(key, value)` and `pi.unsetEnv(key)` for setting environment variables on every subprocess Pi spawns for the session, covering both the bash tool and `pi.exec()`. `pi.unsetEnv()` also masks variables Pi inherited, and neither method mutates Pi's own `process.env`. See [Session Environment](docs/extensions.md#session-environment).
+- Added `pi.setEnv(key, value)` and `pi.unsetEnv(key)` for setting environment variables on every subprocess mcpi spawns for the session, covering both the bash tool and `pi.exec()`. `pi.unsetEnv()` also masks variables mcpi inherited, and neither method mutates mcpi's own `process.env`. See [Session Environment](docs/extensions.md#session-environment).
 - Added an `env` option to `pi.exec()` for setting variables on a single call, taking precedence over the session environment.
 
 ### Changed
@@ -13,12 +17,12 @@
 - Changelog and release-note links now resolve relative paths against `SamMorrowDrums/mcpi`. Because mcpi is a fork rather than a rename, inherited `pi-mono` issue and pull request links continue to resolve against `earendil-works/pi` so upstream numbering stays correct.
 - The self-update instruction for binary installs now points at mcpi's releases instead of upstream's.
 - Release archives, the source archive, and the standalone executable inside each archive are now named `mcpi` rather than `pi` (for example `mcpi-linux-x64.tar.gz` and `mcpi-<version>-source.tar.gz`). The from-source launcher is now `mcpi-test.sh`.
-- The startup update check now reads mcpi's GitHub releases (`api.github.com/repos/SamMorrowDrums/mcpi/releases/latest`) instead of upstream's `pi.dev` endpoint, so it reports the same releases the self-update instructions point at. `PI_OFFLINE` and `PI_SKIP_VERSION_CHECK` continue to disable it.
+- The startup update check now reads mcpi's GitHub releases (`api.github.com/repos/SamMorrowDrums/mcpi/releases/latest`) instead of upstream's `pi.dev` endpoint, so it reports the same releases the self-update instructions point at. `MCPI_OFFLINE` and `MCPI_SKIP_VERSION_CHECK` disable it.
 - `/changelog` now opens mcpi's releases page.
 - Provider attribution headers now identify mcpi (`HTTP-Referer`, OpenRouter title, Cloudflare user agent, and the OpenCode client header), and the HTTP user agent product token is now `mcpi/<version>`. Providers that use attribution for identification still receive it.
 - The remote model catalog overlay is now opt-in. mcpi serves the catalog bundled with the release and makes no catalog network request unless `MCPI_CATALOG_URL` is set.
-- `/share` now requires `MCPI_SHARE_VIEWER_URL` (renamed from `PI_SHARE_VIEWER_URL`, with no compatibility alias). mcpi hosts no transcript viewer, so when it is unset `/share` still creates and reports the gist but reports that no viewer is configured rather than printing a URL that would not load.
-- `enableInstallTelemetry` and `PI_TELEMETRY` now only control provider attribution headers.
+- `/share` now requires `MCPI_SHARE_VIEWER_URL`, with no compatibility alias for the legacy prefix. mcpi hosts no transcript viewer, so when it is unset `/share` still creates and reports the gist but reports that no viewer is configured rather than printing a URL that would not load.
+- `enableInstallTelemetry` and `MCPI_TELEMETRY` now only control provider attribution headers.
 
 ### Removed
 

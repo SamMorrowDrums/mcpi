@@ -31,6 +31,7 @@ function initGitRepo(repoDir: string): void {
 	git(["init", "--initial-branch=main"], repoDir);
 	git(["config", "--local", "user.email", "test@test.com"], repoDir);
 	git(["config", "--local", "user.name", "Test"], repoDir);
+	git(["config", "--local", "commit.gpgsign", "false"], repoDir);
 }
 
 // Helper to create a commit with a file
@@ -471,7 +472,7 @@ describe("DefaultPackageManager git update", () => {
 			createCommit(remoteDir, "extension.ts", "// v2", "Second commit");
 
 			// The project-scope install path should not exist before or after update
-			const projectGitDir = join(tempDir, ".pi", "git", "github.com", "test", "extension");
+			const projectGitDir = join(tempDir, ".mcpi", "git", "github.com", "test", "extension");
 			expect(existsSync(projectGitDir)).toBe(false);
 
 			await packageManager.update(gitSource);

@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { ThinkingLevel } from "@sammorrowdrums/mcpi-agent-core";
 import type { Model } from "@sammorrowdrums/mcpi-ai";
-import { getAgentDir } from "../config.ts";
+import { getAgentDir, getCacheDir } from "../config.ts";
 import { resolvePath } from "../utils/paths.ts";
 import type { SessionStartEvent, ToolDefinition } from "./extensions/index.ts";
 import { ModelRuntime } from "./model-runtime.ts";
@@ -37,6 +37,7 @@ export interface AgentSessionRuntimeDiagnostic {
 export interface CreateAgentSessionServicesOptions {
 	cwd: string;
 	agentDir?: string;
+	cacheDir?: string;
 	settingsManager?: SettingsManager;
 	modelRuntime?: ModelRuntime;
 	modelRuntimeSignal?: AbortSignal;
@@ -137,11 +138,13 @@ export async function createAgentSessionServices(
 ): Promise<AgentSessionServices> {
 	const cwd = resolvePath(options.cwd);
 	const agentDir = options.agentDir ? resolvePath(options.agentDir) : getAgentDir();
+	const cacheDir = options.cacheDir ? resolvePath(options.cacheDir) : options.agentDir ? agentDir : getCacheDir();
 	const modelRuntime =
 		options.modelRuntime ??
 		(await ModelRuntime.create({
 			authPath: join(agentDir, "auth.json"),
 			modelsPath: join(agentDir, "models.json"),
+			modelsStorePath: join(cacheDir, "models-store.json"),
 			signal: options.modelRuntimeSignal,
 		}));
 	const settingsManager = options.settingsManager ?? SettingsManager.create(cwd, agentDir);
@@ -149,6 +152,7 @@ export async function createAgentSessionServices(
 		...(options.resourceLoaderOptions ?? {}),
 		cwd,
 		agentDir,
+		cacheDir,
 		settingsManager,
 	});
 	await resourceLoader.reload(options.resourceLoaderReloadOptions);

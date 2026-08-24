@@ -10,12 +10,12 @@ import {
 } from "vitest";
 import type { HarnessRun } from "vitest-evals/harness";
 
-export const PI_SESSION_SNAPSHOT_ARTIFACT = "piSessionJsonl";
+export const MCPI_SESSION_SNAPSHOT_ARTIFACT = "mcpiSessionJsonl";
 
-const evalSessionArtifactKey = Symbol("pi-evals-session-artifact");
-const evalSourceArtifactKey = Symbol("pi-evals-source-artifact");
+const evalSessionArtifactKey = Symbol("mcpi-evals-session-artifact");
+const evalSourceArtifactKey = Symbol("mcpi-evals-source-artifact");
 
-interface PiSessionAttachment extends TestAttachment {
+interface McpiSessionAttachment extends TestAttachment {
 	name: "session.jsonl";
 	contentType: "application/jsonl";
 	body: string;
@@ -29,10 +29,10 @@ export interface SourceAttachment extends TestAttachment {
 	bodyEncoding: "utf-8";
 }
 
-interface PiSessionArtifact extends TestArtifactBase {
+interface McpiSessionArtifact extends TestArtifactBase {
 	type: "@sammorrowdrums/mcpi-evals:session";
 	runId: string;
-	attachments: [PiSessionAttachment] | [];
+	attachments: [McpiSessionAttachment] | [];
 }
 
 interface SourceArtifact extends TestArtifactBase {
@@ -43,7 +43,7 @@ interface SourceArtifact extends TestArtifactBase {
 
 declare module "vitest" {
 	interface TestArtifactRegistry {
-		[evalSessionArtifactKey]: PiSessionArtifact;
+		[evalSessionArtifactKey]: McpiSessionArtifact;
 		[evalSourceArtifactKey]: SourceArtifact;
 	}
 }
@@ -53,10 +53,10 @@ export async function recordEvalSessionArtifact(
 	run: Pick<HarnessRun, "artifacts">,
 ): Promise<void> {
 	const runId = run.artifacts?.runId;
-	const session = run.artifacts?.[PI_SESSION_SNAPSHOT_ARTIFACT];
+	const session = run.artifacts?.[MCPI_SESSION_SNAPSHOT_ARTIFACT];
 	if (session === undefined) return;
 	if (typeof runId !== "string" || typeof session !== "string") {
-		throw new TypeError("Pi eval session artifact metadata is invalid.");
+		throw new TypeError("mcpi eval session artifact metadata is invalid.");
 	}
 	await recordArtifact(task, {
 		type: "@sammorrowdrums/mcpi-evals:session",

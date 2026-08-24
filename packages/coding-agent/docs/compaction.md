@@ -1,6 +1,6 @@
 # Compaction & Branch Summarization
 
-LLMs have limited context windows. When conversations grow too long, Pi uses compaction to summarize older content while preserving recent work. This page covers both auto-compaction and branch summarization.
+LLMs have limited context windows. When conversations grow too long, mcpi uses compaction to summarize older content while preserving recent work. This page covers both auto-compaction and branch summarization.
 
 **Source files** ([mcpi](https://github.com/SamMorrowDrums/mcpi)):
 - [`packages/coding-agent/src/core/compaction/compaction.ts`](https://github.com/SamMorrowDrums/mcpi/blob/main/packages/coding-agent/src/core/compaction/compaction.ts) - Auto-compaction logic
@@ -13,7 +13,7 @@ For TypeScript definitions in your project, inspect `node_modules/@sammorrowdrum
 
 ## Overview
 
-Pi has two summarization mechanisms:
+mcpi has two summarization mechanisms:
 
 | Mechanism | Trigger | Purpose |
 |-----------|---------|---------|
@@ -32,13 +32,13 @@ Auto-compaction triggers when:
 contextTokens > contextWindow - reserveTokens
 ```
 
-By default, `reserveTokens` is 16384 tokens (configurable in `~/.pi/agent/settings.json` or `<project-dir>/.pi/settings.json`). This leaves room for the LLM's response.
+By default, `reserveTokens` is 16384 tokens (configurable in the global config `settings.json` or `<project-dir>/.mcpi/settings.json`). This leaves room for the LLM's response.
 
 You can also trigger manually with `/compact [instructions]`, where optional instructions focus the summary.
 
 ### How It Works
 
-1. **Find cut point**: Walk backwards from newest message, accumulating token estimates until `keepRecentTokens` (default 20k, configurable in `~/.pi/agent/settings.json` or `<project-dir>/.pi/settings.json`) is reached
+1. **Find cut point**: Walk backwards from newest message, accumulating token estimates until `keepRecentTokens` (default 20k, configurable in the global config `settings.json` or `<project-dir>/.mcpi/settings.json`) is reached
 2. **Extract messages**: Collect messages from the previous kept boundary (or session start) up to the cut point
 3. **Generate summary**: Call LLM to summarize with structured format, passing the previous summary as iterative context when present
 4. **Append entry**: Save `CompactionEntry` with summary and `firstKeptEntryId`
@@ -76,7 +76,7 @@ What the LLM sees:
     prompt   from cmp          messages from firstKeptEntryId
 ```
 
-On repeated compactions, the summarized span starts at the previous compaction's kept boundary (`firstKeptEntryId`), not at the compaction entry itself, falling back to the entry after the previous compaction if that kept entry cannot be found in the path. This preserves messages that survived the earlier compaction by including them in the next summarization pass as well. Pi also recalculates `tokensBefore` from the rebuilt session context before writing the new `CompactionEntry`, so the token count reflects the actual pre-compaction context being replaced.
+On repeated compactions, the summarized span starts at the previous compaction's kept boundary (`firstKeptEntryId`), not at the compaction entry itself, falling back to the entry after the previous compaction if that kept entry cannot be found in the path. This preserves messages that survived the earlier compaction by including them in the next summarization pass as well. mcpi also recalculates `tokensBefore` from the rebuilt session context before writing the new `CompactionEntry`, so the token count reflects the actual pre-compaction context being replaced.
 
 ### Split Turns
 
@@ -102,7 +102,7 @@ Split turn (one huge turn exceeds budget):
   turnPrefixMessages = [usr, ass, tool, ass, tool, tool]
 ```
 
-For split turns, Pi generates two summaries and merges them:
+For split turns, mcpi generates two summaries and merges them:
 1. **History summary**: Previous context (if any)
 2. **Turn prefix summary**: The early part of the split turn
 
@@ -149,7 +149,7 @@ See [`prepareCompaction()`](https://github.com/SamMorrowDrums/mcpi/blob/main/pac
 
 ### When It Triggers
 
-When you use `/tree` to navigate to a different branch, Pi offers to summarize the work you're leaving. This injects context from the left branch into the new branch.
+When you use `/tree` to navigate to a different branch, mcpi offers to summarize the work you're leaving. This injects context from the left branch into the new branch.
 
 ### How It Works
 
@@ -178,7 +178,7 @@ After navigation with summary:
 
 ### Cumulative File Tracking
 
-Both compaction and branch summarization track files cumulatively. When generating a summary, pi extracts file operations from:
+Both compaction and branch summarization track files cumulatively. When generating a summary, mcpi extracts file operations from:
 - Tool calls in the messages being summarized
 - Previous compaction or branch summary `details` (if any)
 
@@ -380,7 +380,7 @@ See `SessionBeforeTreeEvent` and `TreePreparation` in the types file.
 
 ## Settings
 
-Configure compaction in `~/.pi/agent/settings.json` or `<project-dir>/.pi/settings.json`:
+Configure compaction in the global config `settings.json` or `<project-dir>/.mcpi/settings.json`:
 
 ```json
 {

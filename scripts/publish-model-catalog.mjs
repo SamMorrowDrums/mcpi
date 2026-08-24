@@ -16,7 +16,7 @@ import { isDeepStrictEqual } from "node:util";
 const CATALOG_SCHEMA_VERSION = 1;
 const CATALOG_PREFIX = `models/v${CATALOG_SCHEMA_VERSION}`;
 const CATALOG_INDEX_KEY = `${CATALOG_PREFIX}/index.json`;
-// Bump this only when generated model metadata requires behavior unavailable in older pi clients.
+// Bump this only when generated model metadata requires behavior unavailable in older mcpi clients.
 const MINIMUM_PI_VERSION = "0.80.7";
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -210,7 +210,7 @@ function validateIndex(index) {
 	return index;
 }
 
-function comparePiVersions(left, right) {
+function compareMcpiVersions(left, right) {
 	const leftParts = left.split(".").map(Number);
 	const rightParts = right.split(".").map(Number);
 	for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index++) {
@@ -232,7 +232,7 @@ function buildIndex(existingIndex, publication) {
 	const catalogs = (existingIndex?.catalogs || [])
 		.filter((catalog) => catalog.minimumPiVersion !== MINIMUM_PI_VERSION)
 		.concat(entry)
-		.sort((left, right) => comparePiVersions(left.minimumPiVersion, right.minimumPiVersion));
+		.sort((left, right) => compareMcpiVersions(left.minimumPiVersion, right.minimumPiVersion));
 	return {
 		schemaVersion: CATALOG_SCHEMA_VERSION,
 		defaultRevision: publication.revision,
@@ -260,7 +260,7 @@ async function main() {
 		return;
 	}
 
-	const temporaryDir = mkdtempSync(join(tmpdir(), "pi-model-catalog-"));
+	const temporaryDir = mkdtempSync(join(tmpdir(), "mcpi-model-catalog-"));
 	try {
 		const currentIndexPath = join(temporaryDir, "index-current.json");
 		const hasCurrentIndex = downloadIndex(options.bucket, options.endpoint, currentIndexPath);

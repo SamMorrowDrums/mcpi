@@ -45,7 +45,7 @@ describe("Mermaid rendering", () => {
 		expect(transformMermaid(oversized, { maxWidth: 10 })).toBe(oversized);
 	});
 
-	it("maps semantic spans through the Pi theme", () => {
+	it("maps semantic spans through the mcpi theme", () => {
 		const theme = {
 			fg: (color: string, text: string) => `<${color}>${text}</${color}>`,
 			bold: (text: string) => `<bold>${text}</bold>`,

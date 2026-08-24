@@ -1,6 +1,6 @@
 # @sammorrowdrums/mcpi-protocol
 
-Runtime-neutral schemas, types, CBOR encoding, and byte-stream framing for the experimental pi protocol.
+Runtime-neutral schemas, types, CBOR encoding, and byte-stream framing for the experimental mcpi protocol.
 
 Protocol version `1` uses binary messages with this wire layout:
 

@@ -3,14 +3,14 @@
  *
  * Demonstrates the project_trust event. Install globally or pass via -e:
  *
- *   mkdir -p ~/.pi/agent/extensions
- *   cp packages/coding-agent/examples/extensions/project-trust.ts ~/.pi/agent/extensions/
+ *   mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/mcpi/extensions"
+ *   cp packages/coding-agent/examples/extensions/project-trust.ts "${XDG_CONFIG_HOME:-$HOME/.config}/mcpi/extensions/"
  *
  * Or:
  *
- *   pi -e packages/coding-agent/examples/extensions/project-trust.ts
+ *   mcpi -e packages/coding-agent/examples/extensions/project-trust.ts
  *
- * Try it in a project containing .pi, AGENTS.md/CLAUDE.md, or .agents/skills.
+ * Try it in a project containing .mcpi, AGENTS.md/CLAUDE.md, or .agents/skills.
  */
 
 import type { ExtensionAPI, ProjectTrustEventResult } from "@sammorrowdrums/mcpi";

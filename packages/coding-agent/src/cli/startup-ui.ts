@@ -1,6 +1,14 @@
 import { ProcessTerminal, setKeybindings, type TUI, TuiMainScreen } from "@sammorrowdrums/mcpi-tui";
 import { existsSync } from "fs";
-import { APP_NAME, CONFIG_DIR_NAME, ENV_AGENT_DIR, getAgentDir, getSettingsPath, PACKAGE_NAME } from "../config.ts";
+import {
+	APP_NAME,
+	CONFIG_DIR_NAME,
+	ENV_AGENT_DIR,
+	getAgentDir,
+	getSettingsPath,
+	getStateDir,
+	PACKAGE_NAME,
+} from "../config.ts";
 import { areExperimentalFeaturesEnabled } from "../core/experimental.ts";
 import { KeybindingsManager } from "../core/keybindings.ts";
 import { DefaultPackageManager, type ResolvedResource } from "../core/package-manager.ts";
@@ -24,8 +32,8 @@ import {
 } from "../modes/interactive/theme/theme.ts";
 
 const OFFICIAL_PACKAGE_NAME = "@sammorrowdrums/mcpi";
-const OFFICIAL_APP_NAME = "pi";
-const OFFICIAL_CONFIG_DIR_NAME = ".pi";
+const OFFICIAL_APP_NAME = "mcpi";
+const OFFICIAL_CONFIG_DIR_NAME = ".mcpi";
 
 interface DistributionMetadata {
 	packageName: string;
@@ -79,7 +87,7 @@ export async function createStartupTui(settingsManager: SettingsManager): Promis
 	const terminalTheme = detectTerminalBackgroundFromEnv().theme;
 	initTheme(resolveThemeSetting(settingsManager.getThemeSetting(), terminalTheme) ?? terminalTheme);
 	setKeybindings(KeybindingsManager.create());
-	const ui: TUI = new TuiMainScreen(new ProcessTerminal(), settingsManager.getShowHardwareCursor(), getAgentDir());
+	const ui: TUI = new TuiMainScreen(new ProcessTerminal(), settingsManager.getShowHardwareCursor(), getStateDir());
 	ui.setClearOnShrink(settingsManager.getClearOnShrink());
 	return ui;
 }
@@ -107,8 +115,8 @@ async function clearStartupTui(ui: TUI): Promise<void> {
 
 /**
  * First-time setup runs when all of these hold:
- * - this is the official Pi distribution (not a fork/rebrand)
- * - experimental features are enabled (PI_EXPERIMENTAL=1)
+ * - this is the official mcpi distribution (not a fork/rebrand)
+ * - experimental features are enabled (MCPI_EXPERIMENTAL=1)
  * - the default agent directory is used (no custom agent dir override)
  * - setup was not completed before (settings.json does not exist)
  */

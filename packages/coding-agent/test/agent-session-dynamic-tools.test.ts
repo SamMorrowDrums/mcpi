@@ -78,20 +78,20 @@ describe("AgentSession dynamic tool registration", () => {
 		);
 		await bashTool.execute("bash-env", { command: "printf ok" });
 		expect(sessionEnv).toMatchObject({
-			PI_SESSION_ID: session.sessionId,
-			PI_SESSION_FILE: session.sessionFile,
-			PI_PROVIDER: model.provider,
-			PI_MODEL: model.id,
-			PI_REASONING_LEVEL: session.thinkingLevel,
+			MCPI_SESSION_ID: session.sessionId,
+			MCPI_SESSION_FILE: session.sessionFile,
+			MCPI_PROVIDER: model.provider,
+			MCPI_MODEL: model.id,
+			MCPI_REASONING_LEVEL: session.thinkingLevel,
 		});
 
 		const optedOutBashTool = session.agent.state.tools.find((tool) => tool.name === "bash_without_session_env")!;
 		await optedOutBashTool.execute("bash-no-env", { command: "printf ok" });
-		expect(optedOutEnv).not.toHaveProperty("PI_SESSION_ID");
-		expect(optedOutEnv).not.toHaveProperty("PI_SESSION_FILE");
-		expect(optedOutEnv).not.toHaveProperty("PI_PROVIDER");
-		expect(optedOutEnv).not.toHaveProperty("PI_MODEL");
-		expect(optedOutEnv).not.toHaveProperty("PI_REASONING_LEVEL");
+		expect(optedOutEnv).not.toHaveProperty("MCPI_SESSION_ID");
+		expect(optedOutEnv).not.toHaveProperty("MCPI_SESSION_FILE");
+		expect(optedOutEnv).not.toHaveProperty("MCPI_PROVIDER");
+		expect(optedOutEnv).not.toHaveProperty("MCPI_MODEL");
+		expect(optedOutEnv).not.toHaveProperty("MCPI_REASONING_LEVEL");
 
 		session.dispose();
 	});

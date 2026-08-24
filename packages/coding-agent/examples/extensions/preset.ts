@@ -6,8 +6,8 @@
  * and can be activated via CLI flag, /preset command, or Ctrl+Shift+U to cycle.
  *
  * Config files (merged, project takes precedence):
- * - ~/.pi/agent/presets.json (global)
- * - <cwd>/.pi/presets.json (project-local)
+ * - $XDG_CONFIG_HOME/mcpi/presets.json (global; platform fallback applies)
+ * - <cwd>/.mcpi/presets.json (project-local)
  *
  * Example presets.json:
  * ```json
@@ -30,7 +30,7 @@
  * ```
  *
  * Usage:
- * - `pi --preset plan` - start with plan preset
+ * - `mcpi --preset plan` - start with plan preset
  * - `/preset` - show selector to switch presets mid-session
  * - `/preset implement` - switch to implement preset directly
  * - `Ctrl+Shift+U` - cycle through presets

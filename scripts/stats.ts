@@ -59,6 +59,15 @@ interface Args {
 	sessionsBase: string;
 }
 
+function getDefaultSessionsDir(): string {
+	const codingAgentDir = process.env.MCPI_CODING_AGENT_DIR?.trim();
+	const stateHome =
+		process.platform === "win32"
+			? process.env.LOCALAPPDATA?.trim() || join(homedir(), "AppData", "Local")
+			: process.env.XDG_STATE_HOME?.trim() || join(homedir(), ".local", "state");
+	return join(codingAgentDir || join(stateHome, "mcpi"), "sessions");
+}
+
 function createTotals(): Totals {
 	return {
 		input: 0,
@@ -115,7 +124,7 @@ function parseArgs(): Args {
 	const args = process.argv.slice(2);
 	let days = 7;
 	let cwd = process.cwd();
-	let sessionsBase = join(homedir(), ".pi", "agent", "sessions");
+	let sessionsBase = getDefaultSessionsDir();
 
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
@@ -131,7 +140,7 @@ function parseArgs(): Args {
 Options:
   -n, --days <days>         Number of local calendar days to include (default: 7)
   -d, --dir, --cwd <path>   Project cwd to inspect (default: current cwd)
-  --sessions-base <path>    Sessions base directory (default: ~/.pi/agent/sessions)
+  --sessions-base <path>    Sessions base directory (default: ${getDefaultSessionsDir()})
   -h, --help                Show this help`);
 			process.exit(0);
 		}

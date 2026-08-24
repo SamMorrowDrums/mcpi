@@ -134,7 +134,7 @@ describe("coding-agent Harness construction", () => {
 		const session = new Session(new InMemorySessionStorage({ id: "session-file-harness", createdAt: 1 }));
 		const env = new CapturingExecutionEnv({
 			cwd: process.cwd(),
-			shellEnv: { PI_SESSION_FILE: "/stale/parent.jsonl", PI_CODING_AGENT: "true" },
+			shellEnv: { MCPI_SESSION_FILE: "/stale/parent.jsonl", MCPI_CODING_AGENT: "true" },
 		});
 		const created = await createCodingAgentHarness({
 			session,
@@ -149,15 +149,15 @@ describe("coding-agent Harness construction", () => {
 			if (!bash) throw new Error("Expected the default bash tool");
 
 			const result = await bash.execute("bash-call", {
-				command: `printf '%s' "$PI_SESSION_ID|$PI_SESSION_FILE|$PI_PROVIDER|$PI_MODEL|$PI_REASONING_LEVEL|$PI_CODING_AGENT"`,
+				command: `printf '%s' "$MCPI_SESSION_ID|$MCPI_SESSION_FILE|$MCPI_PROVIDER|$MCPI_MODEL|$MCPI_REASONING_LEVEL|$MCPI_CODING_AGENT"`,
 			});
 
 			expect(env.executionOverrides).toEqual({
-				PI_SESSION_ID: "session-file-harness",
-				PI_SESSION_FILE: "/sessions/current.jsonl",
-				PI_PROVIDER: "google",
-				PI_MODEL: "gemini-2.5-flash",
-				PI_REASONING_LEVEL: "high",
+				MCPI_SESSION_ID: "session-file-harness",
+				MCPI_SESSION_FILE: "/sessions/current.jsonl",
+				MCPI_PROVIDER: "google",
+				MCPI_MODEL: "gemini-2.5-flash",
+				MCPI_REASONING_LEVEL: "high",
 			});
 			expect(result.content).toEqual([
 				{
@@ -175,7 +175,7 @@ describe("coding-agent Harness construction", () => {
 		const session = new Session(new InMemorySessionStorage({ id: "dynamic-bash-session", createdAt: 1 }));
 		const env = new CapturingExecutionEnv({
 			cwd: process.cwd(),
-			shellEnv: { PI_SESSION_FILE: "/stale/parent.jsonl", PI_CODING_AGENT: "true" },
+			shellEnv: { MCPI_SESSION_FILE: "/stale/parent.jsonl", MCPI_CODING_AGENT: "true" },
 		});
 		const created = await createCodingAgentHarness({
 			session,
@@ -191,18 +191,18 @@ describe("coding-agent Harness construction", () => {
 			if (!bash) throw new Error("Expected the default bash tool");
 
 			const result = await bash.execute("bash-call", {
-				command: `printf '%s:%s' "\${PI_SESSION_FILE+x}" "$PI_SESSION_ID|$PI_PROVIDER|$PI_MODEL|$PI_REASONING_LEVEL|$PI_CODING_AGENT"`,
+				command: `printf '%s:%s' "\${MCPI_SESSION_FILE+x}" "$MCPI_SESSION_ID|$MCPI_PROVIDER|$MCPI_MODEL|$MCPI_REASONING_LEVEL|$MCPI_CODING_AGENT"`,
 			});
 
 			expect(env.executionOverrides).toEqual({
-				PI_SESSION_ID: "dynamic-bash-session",
-				PI_SESSION_FILE: "",
-				PI_PROVIDER: "anthropic",
-				PI_MODEL: "claude-sonnet-4-5",
-				PI_REASONING_LEVEL: "low",
+				MCPI_SESSION_ID: "dynamic-bash-session",
+				MCPI_SESSION_FILE: "",
+				MCPI_PROVIDER: "anthropic",
+				MCPI_MODEL: "claude-sonnet-4-5",
+				MCPI_REASONING_LEVEL: "low",
 			});
-			expect(Object.hasOwn(env.executionOverrides ?? {}, "PI_SESSION_FILE")).toBe(true);
-			expect(env.executionOverrides?.PI_SESSION_FILE).toBe("");
+			expect(Object.hasOwn(env.executionOverrides ?? {}, "MCPI_SESSION_FILE")).toBe(true);
+			expect(env.executionOverrides?.MCPI_SESSION_FILE).toBe("");
 			expect(result.content).toEqual([
 				{
 					type: "text",

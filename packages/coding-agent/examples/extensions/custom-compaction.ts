@@ -10,7 +10,7 @@
  * which can be cheaper/faster than the main conversation model.
  *
  * Usage:
- *   pi --extension examples/extensions/custom-compaction.ts
+ *   mcpi --extension examples/extensions/custom-compaction.ts
  */
 
 import type { ExtensionAPI } from "@sammorrowdrums/mcpi";

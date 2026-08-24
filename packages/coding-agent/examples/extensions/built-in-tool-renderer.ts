@@ -22,7 +22,7 @@
  *   toggled the tool output open (via ctrl+e or clicking)
  *
  * Usage:
- *   pi -e ./built-in-tool-renderer.ts
+ *   mcpi -e ./built-in-tool-renderer.ts
  */
 
 import type { BashToolDetails, EditToolDetails, ExtensionAPI, ReadToolDetails } from "@sammorrowdrums/mcpi";

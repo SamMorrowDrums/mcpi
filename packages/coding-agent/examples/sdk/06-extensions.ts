@@ -5,8 +5,8 @@
  * They provide a unified system for extensions, custom tools, commands, and more.
  *
  * By default, extension files are discovered from:
- * - ~/.pi/agent/extensions/
- * - <cwd>/.pi/extensions/
+ * - $XDG_CONFIG_HOME/mcpi/extensions/ (or the platform config fallback)
+ * - <cwd>/.mcpi/extensions/
  * - Paths specified in settings.json "extensions" array
  *
  * An extension is a TypeScript file that exports a default function:

@@ -1,6 +1,6 @@
 # @sammorrowdrums/mcpi-telemetry
 
-Vendor-neutral telemetry contracts and typed schema utilities for pi packages.
+Vendor-neutral telemetry contracts and typed schema utilities for mcpi packages.
 
 This package provides:
 
@@ -10,7 +10,7 @@ This package provides:
 - serializable schema definitions with inferred TypeScript types;
 - no exporter, global current-span state, or dependency on a telemetry backend.
 
-Applications can use the in-memory reference or provide an adapter for OpenTelemetry, Sentry, logs, or another backend. Pi packages pass telemetry contexts explicitly and define their domain schemas separately.
+Applications can use the in-memory reference or provide an adapter for OpenTelemetry, Sentry, logs, or another backend. mcpi packages pass telemetry contexts explicitly and define their domain schemas separately.
 
 ## Table of Contents
 
@@ -24,7 +24,7 @@ Applications can use the in-memory reference or provide an adapter for OpenTelem
 - [Typed Schemas](#typed-schemas)
   - [Start and Completion Attributes](#start-and-completion-attributes)
 - [Schema Metadata](#schema-metadata)
-- [Pi Package Integration](#pi-package-integration)
+- [mcpi Package Integration](#mcpi-package-integration)
 - [Security and Portability](#security-and-portability)
 - [API Reference](#api-reference)
 - [Development](#development)
@@ -129,7 +129,7 @@ An adapter implements `TelemetryContext` and bridges the generic API to its back
 - ignore calls made after settlement;
 - ignore a failed recording call atomically, suppress backend failures, and still execute the business callback exactly once.
 
-Adapters may activate backend-native ambient context internally for automatic instrumentation, but pi code always propagates the parent through `TelemetryContext` arguments. Exporter buffering, flushing, sampling, backend IDs, and backend-specific context objects belong to the adapter. Use the [adapter conformance suite](#adapter-conformance) to check these observable semantics.
+Adapters may activate backend-native ambient context internally for automatic instrumentation, but mcpi code always propagates the parent through `TelemetryContext` arguments. Exporter buffering, flushing, sampling, backend IDs, and backend-specific context objects belong to the adapter. Use the [adapter conformance suite](#adapter-conformance) to check these observable semantics.
 
 ## No-op Context
 
@@ -362,13 +362,13 @@ Parent metadata is descriptive schema data:
 
 Adapters do not need to understand schema objects. Instrumentation helpers and tests use them to keep emitted names and attributes consistent.
 
-## Pi Package Integration
+## mcpi Package Integration
 
 Package ownership is intentionally split:
 
 - `@sammorrowdrums/mcpi-telemetry` owns the vendor-neutral contract, no-op and in-memory reference contexts, schema utilities, and adapter conformance suite;
 - `@sammorrowdrums/mcpi-ai` accepts and propagates `telemetryContext` in provider request options but owns no telemetry schema;
-- `@sammorrowdrums/mcpi-agent-core` owns and exports the pi AI-request and harness schemas, their combined readonly schema tuple, and typed span helpers.
+- `@sammorrowdrums/mcpi-agent-core` owns and exports the AI-request and harness schemas, their combined readonly schema tuple, and typed span helpers.
 
 ```typescript
 import {
@@ -380,7 +380,7 @@ import {
 } from '@sammorrowdrums/mcpi-agent-core';
 ```
 
-The pi schemas use pi-owned `pi.ai.*`, `pi.harness.*`, and `pi.session.*` names. Adapters may translate them to backend conventions without changing the emitted pi vocabulary.
+The established `pi.ai.*`, `pi.harness.*`, and `pi.session.*` schema names are retained as telemetry protocol identifiers so existing adapters do not break. They are compatibility vocabulary, not mcpi product branding. Adapters may translate them to backend conventions without changing the emitted vocabulary.
 
 ## Security and Portability
 

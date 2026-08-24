@@ -15,7 +15,7 @@ const loader1 = new DefaultResourceLoader({
 	agentDir,
 	systemPromptOverride: () => `You are a helpful assistant that speaks like a pirate.
 Always end responses with "Arrr!"`,
-	// Needed to avoid DefaultResourceLoader appending APPEND_SYSTEM.md from ~/.pi/agent or <cwd>/.pi.
+	// Needed to avoid DefaultResourceLoader appending APPEND_SYSTEM.md from the mcpi config directory or <cwd>/.mcpi.
 	appendSystemPromptOverride: () => [],
 });
 await loader1.reload();

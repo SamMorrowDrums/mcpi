@@ -187,10 +187,12 @@ type FlatEntry =
 class ConfigSelectorHeader implements Component {
 	private writeScope: ConfigWriteScope;
 	private projectModeAvailable: boolean;
+	private agentDir: string;
 
-	constructor(writeScope: ConfigWriteScope, projectModeAvailable: boolean) {
+	constructor(writeScope: ConfigWriteScope, projectModeAvailable: boolean, agentDir: string) {
 		this.writeScope = writeScope;
 		this.projectModeAvailable = projectModeAvailable;
+		this.agentDir = agentDir;
 	}
 
 	setWriteScope(writeScope: ConfigWriteScope): void {
@@ -210,7 +212,7 @@ class ConfigSelectorHeader implements Component {
 		const scopeHint =
 			this.writeScope === "project"
 				? theme.fg("muted", `${CONFIG_DIR_NAME}/settings.json · inherited global resources are dimmed`)
-				: theme.fg("muted", `~/${CONFIG_DIR_NAME}/agent/settings.json`);
+				: theme.fg("muted", `${formatBaseDir(this.agentDir)}settings.json`);
 
 		return [
 			truncateToWidth(`${title}${" ".repeat(spacing)}${hint}`, width, ""),
@@ -901,7 +903,7 @@ export class ConfigSelectorComponent extends Container implements Focusable {
 		this.addChild(new Spacer(1));
 		this.addChild(new DynamicBorder());
 		this.addChild(new Spacer(1));
-		this.header = new ConfigSelectorHeader(this.writeScope, projectModeAvailable);
+		this.header = new ConfigSelectorHeader(this.writeScope, projectModeAvailable, agentDir);
 		this.addChild(this.header);
 		this.addChild(new Spacer(1));
 

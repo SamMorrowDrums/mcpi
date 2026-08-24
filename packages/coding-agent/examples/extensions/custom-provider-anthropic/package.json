@@ -1,5 +1,5 @@
 {
-  "name": "pi-extension-custom-provider-anthropic",
+  "name": "mcpi-extension-custom-provider-anthropic",
   "private": true,
   "version": "0.84.2",
   "type": "module",

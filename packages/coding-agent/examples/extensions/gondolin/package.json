@@ -1,5 +1,5 @@
 {
-	"name": "pi-extension-gondolin",
+	"name": "mcpi-extension-gondolin",
 	"private": true,
 	"version": "0.84.2",
 	"type": "module",

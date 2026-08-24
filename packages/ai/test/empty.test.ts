@@ -677,7 +677,7 @@ describe("AI Providers Empty Message Tests", () => {
 	});
 
 	// =========================================================================
-	// OAuth-based providers (credentials from ~/.pi/agent/oauth.json)
+	// OAuth-based providers (credentials from mcpi's config directory)
 	// =========================================================================
 
 	describe("Anthropic OAuth Provider Empty Messages", () => {

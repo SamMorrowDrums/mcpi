@@ -40,7 +40,7 @@ async function closeServer(server: Server, sockets: Set<Socket>): Promise<void> 
 test("rejects invalid Unix transport options", () => {
 	expect(() => createUnixTransportFactory({ path: "" })).toThrow(/must not be empty/);
 	expect(() => createUnixTransportFactory({ path: `/tmp/${"x".repeat(512)}` })).toThrow(/too long/);
-	expect(() => createUnixTransportFactory({ path: "/tmp/pi.sock", maxPendingBytes: 0 })).toThrow(/positive/);
+	expect(() => createUnixTransportFactory({ path: "/tmp/mcpi.sock", maxPendingBytes: 0 })).toThrow(/positive/);
 });
 
 describe.runIf(process.platform !== "win32")("Unix-domain sockets", () => {

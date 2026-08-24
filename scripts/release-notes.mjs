@@ -298,7 +298,7 @@ function uniqueChanges(changes) {
 }
 
 function updateGithubRelease(repo, tag, body) {
-	const tempDir = mkdtempSync(path.join(tmpdir(), "pi-release-notes-"));
+	const tempDir = mkdtempSync(path.join(tmpdir(), "mcpi-release-notes-"));
 	try {
 		const notesPath = path.join(tempDir, "notes.md");
 		writeFileSync(notesPath, body);

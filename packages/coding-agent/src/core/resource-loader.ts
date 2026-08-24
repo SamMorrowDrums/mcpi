@@ -158,6 +158,7 @@ export function loadProjectContextFiles(options: {
 export interface DefaultResourceLoaderOptions {
 	cwd: string;
 	agentDir: string;
+	cacheDir?: string;
 	settingsManager?: SettingsManager;
 	eventBus?: EventBus;
 	additionalExtensionPaths?: string[];
@@ -258,6 +259,7 @@ export class DefaultResourceLoader implements ResourceLoader {
 		this.packageManager = new DefaultPackageManager({
 			cwd: this.cwd,
 			agentDir: this.agentDir,
+			cacheDir: options.cacheDir,
 			settingsManager: this.settingsManager,
 		});
 		this.additionalExtensionPaths = options.additionalExtensionPaths ?? [];

@@ -42,7 +42,7 @@ type OAuthToken = { access: string; refresh: string; expires: number };
 type TokenOperation = "exchange" | "refresh";
 
 function getCallbackHost(): string {
-	return getProviderEnvValue("PI_OAUTH_CALLBACK_HOST") || "127.0.0.1";
+	return getProviderEnvValue("MCPI_OAUTH_CALLBACK_HOST") || "127.0.0.1";
 }
 
 type DeviceAuthInfo = {
@@ -291,7 +291,7 @@ async function pollOpenAICodexDeviceAuth(device: DeviceAuthInfo, signal: AbortSi
 }
 
 async function createAuthorizationFlow(
-	originator: string = "pi",
+	originator: string = "mcpi",
 ): Promise<{ verifier: string; state: string; url: string }> {
 	const { verifier, challenge } = await generatePKCE();
 	const state = createState();

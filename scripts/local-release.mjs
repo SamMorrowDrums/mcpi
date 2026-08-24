@@ -116,7 +116,7 @@ function isInsidePath(child, parent) {
 
 function prepareOutputDirectory(options, repoRoot) {
 	if (!options.outDir) {
-		return mkdtempSync(join(tmpdir(), "pi-local-release-"));
+		return mkdtempSync(join(tmpdir(), "mcpi-local-release-"));
 	}
 
 	const outDir = resolve(options.outDir);
@@ -165,7 +165,7 @@ function buildBunBinaryRelease(targetDirectory, archiveDirectory) {
 	]);
 	rmSync(targetDirectory, { force: true, recursive: true });
 	cpSync(join(binaryBuildDirectory, platform), targetDirectory, { recursive: true });
-	const archiveName = platform.startsWith("windows-") ? `pi-${platform}.zip` : `pi-${platform}.tar.gz`;
+	const archiveName = platform.startsWith("windows-") ? `mcpi-${platform}.zip` : `mcpi-${platform}.tar.gz`;
 	cpSync(join(binaryBuildDirectory, archiveName), join(archiveDirectory, archiveName));
 	return platform;
 }
@@ -277,9 +277,9 @@ for (const tarball of tarballs.values()) {
 if (!options.skipInstall) {
 	console.log("\nLocal Bun binary release:");
 	console.log(`  ${binaryDirectory}`);
-	console.log(`  ${join(outDir, `pi-${binaryPlatform}.${String(binaryPlatform).startsWith("windows-") ? "zip" : "tar.gz"}`)}`);
+	console.log(`  ${join(outDir, `mcpi-${binaryPlatform}.${String(binaryPlatform).startsWith("windows-") ? "zip" : "tar.gz"}`)}`);
 	console.log("\nRun the local Bun binary release from outside the repository:");
-	console.log(`  ${join(binaryDirectory, String(binaryPlatform).startsWith("windows-") ? "pi.exe" : "pi")} --help`);
+	console.log(`  ${join(binaryDirectory, String(binaryPlatform).startsWith("windows-") ? "mcpi.exe" : "mcpi")} --help`);
 
 	console.log("\nIsolated npm install:");
 	console.log(`  ${nodeInstallDirectory}`);

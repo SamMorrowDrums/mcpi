@@ -10,10 +10,10 @@
  * via `tool_call` input mutation without replacing the tool.
  *
  * Config files (merged, project takes precedence):
- * - ~/.pi/agent/extensions/sandbox.json (global)
- * - <cwd>/.pi/sandbox.json (project-local)
+ * - $XDG_CONFIG_HOME/mcpi/extensions/sandbox.json (global; platform fallback applies)
+ * - <cwd>/.mcpi/sandbox.json (project-local)
  *
- * Example .pi/sandbox.json:
+ * Example .mcpi/sandbox.json:
  * ```json
  * {
  *   "enabled": true,
@@ -30,13 +30,13 @@
  * ```
  *
  * Usage:
- * - `pi -e ./sandbox` - sandbox enabled with default/config settings
- * - `pi -e ./sandbox --no-sandbox` - disable sandboxing
+ * - `mcpi -e ./sandbox` - sandbox enabled with default/config settings
+ * - `mcpi -e ./sandbox --no-sandbox` - disable sandboxing
  * - `/sandbox` - show current sandbox configuration
  *
  * Setup:
- * 1. Copy sandbox/ directory to ~/.pi/agent/extensions/
- * 2. Run `npm install` in ~/.pi/agent/extensions/sandbox/
+ * 1. Copy sandbox/ directory to the mcpi config directory's extensions/
+ * 2. Run `npm install` in the copied extensions/sandbox/ directory
  *
  * Linux also requires: bubblewrap, socat, ripgrep
  */

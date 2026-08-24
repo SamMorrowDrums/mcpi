@@ -465,17 +465,17 @@ describe("ToolExecutionComponent parity", () => {
 		},
 		{
 			title: "AGENTS.md",
-			path: join(process.cwd(), ".pi", "AGENTS.md"),
+			path: join(process.cwd(), ".mcpi", "AGENTS.md"),
 			content: "Hidden resource instructions",
-			compact: "read resource .pi/AGENTS.md",
+			compact: "read resource .mcpi/AGENTS.md",
 			hidden: "Hidden resource instructions",
 			absent: undefined,
 		},
 		{
 			title: "AGENTS.override.md",
-			path: join(process.cwd(), ".pi", "AGENTS.override.md"),
+			path: join(process.cwd(), ".mcpi", "AGENTS.override.md"),
 			content: "Hidden override instructions",
-			compact: "read resource .pi/AGENTS.override.md",
+			compact: "read resource .mcpi/AGENTS.override.md",
 			hidden: "Hidden override instructions",
 			absent: undefined,
 		},
@@ -488,7 +488,7 @@ describe("ToolExecutionComponent parity", () => {
 			absent: undefined,
 		},
 		{
-			title: "Pi documentation",
+			title: "mcpi documentation",
 			path: getReadmePath(),
 			content: "Hidden docs content",
 			compact: "read docs README.md",
@@ -512,7 +512,7 @@ describe("ToolExecutionComponent parity", () => {
 			);
 
 			const collapsed = stripAnsi(component.render(120).join("\n"));
-			expect(collapsed).toContain(scenario.compact);
+			expect(collapsed.replace(/\s+/g, " ")).toContain(scenario.compact);
 			expect(collapsed).not.toContain(scenario.hidden);
 			if (scenario.absent) {
 				expect(collapsed).not.toContain(scenario.absent);
@@ -526,7 +526,7 @@ describe("ToolExecutionComponent parity", () => {
 
 	for (const scenario of [
 		{ title: "SKILL.md", path: join(process.cwd(), "attio", "SKILL.md"), compact: "[skill] attio:120-329" },
-		{ title: "Pi documentation", path: getReadmePath(), compact: "read docs README.md:120-329" },
+		{ title: "mcpi documentation", path: getReadmePath(), compact: "read docs README.md:120-329" },
 	] as const) {
 		test(`shows the read line range in compact ${scenario.title} reads before the expand hint`, () => {
 			const component = new ToolExecutionComponent(

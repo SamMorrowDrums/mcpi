@@ -1,7 +1,7 @@
 {
 	"name": "@sammorrowdrums/mcpi-protocol",
 	"version": "0.84.2",
-	"description": "Transport-neutral CBOR protocol for remote pi sessions",
+	"description": "Transport-neutral CBOR protocol for remote mcpi sessions",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -22,7 +22,7 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"keywords": [
-		"pi",
+		"mcpi",
 		"protocol",
 		"cbor",
 		"binary",
