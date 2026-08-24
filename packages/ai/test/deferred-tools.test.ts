@@ -269,6 +269,33 @@ describe("deferred tools", () => {
 		expect(findAnthropicToolResult(payload).content).toEqual([{ type: "tool_reference", tool_name: "late_tool" }]);
 	});
 
+	it("loads a tool introduced by OpenAI history after switching to Anthropic Opus 5", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const assistant = context.messages[1] as AssistantMessage;
+		assistant.api = "openai-responses";
+		assistant.provider = "openai";
+		assistant.model = "gpt-5.4";
+
+		const payload = await capturePayload<AnthropicPayload>(getModel("anthropic", "claude-opus-5"), context);
+
+		expect(payload.tools).toMatchObject([{ name: "base_tool" }, { name: "late_tool", defer_loading: true }]);
+		expect(findAnthropicToolResult(payload).content).toEqual([{ type: "tool_reference", tool_name: "late_tool" }]);
+	});
+
+	// The transcript stays on anthropic-messages across this switch; only the provider changes,
+	// so this pins that the marker survives a provider hop within one API family.
+	it("loads a tool introduced by Copilot Opus 5 history after switching to direct Anthropic", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const assistant = context.messages[1] as AssistantMessage;
+		assistant.provider = "github-copilot";
+		assistant.model = "claude-opus-5";
+
+		const payload = await capturePayload<AnthropicPayload>(getModel("anthropic", "claude-opus-5"), context);
+
+		expect(payload.tools).toMatchObject([{ name: "base_tool" }, { name: "late_tool", defer_loading: true }]);
+		expect(findAnthropicToolResult(payload).content).toEqual([{ type: "tool_reference", tool_name: "late_tool" }]);
+	});
+
 	it("does not resurrect a marked tool missing from Context.tools", async () => {
 		const context = makeContext([makeTool("base_tool")]);
 		const payload = await capturePayload<AnthropicPayload>(getModel("anthropic", "claude-opus-4-6"), context);
