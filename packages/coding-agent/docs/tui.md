@@ -4,7 +4,7 @@
 
 Extensions and custom tools can render custom TUI components for interactive user interfaces. This page covers the component system and available building blocks.
 
-**Source:** [`@sammorrowdrums/mcpi-tui`](https://github.com/earendil-works/pi-mono/tree/main/packages/tui)
+**Source:** [`@sammorrowdrums/mcpi-tui`](https://github.com/SamMorrowDrums/mcpi/tree/main/packages/tui)
 
 ## Component Interface
 
