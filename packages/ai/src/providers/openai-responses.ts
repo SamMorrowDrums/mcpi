@@ -228,11 +228,16 @@ function buildParams(model: Model<"openai-responses">, context: Context, options
 	}
 
 	if (context.tools) {
-		const tools = convertResponsesTools(context.tools);
-		// Auto-inject tool_search when deferred tools are present (OpenAI requires it)
-		if (context.tools.some((t) => (t as { deferred?: boolean }).deferred)) {
-			tools.push({ type: "tool_search" } as any);
+		const namespaceGrouping: Record<string, string> = {};
+		for (const tool of context.tools) {
+			const metadata = tool as { deferred?: boolean; mcpServerName?: string };
+			if (metadata.deferred && metadata.mcpServerName) {
+				namespaceGrouping[tool.name] = metadata.mcpServerName;
+			}
 		}
+		const tools = convertResponsesTools(context.tools, {
+			namespaceGrouping,
+		});
 		params.tools = tools;
 	}
 

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed direct OpenAI Responses deferred-tool requests to keep eager tools in a stable cacheable prefix, group MCP tools by sanitized server namespace, and replay hosted tool-search items with function-call namespaces across turns.
+
 ## [0.70.0] - 2026-04-23
 
 ### Added

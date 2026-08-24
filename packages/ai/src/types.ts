@@ -173,6 +173,8 @@ export interface ToolCall {
 	name: string;
 	arguments: Record<string, any>;
 	thoughtSignature?: string; // Google-specific: opaque signature for reusing thought context
+	/** OpenAI Responses namespace for calls to dynamically loaded or namespaced tools. */
+	namespace?: string;
 }
 
 export interface Usage {
@@ -198,6 +200,12 @@ export interface UserMessage {
 	timestamp: number; // Unix timestamp in milliseconds
 }
 
+/** Provider-tagged server-side tool items retained verbatim for multi-turn replay. */
+export interface AssistantMessageServerTools {
+	provider: string;
+	items?: unknown[];
+}
+
 export interface AssistantMessage {
 	role: "assistant";
 	content: (TextContent | ThinkingContent | ToolCall)[];
@@ -205,6 +213,7 @@ export interface AssistantMessage {
 	provider: Provider;
 	model: string;
 	responseId?: string; // Provider-specific response/message identifier when the upstream API exposes one
+	serverTools?: AssistantMessageServerTools;
 	usage: Usage;
 	stopReason: StopReason;
 	errorMessage?: string;

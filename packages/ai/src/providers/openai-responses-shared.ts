@@ -1,5 +1,7 @@
 import type OpenAI from "openai";
 import type {
+	FunctionTool,
+	NamespaceTool,
 	Tool as OpenAITool,
 	ResponseCreateParamsStreaming,
 	ResponseFunctionCallOutputItemList,
@@ -11,6 +13,8 @@ import type {
 	ResponseOutputMessage,
 	ResponseReasoningItem,
 	ResponseStreamEvent,
+	ResponseToolSearchCall,
+	ResponseToolSearchOutputItem,
 } from "openai/resources/responses/responses.js";
 import { calculateCost } from "../models.js";
 import type {
@@ -81,11 +85,58 @@ export interface ConvertResponsesMessagesOptions {
 
 export interface ConvertResponsesToolsOptions {
 	strict?: boolean | null;
+	/**
+	 * Deferred tools mapped to MCP server names are grouped into namespaces.
+	 * Tool names are keys and their original MCP server names are values.
+	 */
+	namespaceGrouping?: Readonly<Record<string, string>>;
 }
 
 // =============================================================================
 // Message conversion
 // =============================================================================
+
+const OPENAI_RESPONSES_SERVER_TOOLS_PROVIDER = "openai-responses";
+const TOOL_SEARCH_STATUSES = new Set(["in_progress", "completed", "incomplete"]);
+const TOOL_SEARCH_EXECUTIONS = new Set(["server", "client"]);
+
+type OpenAIResponsesServerToolItem = ResponseToolSearchCall | ResponseToolSearchOutputItem;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasToolSearchCommonFields(item: Record<string, unknown>): boolean {
+	return (
+		typeof item.id === "string" &&
+		(item.call_id === null || typeof item.call_id === "string") &&
+		typeof item.execution === "string" &&
+		TOOL_SEARCH_EXECUTIONS.has(item.execution) &&
+		typeof item.status === "string" &&
+		TOOL_SEARCH_STATUSES.has(item.status)
+	);
+}
+
+function isOpenAIResponsesServerToolItem(item: unknown): item is OpenAIResponsesServerToolItem {
+	if (!isRecord(item) || !hasToolSearchCommonFields(item)) return false;
+	if (item.type === "tool_search_call") return "arguments" in item;
+	if (item.type === "tool_search_output") return Array.isArray(item.tools);
+	return false;
+}
+
+function replayableServerToolItems(message: AssistantMessage): OpenAIResponsesServerToolItem[] {
+	if (message.serverTools?.provider !== OPENAI_RESPONSES_SERVER_TOOLS_PROVIDER) return [];
+	return (message.serverTools.items ?? []).filter(isOpenAIResponsesServerToolItem);
+}
+
+function appendServerToolItem(output: AssistantMessage, item: OpenAIResponsesServerToolItem): void {
+	const serverTools =
+		output.serverTools?.provider === OPENAI_RESPONSES_SERVER_TOOLS_PROVIDER
+			? output.serverTools
+			: { provider: OPENAI_RESPONSES_SERVER_TOOLS_PROVIDER };
+	serverTools.items = [...(serverTools.items ?? []), item];
+	output.serverTools = serverTools;
+}
 
 export function convertResponsesMessages<TApi extends Api>(
 	model: Model<TApi>,
@@ -166,8 +217,23 @@ export function convertResponsesMessages<TApi extends Api>(
 				assistantMsg.model !== model.id &&
 				assistantMsg.provider === model.provider &&
 				assistantMsg.api === model.api;
+			const canReplayServerTools =
+				assistantMsg.model === model.id &&
+				assistantMsg.provider === model.provider &&
+				assistantMsg.api === model.api;
+			const serverToolItems = canReplayServerTools ? replayableServerToolItems(assistantMsg) : [];
+			let didReplayServerTools = false;
+			const replayServerTools = () => {
+				if (didReplayServerTools) return;
+				output.push(...serverToolItems);
+				didReplayServerTools = true;
+			};
 
 			for (const block of msg.content) {
+				if (block.type !== "thinking") {
+					// Hosted search runs after reasoning and before the function call it discovers.
+					replayServerTools();
+				}
 				if (block.type === "thinking") {
 					if (block.thinkingSignature) {
 						const reasoningItem = JSON.parse(block.thinkingSignature) as ResponseReasoningItem;
@@ -209,9 +275,11 @@ export function convertResponsesMessages<TApi extends Api>(
 						call_id: callId,
 						name: toolCall.name,
 						arguments: JSON.stringify(toolCall.arguments),
+						...(toolCall.namespace !== undefined ? { namespace: toolCall.namespace } : {}),
 					});
 				}
 			}
+			replayServerTools();
 			if (output.length === 0) continue;
 			messages.push(...output);
 		} else if (msg.role === "toolResult") {
@@ -267,17 +335,68 @@ export function convertResponsesMessages<TApi extends Api>(
 
 export function convertResponsesTools(tools: Tool[], options?: ConvertResponsesToolsOptions): OpenAITool[] {
 	const strict = options?.strict === undefined ? false : options.strict;
-	return tools.map((tool) => {
+	const toFunctionTool = (tool: Tool): FunctionTool => {
 		const deferred = (tool as { deferred?: boolean }).deferred;
 		return {
 			type: "function",
 			name: tool.name,
 			description: tool.description,
-			parameters: tool.parameters as any, // TypeBox already generates JSON Schema
+			parameters: tool.parameters as Record<string, unknown>,
 			strict,
 			...(deferred ? { defer_loading: true } : {}),
 		};
-	});
+	};
+
+	const namespaceMap = options?.namespaceGrouping;
+	if (!namespaceMap) {
+		return tools.map(toFunctionTool);
+	}
+
+	const nonDeferred: FunctionTool[] = [];
+	const deferredStandalone: FunctionTool[] = [];
+	const mcpGrouped = new Map<string, FunctionTool[]>();
+	let hasDeferredTools = false;
+
+	for (const tool of tools) {
+		const deferred = (tool as { deferred?: boolean }).deferred;
+		const functionTool = toFunctionTool(tool);
+		if (!deferred) {
+			nonDeferred.push(functionTool);
+			continue;
+		}
+
+		hasDeferredTools = true;
+		const serverName = namespaceMap[tool.name];
+		if (!serverName) {
+			deferredStandalone.push(functionTool);
+			continue;
+		}
+
+		const serverTools = mcpGrouped.get(serverName);
+		if (serverTools) {
+			serverTools.push(functionTool);
+		} else {
+			mcpGrouped.set(serverName, [functionTool]);
+		}
+	}
+
+	const namespaces: NamespaceTool[] = Array.from(mcpGrouped, ([serverName, serverTools]) => ({
+		type: "namespace",
+		name: sanitizeNamespaceName(serverName),
+		description: `MCP server "${serverName}".`,
+		tools: serverTools,
+	}));
+
+	return [
+		...nonDeferred,
+		...deferredStandalone,
+		...namespaces,
+		...(hasDeferredTools ? ([{ type: "tool_search" }] satisfies OpenAITool[]) : []),
+	];
+}
+
+function sanitizeNamespaceName(name: string): string {
+	return name.replace(/[^a-zA-Z0-9_-]/g, "-");
 }
 
 // =============================================================================
@@ -319,6 +438,7 @@ export async function processResponsesStream<TApi extends Api>(
 					name: item.name,
 					arguments: {},
 					partialJson: item.arguments || "",
+					...(item.namespace !== undefined ? { namespace: item.namespace } : {}),
 				};
 				output.content.push(currentBlock);
 				stream.push({ type: "toolcall_start", contentIndex: blockIndex(), partial: output });
@@ -432,7 +552,9 @@ export async function processResponsesStream<TApi extends Api>(
 		} else if (event.type === "response.output_item.done") {
 			const item = event.item;
 
-			if (item.type === "reasoning" && currentBlock?.type === "thinking") {
+			if (isOpenAIResponsesServerToolItem(item)) {
+				appendServerToolItem(output, item);
+			} else if (item.type === "reasoning" && currentBlock?.type === "thinking") {
 				currentBlock.thinking = item.summary?.map((s) => s.text).join("\n\n") || "";
 				currentBlock.thinkingSignature = JSON.stringify(item);
 				stream.push({
@@ -463,6 +585,9 @@ export async function processResponsesStream<TApi extends Api>(
 					// Finalize in-place and strip the scratch buffer so replay only
 					// carries parsed arguments.
 					currentBlock.arguments = args;
+					if (item.namespace !== undefined) {
+						currentBlock.namespace = item.namespace;
+					}
 					delete (currentBlock as { partialJson?: string }).partialJson;
 					toolCall = currentBlock;
 				} else {
@@ -471,6 +596,7 @@ export async function processResponsesStream<TApi extends Api>(
 						id: `${item.call_id}|${item.id}`,
 						name: item.name,
 						arguments: args,
+						...(item.namespace !== undefined ? { namespace: item.namespace } : {}),
 					};
 				}
 
