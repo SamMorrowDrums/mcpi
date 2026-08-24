@@ -193,6 +193,34 @@ describe("deferred tools", () => {
 		expect(findAnthropicToolResult(payload).content).toEqual([{ type: "tool_reference", tool_name: "late_tool" }]);
 	});
 
+	it("loads a Claude Opus 5 tool at its tool-result marker", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const payload = await capturePayload<AnthropicPayload>(getModel("anthropic", "claude-opus-5"), context);
+
+		expect(payload.tools).toMatchObject([{ name: "base_tool" }, { name: "late_tool", defer_loading: true }]);
+		expect(findAnthropicToolResult(payload).content).toEqual([{ type: "tool_reference", tool_name: "late_tool" }]);
+	});
+
+	it("keeps a Claude Opus 5 tool immediate when it was used before its marker", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const assistant = context.messages[1] as AssistantMessage;
+		assistant.content = [{ type: "toolCall", id: "call_1", name: "late_tool", arguments: {} }];
+		const payload = await capturePayload<AnthropicPayload>(getModel("anthropic", "claude-opus-5"), context);
+
+		expect(payload.tools?.map((tool) => tool.name)).toEqual(["base_tool", "late_tool"]);
+		expect(payload.tools?.every((tool) => !tool.defer_loading)).toBe(true);
+	});
+
+	it("does not defer on the GitHub Copilot Opus 5 variant", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const payload = await capturePayload<AnthropicPayload>(getModel("github-copilot", "claude-opus-5"), context);
+
+		expect(payload.tools?.map((tool) => tool.name)).toEqual(["base_tool", "late_tool"]);
+		expect(payload.tools?.every((tool) => !tool.defer_loading)).toBe(true);
+		const content = findAnthropicToolResult(payload).content;
+		expect(Array.isArray(content) && content.some((block) => block.type === "tool_reference")).toBe(false);
+	});
+
 	it("preserves tool output as sibling content after emitting references", async () => {
 		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
 		const assistant = context.messages[1] as AssistantMessage;
