@@ -411,7 +411,7 @@ Built-in Anthropic models enable `supportsStrictTools` in their model metadata. 
       },
       "models": [
         {
-          "id": "claude-opus-4-7",
+          "id": "claude-opus-5",
           "reasoning": true,
           "input": ["text", "image"]
         }
