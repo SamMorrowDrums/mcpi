@@ -7,9 +7,15 @@
 - Added `pi.setEnv(key, value)` and `pi.unsetEnv(key)` for setting environment variables on every subprocess Pi spawns for the session, covering both the bash tool and `pi.exec()`. `pi.unsetEnv()` also masks variables Pi inherited, and neither method mutates Pi's own `process.env`. See [Session Environment](docs/extensions.md#session-environment).
 - Added an `env` option to `pi.exec()` for setting variables on a single call, taking precedence over the session environment.
 
+### Changed
+
+- Changelog and release-note links now resolve relative paths against `SamMorrowDrums/mcpi`. Because mcpi is a fork rather than a rename, inherited `pi-mono` issue and pull request links continue to resolve against `earendil-works/pi` so upstream numbering stays correct.
+- The self-update instruction for binary installs now points at mcpi's releases instead of upstream's.
+
 ### Removed
 
 - Removed the legacy `@mariozechner/pi-*` module aliases. Extensions must import the current package names.
+- Removed the upstream Earendil announcement card, its `/dementedelves` slash command, and its bundled image. The interactive assets directory and its build and packaging steps are removed with it, since that card was its only consumer.
 
 ## [0.84.2] - 2026-08-14
 

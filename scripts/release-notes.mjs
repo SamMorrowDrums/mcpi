@@ -5,7 +5,10 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-const DEFAULT_REPO = "earendil-works/pi";
+const DEFAULT_REPO = "SamMorrowDrums/mcpi";
+// mcpi is a fork, not a rename: upstream issue and PR numbers do not carry over,
+// so legacy pi-mono URLs canonicalize to upstream rather than to this repo.
+const UPSTREAM_REPO = "earendil-works/pi";
 const DEFAULT_BASE_PATH = "packages/coding-agent";
 const DEFAULT_CHANGELOG = "packages/coding-agent/CHANGELOG.md";
 const DEFAULT_FIX_SINCE_TAG = "v0.74.0";
@@ -195,14 +198,18 @@ function isDirectoryTarget(originalPath, repositoryPath) {
 }
 
 function normalizeLinkTarget(target, options) {
-	let canonicalTarget = target.replace(LEGACY_REPO_RE, `https://github.com/${options.repo}`);
+	let canonicalTarget = target.replace(LEGACY_REPO_RE, `https://github.com/${UPSTREAM_REPO}`);
 	const repoUrl = `https://github.com/${options.repo}`;
 
-	for (const route of ["blob", "tree"]) {
-		for (const branch of ["main", "master"]) {
-			const floatingRefPrefix = `${repoUrl}/${route}/${branch}/`;
-			if (canonicalTarget.startsWith(floatingRefPrefix)) {
-				canonicalTarget = `${repoUrl}/${route}/${options.tag}/${canonicalTarget.slice(floatingRefPrefix.length)}`;
+	// Pin floating refs for both repositories: inherited upstream links resolve
+	// against the upstream tag, mcpi's own links against the mcpi tag.
+	for (const baseUrl of new Set([repoUrl, `https://github.com/${UPSTREAM_REPO}`])) {
+		for (const route of ["blob", "tree"]) {
+			for (const branch of ["main", "master"]) {
+				const floatingRefPrefix = `${baseUrl}/${route}/${branch}/`;
+				if (canonicalTarget.startsWith(floatingRefPrefix)) {
+					canonicalTarget = `${baseUrl}/${route}/${options.tag}/${canonicalTarget.slice(floatingRefPrefix.length)}`;
+				}
 			}
 		}
 	}

@@ -8,7 +8,10 @@ export interface ChangelogEntry {
 	content: string;
 }
 
-const GITHUB_REPO = "earendil-works/pi";
+const GITHUB_REPO = "SamMorrowDrums/mcpi";
+// mcpi is a fork, not a rename: upstream issue and PR numbers do not carry over,
+// so legacy pi-mono URLs canonicalize to upstream rather than to this repo.
+const UPSTREAM_REPO = "earendil-works/pi";
 const CHANGELOG_LINK_BASE_PATH = "packages/coding-agent";
 const LEGACY_REPO_RE = /^https:\/\/github\.com\/(?:badlogic|earendil-works)\/pi-mono(?=\/|$)/;
 const URL_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
@@ -67,14 +70,18 @@ function isDirectoryTarget(originalPath: string, repositoryPath: string): boolea
 }
 
 function normalizeChangelogLinkTarget(target: string, tag: string): string {
-	let canonicalTarget = target.replace(LEGACY_REPO_RE, `https://github.com/${GITHUB_REPO}`);
+	let canonicalTarget = target.replace(LEGACY_REPO_RE, `https://github.com/${UPSTREAM_REPO}`);
 	const repoUrl = `https://github.com/${GITHUB_REPO}`;
 
-	for (const route of ["blob", "tree"]) {
-		for (const branch of ["main", "master"]) {
-			const floatingRefPrefix = `${repoUrl}/${route}/${branch}/`;
-			if (canonicalTarget.startsWith(floatingRefPrefix)) {
-				canonicalTarget = `${repoUrl}/${route}/${tag}/${canonicalTarget.slice(floatingRefPrefix.length)}`;
+	// Pin floating refs for both repositories: inherited upstream links resolve
+	// against the upstream tag, mcpi's own links against the mcpi tag.
+	for (const baseUrl of new Set([repoUrl, `https://github.com/${UPSTREAM_REPO}`])) {
+		for (const route of ["blob", "tree"]) {
+			for (const branch of ["main", "master"]) {
+				const floatingRefPrefix = `${baseUrl}/${route}/${branch}/`;
+				if (canonicalTarget.startsWith(floatingRefPrefix)) {
+					canonicalTarget = `${baseUrl}/${route}/${tag}/${canonicalTarget.slice(floatingRefPrefix.length)}`;
+				}
 			}
 		}
 	}
