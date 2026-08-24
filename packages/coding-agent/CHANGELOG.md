@@ -11,11 +11,13 @@
 
 - Changelog and release-note links now resolve relative paths against `SamMorrowDrums/mcpi`. Because mcpi is a fork rather than a rename, inherited `pi-mono` issue and pull request links continue to resolve against `earendil-works/pi` so upstream numbering stays correct.
 - The self-update instruction for binary installs now points at mcpi's releases instead of upstream's.
+- Release archives, the source archive, and the standalone executable inside each archive are now named `mcpi` rather than `pi` (for example `mcpi-linux-x64.tar.gz` and `mcpi-<version>-source.tar.gz`). The from-source launcher is now `mcpi-test.sh`.
 
 ### Removed
 
 - Removed the legacy `@mariozechner/pi-*` module aliases. Extensions must import the current package names.
 - Removed the upstream Earendil announcement card, its `/dementedelves` slash command, and its bundled image. The interactive assets directory and its build and packaging steps are removed with it, since that card was its only consumer.
+- Removed the release workflow's pi.dev announcement job and its publishing script. The job required upstream's artifact bucket credentials, and publishing the GitHub release depended on it succeeding.
 
 ## [0.84.2] - 2026-08-14
 
