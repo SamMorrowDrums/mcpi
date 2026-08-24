@@ -1647,6 +1647,47 @@ const result = await pi.exec("git", ["status"], { signal, timeout: 5000 });
 // result.stdout, result.stderr, result.code, result.killed
 ```
 
+Pass `env` to set variables for a single call. Values set this way take precedence over the session
+environment described below:
+
+```typescript
+await pi.exec("npm", ["test"], { env: { CI: "1" } });
+```
+
+### Session Environment
+
+#### pi.setEnv(key, value) / pi.unsetEnv(key)
+
+Set environment variables for every subprocess Pi spawns for the rest of the session. This covers
+both the LLM-callable bash tool and `pi.exec()`.
+
+```typescript
+export default function (pi) {
+  pi.setEnv("NO_COLOR", "1");
+  pi.setEnv("MY_TOOL_TOKEN", token);
+}
+```
+
+`pi.unsetEnv(key)` masks a variable so spawned commands do not see it. It removes a value set by
+`pi.setEnv()` *and* hides a variable Pi itself inherited:
+
+```typescript
+pi.unsetEnv("GITHUB_TOKEN"); // Not visible to bash commands or pi.exec()
+```
+
+Semantics:
+
+- The session environment is **shared by all extensions** and applies for the lifetime of the
+  session. Later writes win.
+- Pi's own `process.env` is **never** modified, so masking a variable does not affect Pi itself or
+  anything outside the spawned command.
+- Precedence is: per-call `pi.exec({ env })` > session environment > variables Pi inherited.
+- Session metadata (`PI_SESSION_ID`, `PI_MODEL`, and friends) is injected first, so `pi.setEnv()`
+  can override it and `pi.unsetEnv()` can hide it. See
+  [environment-variables.md](environment-variables.md).
+- Values are applied when each command starts, so calling `pi.setEnv()` from an event handler
+  affects the next command without a restart.
+
 ### pi.getActiveTools() / pi.getAllTools() / pi.setActiveTools(names)
 
 Manage active tools. This works for both built-in tools and dynamically registered tools. `pi.getActiveTools()` returns the active tool names as `string[]`; `pi.getAllTools()` returns metadata for all configured tools.
@@ -2136,6 +2177,10 @@ const bashTool = createBashTool(cwd, {
 ```
 
 See [Bash tool session environment](environment-variables.md#bash-tool-session-environment) for variable semantics. See [examples/extensions/ssh.ts](../examples/extensions/ssh.ts) for a complete SSH example with `--ssh` flag.
+
+When Pi builds its own bash tool it installs a `spawnHook` that applies variables set with
+[`pi.setEnv()`](#session-environment) on top of the session metadata. A `spawnHook` you supply to
+your own `createBashTool()` runs independently of that and is responsible for its own environment.
 
 ### Output Truncation
 

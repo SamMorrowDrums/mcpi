@@ -1333,6 +1333,24 @@ export interface ExtensionAPI {
 	/** Execute a shell command. */
 	exec(command: string, args: string[], options?: ExecOptions): Promise<ExecResult>;
 
+	/**
+	 * Set an environment variable for subprocesses spawned by this session.
+	 *
+	 * Applies to the `bash` tool and to `pi.exec()`. The value is scoped to the
+	 * session and is never written to `process.env`, so it cannot leak into
+	 * other sessions or into pi itself.
+	 */
+	setEnv(key: string, value: string): void;
+
+	/**
+	 * Remove an environment variable from subprocesses spawned by this session.
+	 *
+	 * This masks the variable even when it is inherited from pi's own
+	 * environment, so it can be used to keep a variable out of subprocesses
+	 * entirely rather than only undoing a previous `setEnv()`.
+	 */
+	unsetEnv(key: string): void;
+
 	/** Get the list of currently active tool names. */
 	getActiveTools(): string[];
 
@@ -1599,6 +1617,12 @@ export type SetLabelHandler = (entryId: string, label: string | undefined) => vo
  */
 export interface ExtensionRuntimeState {
 	flagValues: Map<string, boolean | string>;
+	/**
+	 * Session-scoped environment mutations applied to spawned subprocesses.
+	 * `null` masks a variable inherited from pi's own environment.
+	 * Shared across all extensions loaded into the session.
+	 */
+	sessionEnv: Map<string, string | null>;
 	/** Legacy provider-config registrations queued during extension loading, processed when runner binds. */
 	pendingProviderRegistrations: Array<{ name: string; config: ProviderConfig; extensionPath: string }>;
 	/** Native pi-ai provider registrations queued during extension loading, processed when runner binds. */

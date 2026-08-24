@@ -491,6 +491,14 @@ export class ExtensionRunner {
 		return new Map(this.runtime.flagValues);
 	}
 
+	/**
+	 * Session-scoped environment mutations set by extensions via `pi.setEnv()`.
+	 * A `null` value masks a variable inherited from pi's own environment.
+	 */
+	getSessionEnv(): Map<string, string | null> {
+		return new Map(this.runtime.sessionEnv);
+	}
+
 	getShortcuts(resolvedKeybindings: KeybindingsConfig): Map<KeyId, ExtensionShortcut> {
 		this.shortcutDiagnostics = [];
 		const builtinKeybindings = buildBuiltinKeybindings(resolvedKeybindings);

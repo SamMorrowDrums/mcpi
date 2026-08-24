@@ -48,6 +48,12 @@ fi
 
 These variables are injected into the LLM-callable bash tool. They are not injected into user-entered `!` or `!!` commands.
 
+### Extension-Set Session Variables
+
+Extensions can add their own variables to every subprocess Pi spawns for the session with
+[`pi.setEnv()`](extensions.md#session-environment). Those values apply to both the bash tool and
+`pi.exec()`, and are never written to Pi's own `process.env`.
+
 ### Custom Bash Tools
 
 Bash tools created with `createBashTool()` expose the session environment by default when registered with Pi. Injection happens before `spawnHook`, so a hook receives the variables in `ctx.env`:

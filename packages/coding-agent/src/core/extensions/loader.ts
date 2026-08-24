@@ -186,6 +186,7 @@ export function createExtensionRuntime(): ExtensionRuntime {
 		getThinkingLevel: notInitialized,
 		setThinkingLevel: notInitialized,
 		flagValues: new Map(),
+		sessionEnv: new Map(),
 		pendingProviderRegistrations: [],
 		pendingNativeProviderRegistrations: [],
 		assertActive,
@@ -343,7 +344,17 @@ function createExtensionAPI(
 
 		exec(command: string, args: string[], options?: ExecOptions) {
 			runtime.assertActive();
-			return execCommand(command, args, options?.cwd ?? cwd, options);
+			return execCommand(command, args, options?.cwd ?? cwd, options, runtime.sessionEnv);
+		},
+
+		setEnv(key: string, value: string): void {
+			runtime.assertActive();
+			runtime.sessionEnv.set(key, value);
+		},
+
+		unsetEnv(key: string): void {
+			runtime.assertActive();
+			runtime.sessionEnv.set(key, null);
 		},
 
 		getActiveTools(): string[] {

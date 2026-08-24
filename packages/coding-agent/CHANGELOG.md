@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Added `pi.setEnv(key, value)` and `pi.unsetEnv(key)` for setting environment variables on every subprocess Pi spawns for the session, covering both the bash tool and `pi.exec()`. `pi.unsetEnv()` also masks variables Pi inherited, and neither method mutates Pi's own `process.env`. See [Session Environment](docs/extensions.md#session-environment).
+- Added an `env` option to `pi.exec()` for setting variables on a single call, taking precedence over the session environment.
+
+### Removed
+
+- Removed the legacy `@mariozechner/pi-*` module aliases. Extensions must import the current package names.
+
 ## [0.84.2] - 2026-08-14
 
 ### New Features

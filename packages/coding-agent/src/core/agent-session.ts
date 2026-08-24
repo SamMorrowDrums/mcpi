@@ -65,6 +65,7 @@ import {
 	shouldCompact,
 } from "./compaction/index.ts";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.ts";
+import { applyEnvOverlay } from "./env-overlay.ts";
 import { exportSessionToHtml, type ToolHtmlRenderer } from "./export-html/index.ts";
 import { createToolHtmlRenderer } from "./export-html/tool-renderer.ts";
 import {
@@ -2570,7 +2571,16 @@ export class AgentSession {
 				)
 			: createAllToolDefinitions(this._cwd, {
 					read: { autoResizeImages },
-					bash: { commandPrefix: shellCommandPrefix, shellPath },
+					bash: {
+						commandPrefix: shellCommandPrefix,
+						shellPath,
+						// Read the runner at spawn time so extension reload swaps in the new
+						// session environment without rebuilding the tool.
+						spawnHook: (context) => ({
+							...context,
+							env: applyEnvOverlay(context.env, this._extensionRunner.getSessionEnv()),
+						}),
+					},
 				});
 
 		this._baseToolDefinitions = new Map(

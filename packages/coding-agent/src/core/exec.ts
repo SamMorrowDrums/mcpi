@@ -4,6 +4,7 @@
 
 import { spawn } from "node:child_process";
 import { waitForChildProcess } from "../utils/child-process.ts";
+import { applyEnvOverlay, type EnvOverlay } from "./env-overlay.ts";
 
 /**
  * Options for executing shell commands.
@@ -15,6 +16,12 @@ export interface ExecOptions {
 	timeout?: number;
 	/** Working directory */
 	cwd?: string;
+	/**
+	 * Environment mutations merged over the inherited environment.
+	 * A `null` value removes the variable. Takes precedence over any
+	 * session environment set via `pi.setEnv()`.
+	 */
+	env?: Record<string, string | null>;
 }
 
 /**
@@ -36,12 +43,18 @@ export async function execCommand(
 	args: string[],
 	cwd: string,
 	options?: ExecOptions,
+	envOverlay?: EnvOverlay,
 ): Promise<ExecResult> {
 	return new Promise((resolve) => {
+		const overlay: Array<readonly [string, string | null]> = [
+			...(envOverlay ?? []),
+			...Object.entries(options?.env ?? {}),
+		];
 		const proc = spawn(command, args, {
 			cwd,
 			shell: false,
 			stdio: ["ignore", "pipe", "pipe"],
+			...(overlay.length > 0 ? { env: applyEnvOverlay(process.env, overlay) } : {}),
 		});
 
 		let stdout = "";
