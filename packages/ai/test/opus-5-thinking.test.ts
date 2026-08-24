@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getModel, streamSimple } from "../src/compat.ts";
+import { getModel, getSupportedThinkingLevels, streamSimple } from "../src/compat.ts";
 import type { Context, Model, SimpleStreamOptions, ThinkingLevel } from "../src/types.ts";
 
 interface AnthropicThinkingPayload {
@@ -69,6 +69,16 @@ describe("Claude Opus 5 thinking levels", () => {
 		expect(model.reasoning).toBe(true);
 		expect(model.thinkingLevelMap?.xhigh).toBe("xhigh");
 		expect(model.thinkingLevelMap?.max).toBe("max");
+	});
+
+	it("offers xhigh and max on the us Bedrock inference profile we default to", () => {
+		// Bedrock publishes one catalog entry per regional inference profile, so the
+		// sibling global./eu./au./jp. ids can drift from the us. one the resolver picks.
+		// Pin the exact id defaultModelPerProvider["amazon-bedrock"] resolves to.
+		const model = getModel("amazon-bedrock", "us.anthropic.claude-opus-5");
+
+		expect(getSupportedThinkingLevels(model)).toContain("xhigh");
+		expect(getSupportedThinkingLevels(model)).toContain("max");
 	});
 
 	it.each(EFFORT_BY_LEVEL)("maps thinking level %s to adaptive effort %s", async (level, effort) => {
