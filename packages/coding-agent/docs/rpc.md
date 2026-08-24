@@ -288,7 +288,7 @@ Set the reasoning/thinking level for models that support it.
 
 Levels: `"off"`, `"minimal"`, `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"`
 
-`"xhigh"` and `"max"` are exposed only when supported by the selected model. Some models, including GPT-5.6, expose both.
+`"xhigh"` and `"max"` are exposed only when supported by the selected model. Some models, including GPT-5.6 and Claude Opus 5, expose both.
 
 Response:
 ```json
