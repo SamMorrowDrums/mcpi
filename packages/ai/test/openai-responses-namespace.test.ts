@@ -1,7 +1,7 @@
 import type { ResponseStreamEvent } from "openai/resources/responses/responses.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { convertResponsesMessages, processResponsesStream } from "../src/api/openai-responses-shared.ts";
-import type { Api, AssistantMessage, Model, ToolCall } from "../src/types.ts";
+import type { Api, AssistantMessage, AssistantMessageEvent, Model, ToolCall } from "../src/types.ts";
 import { AssistantMessageEventStream } from "../src/utils/event-stream.ts";
 
 const model: Model<"openai-responses"> = {
@@ -103,6 +103,22 @@ async function* createCustomToolCallEvents(): AsyncIterable<ResponseStreamEvent>
 	} as ResponseStreamEvent;
 }
 
+/**
+ * Records the namespace exactly as it is at the moment `toolcall_end` is
+ * pushed. The event carries `slot.block` by reference, so reading it afterwards
+ * would also observe any later mutation — which is precisely the regression
+ * this needs to catch.
+ */
+function captureToolCallEndNamespaces(stream: AssistantMessageEventStream): Array<string | undefined> {
+	const seen: Array<string | undefined> = [];
+	const original = stream.push.bind(stream);
+	vi.spyOn(stream, "push").mockImplementation((event: AssistantMessageEvent) => {
+		if (event.type === "toolcall_end") seen.push(event.toolCall.namespace);
+		return original(event);
+	});
+	return seen;
+}
+
 function getToolCall(output: AssistantMessage): ToolCall {
 	const block = output.content[0];
 	if (!block || block.type !== "toolCall") throw new Error("Expected toolCall block");
@@ -110,6 +126,35 @@ function getToolCall(output: AssistantMessage): ToolCall {
 }
 
 describe("OpenAI Responses tool-call namespaces", () => {
+	// The namespace is assigned to the streaming block immediately before
+	// `toolcall_end` is pushed. Consumers that serialize the event synchronously
+	// (the protocol and telemetry layers do) only see what is set at push time,
+	// so assigning it after the push would silently drop it for them while every
+	// assertion against the persisted message kept passing.
+	it("carries the function namespace at the moment toolcall_end is pushed", async () => {
+		const output = createOutput();
+		const stream = new AssistantMessageEventStream();
+		const seen = captureToolCallEndNamespaces(stream);
+
+		await processResponsesStream(createFunctionCallEvents(), output, stream, model);
+
+		expect(seen).toEqual(["dynamic_tools"]);
+		expect(getToolCall(output).namespace).toBe("dynamic_tools");
+	});
+
+	it("carries the custom-tool namespace at the moment toolcall_end is pushed", async () => {
+		const output = createOutput();
+		const stream = new AssistantMessageEventStream();
+		const seen = captureToolCallEndNamespaces(stream);
+
+		await processResponsesStream(createCustomToolCallEvents(), output, stream, model, {
+			grammarToolInputProperties: new Map([["query", "input"]]),
+		});
+
+		expect(seen).toEqual(["dynamic_tools"]);
+		expect(getToolCall(output).namespace).toBe("dynamic_tools");
+	});
+
 	it("round-trips a function namespace received only on output_item.done", async () => {
 		const output = createOutput();
 		await processResponsesStream(createFunctionCallEvents(), output, new AssistantMessageEventStream(), model);
