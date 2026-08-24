@@ -1,4 +1,5 @@
 import type { Model } from "@sammorrowdrums/mcpi-ai";
+import { getBuiltinModel } from "@sammorrowdrums/mcpi-ai/providers/all";
 import { describe, expect, test, vi } from "vitest";
 import {
 	defaultModelPerProvider,
@@ -713,6 +714,34 @@ describe("default model selection", () => {
 
 	test("qwen token plan individual default tracks current model", () => {
 		expect(defaultModelPerProvider["qwen-token-plan-individual"]).toBe("qwen3.8-max");
+	});
+
+	test("anthropic defaults to Claude Opus 5 with 1M context and cache pricing", () => {
+		expect(defaultModelPerProvider.anthropic).toBe("claude-opus-5");
+
+		const model = getBuiltinModel("anthropic", "claude-opus-5");
+		expect(model).toBeDefined();
+		expect(model.api).toBe("anthropic-messages");
+		expect(model.reasoning).toBe(true);
+		expect(model.contextWindow).toBe(1_000_000);
+		expect(model.cost.cacheRead).toBeGreaterThan(0);
+		expect(model.cost.cacheWrite).toBeGreaterThan(0);
+	});
+
+	test("bedrock and github-copilot default to their Claude Opus 5 variants", () => {
+		// The Opus 5 Bedrock inference profile has no -v1 suffix, unlike Opus 4.6.
+		expect(defaultModelPerProvider["amazon-bedrock"]).toBe("us.anthropic.claude-opus-5");
+		expect(defaultModelPerProvider["github-copilot"]).toBe("claude-opus-5");
+
+		const bedrock = getBuiltinModel("amazon-bedrock", "us.anthropic.claude-opus-5");
+		expect(bedrock).toBeDefined();
+		expect(bedrock.api).toBe("bedrock-converse-stream");
+		expect(bedrock.contextWindow).toBe(1_000_000);
+
+		const copilot = getBuiltinModel("github-copilot", "claude-opus-5");
+		expect(copilot).toBeDefined();
+		expect(copilot.api).toBe("anthropic-messages");
+		expect(copilot.contextWindow).toBe(1_000_000);
 	});
 
 	test("findInitialModel accepts explicit provider custom model ids", async () => {
