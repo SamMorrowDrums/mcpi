@@ -9,7 +9,10 @@ import {
 } from "@sammorrowdrums/mcpi-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "../src/config.ts";
-import { withRemoteCatalog } from "../src/core/remote-catalog-provider.ts";
+import { getConfiguredCatalogBaseUrl, withRemoteCatalog } from "../src/core/remote-catalog-provider.ts";
+
+/** The overlay is opt-in, so tests supply an explicit base URL rather than a hosted default. */
+const CATALOG_BASE_URL = "https://catalog.example.test";
 
 const neverAbortedSignal = new AbortController().signal;
 
@@ -28,24 +31,24 @@ function model(id: string): Model<"openai-completions"> {
 	};
 }
 
-function testProvider(localGeneratedAt?: number) {
-	return withRemoteCatalog(
-		createProvider({
-			id: "test-provider",
-			auth: { apiKey: { name: "Test", resolve: async () => ({ auth: {} }) } },
-			models: [model("static")],
-			api: {
-				stream: () => {
-					throw new Error("not used");
-				},
-				streamSimple: () => {
-					throw new Error("not used");
-				},
+function bareProvider() {
+	return createProvider({
+		id: "test-provider",
+		auth: { apiKey: { name: "Test", resolve: async () => ({ auth: {} }) } },
+		models: [model("static")],
+		api: {
+			stream: () => {
+				throw new Error("not used");
 			},
-		}),
-		"https://pi.dev",
-		localGeneratedAt,
-	);
+			streamSimple: () => {
+				throw new Error("not used");
+			},
+		},
+	});
+}
+
+function testProvider(localGeneratedAt?: number) {
+	return withRemoteCatalog(bareProvider(), CATALOG_BASE_URL, localGeneratedAt);
 }
 
 async function refreshProvider(
@@ -229,7 +232,7 @@ describe("remote catalog provider", () => {
 		expect((await store.read(provider.id))?.models.map((entry) => entry.id)).toEqual(["newer"]);
 	});
 
-	it("treats unimplemented pi.dev catalog routes as an unavailable overlay", async () => {
+	it("treats unimplemented catalog routes as an unavailable overlay", async () => {
 		vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("not implemented", { status: 501 }));
 		const provider = testProvider();
 		const store = new InMemoryModelsStore();
@@ -237,5 +240,39 @@ describe("remote catalog provider", () => {
 		await expect(refreshProvider(provider, store)).resolves.toBeUndefined();
 		expect(provider.getModels().map((entry) => entry.id)).toEqual(["static"]);
 		expect(await store.read(provider.id)).toMatchObject({ models: [], checkedAt: expect.any(Number) });
+	});
+});
+
+describe("remote catalog opt-in", () => {
+	const originalCatalogUrl = process.env.MCPI_CATALOG_URL;
+
+	afterEach(() => {
+		if (originalCatalogUrl === undefined) delete process.env.MCPI_CATALOG_URL;
+		else process.env.MCPI_CATALOG_URL = originalCatalogUrl;
+	});
+
+	it("reads the catalog base URL from MCPI_CATALOG_URL", () => {
+		delete process.env.MCPI_CATALOG_URL;
+		expect(getConfiguredCatalogBaseUrl()).toBeUndefined();
+
+		process.env.MCPI_CATALOG_URL = "  ";
+		expect(getConfiguredCatalogBaseUrl()).toBeUndefined();
+
+		process.env.MCPI_CATALOG_URL = " https://catalog.example.test ";
+		expect(getConfiguredCatalogBaseUrl()).toBe("https://catalog.example.test");
+	});
+
+	it("serves the release's local catalog without any network request when unconfigured", async () => {
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+			throw new Error("the local catalog must not trigger a network request");
+		});
+		const baseProvider = bareProvider();
+		const provider = withRemoteCatalog(baseProvider, undefined);
+
+		expect(provider).toBe(baseProvider);
+		await refreshProvider(provider, new InMemoryModelsStore());
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(provider.getModels().map((entry) => entry.id)).toEqual(["static"]);
 	});
 });

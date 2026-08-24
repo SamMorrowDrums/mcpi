@@ -134,7 +134,7 @@ Paths are relative to the package root. Arrays support glob patterns and `!exclu
 
 ### Gallery Metadata
 
-The [package gallery](https://pi.dev/packages) displays packages tagged with `pi-package`. Add `video` or `image` fields to show a preview:
+Packages are discovered through the `pi-package` keyword. Add `video` or `image` fields to show a preview in package listings:
 
 ```json
 {

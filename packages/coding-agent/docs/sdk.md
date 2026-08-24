@@ -372,7 +372,7 @@ import { ModelRuntime } from "@sammorrowdrums/mcpi";
 
 const modelRuntime = await ModelRuntime.create();
 
-// create() restores cached catalogs but does not refresh them from pi.dev by default.
+// create() restores cached catalogs but does not refresh them over the network by default.
 // Opt in to a create-time network refresh and bound how long it may take:
 const refreshedRuntime = await ModelRuntime.create({
   allowModelNetwork: true,

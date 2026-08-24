@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Release script for pi-mono
+ * Release script for mcpi
  *
  * Usage:
  *   node scripts/release.mjs <major|minor|patch>
@@ -16,7 +16,7 @@
  * 7. Commit and tag the release
  * 8. Add new [Unreleased] section to changelogs
  * 9. Commit next-cycle changelog updates
- * 10. Push main and the tag to trigger CI publication and verified pi.dev announcement
+ * 10. Push main and the tag to trigger CI publication
  */
 
 import { execSync, spawnSync } from "node:child_process";
@@ -278,4 +278,4 @@ run("git push origin main");
 run(`git push origin v${version}`);
 console.log();
 
-console.log(`=== Prepared release v${version}; CI publication and pi.dev announcement start after the tag push ===`);
+console.log(`=== Prepared release v${version}; CI publication starts after the tag push ===`);

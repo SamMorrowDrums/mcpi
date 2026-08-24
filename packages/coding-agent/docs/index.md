@@ -12,11 +12,8 @@ npm install -g --ignore-scripts @sammorrowdrums/mcpi
 
 `--ignore-scripts` disables dependency lifecycle scripts during install. Pi does not require install scripts for normal npm installs.
 
-On Linux or macOS, you can also use the installer:
-
-```bash
-curl -fsSL https://pi.dev/install.sh | sh
-```
+On Linux or macOS, you can also download a standalone binary from the
+[mcpi releases page](https://github.com/SamMorrowDrums/mcpi/releases).
 
 To uninstall pi itself, use npm for curl and npm installs:
 

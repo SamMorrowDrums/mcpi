@@ -14,13 +14,10 @@
 #      `PI_AUTH_JSON` secret containing the contents of a pi auth.json
 #      (~/.pi/agent/auth.json).
 #   2. Create the `pi-analyze` label.
-#   3. Add a repository secret `EARENDIL_ORG_READ_TOKEN` with permission to
-#      read `earendil-works` org membership. The authorization job uses it to
-#      verify that the label actor is an active member of `earendil-works/staff`.
-#   4. Add an environment secret `PI_GIST_TOKEN` on `pi-analyze` with gist
+#   3. Add an environment secret `PI_GIST_TOKEN` on `pi-analyze` with gist
 #      creation permission. The analysis job uses it to upload the exported
 #      session gist.
-#   5. Add an environment secret `PI_AUTH_UPDATE_TOKEN` on `pi-analyze` with
+#   4. Add an environment secret `PI_AUTH_UPDATE_TOKEN` on `pi-analyze` with
 #      permission to update this repo's environment secrets. The analysis job
 #      uses it to write back refreshed `PI_AUTH_JSON` contents. Fine-grained
 #      tokens need repository permission `Environments: read and write` on this
@@ -43,7 +40,7 @@
 # The session runs in a high-entropy checkout directory so the recorded cwd is
 # a unique string. Import the session into a local checkout with the
 # /ir extension command (.pi/extensions/import-repro.ts):
-#   pi "/ir <gist-id | gist-url | pi.dev/session URL>"
+#   mcpi "/ir <gist-id | gist-url | share URL>"
 
 name: Issue Analysis
 
@@ -74,8 +71,6 @@ jobs:
       - name: Verify sender permission
         id: verify
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          ORG_READ_TOKEN: ${{ secrets.EARENDIL_ORG_READ_TOKEN }}
         with:
           script: |
             const ANALYZE_LABEL = 'pi-analyze';
@@ -169,56 +164,6 @@ jobs:
               } catch (error) {
                 if (error.status !== 404) throw error;
               }
-            }
-
-            if (!process.env.ORG_READ_TOKEN) {
-              await removeTriggerLabel();
-              core.setFailed('EARENDIL_ORG_READ_TOKEN is not configured; refusing to run issue analysis.');
-              return;
-            }
-
-            try {
-              const response = await fetch(
-                `https://api.github.com/orgs/earendil-works/teams/staff/memberships/${encodeURIComponent(username)}`,
-                {
-                  headers: {
-                    Accept: 'application/vnd.github+json',
-                    Authorization: `Bearer ${process.env.ORG_READ_TOKEN}`,
-                    'X-GitHub-Api-Version': '2022-11-28',
-                  },
-                },
-              );
-
-              if (response.status === 404) {
-                await removeTriggerLabel();
-                core.setFailed(`@${username} is not an active earendil-works/staff member.`);
-                return;
-              }
-
-              if (!response.ok) {
-                const body = await response.text();
-                await removeTriggerLabel();
-                core.setFailed(
-                  `Could not verify earendil-works/staff membership for @${username}: HTTP ${response.status} ${body}`,
-                );
-                return;
-              }
-
-              const membership = await response.json();
-              if (membership.state !== 'active') {
-                await removeTriggerLabel();
-                core.setFailed(`@${username} is not an active earendil-works/staff member.`);
-                return;
-              }
-              console.log(`earendil-works/staff membership for @${username}: ${membership.state}`);
-            } catch (error) {
-              await removeTriggerLabel();
-              core.setFailed(
-                `Could not verify earendil-works/staff membership for @${username}: ${
-                  error instanceof Error ? error.message : String(error)
-                }`,
-              );
-              return;
             }
 
             const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
@@ -566,7 +511,6 @@ jobs:
             const gistId = response.data.id;
             core.setOutput('url', gistUrl);
             core.setOutput('id', gistId);
-            core.setOutput('share_url', `https://pi.dev/session/#${gistId}`);
 
       - name: Comment with session import instructions
         if: always() && steps.run_pi.outcome == 'success' && steps.gist.outcome == 'success'
@@ -574,7 +518,6 @@ jobs:
         env:
           GIST_URL: ${{ steps.gist.outputs.url }}
           GIST_ID: ${{ steps.gist.outputs.id }}
-          SHARE_URL: ${{ steps.gist.outputs.share_url }}
           SESSION_JSONL: ${{ runner.temp }}/pi-out/session.jsonl
         with:
           script: |
@@ -618,12 +561,10 @@ jobs:
 
             const gistUrl = process.env.GIST_URL;
             const gistId = process.env.GIST_ID;
-            const shareUrl = process.env.SHARE_URL;
             const lastAgentMessage = extractLastAgentMessage(process.env.SESSION_JSONL);
             const body = [
               'Pi issue analysis finished.',
               '',
-              `Share URL: ${shareUrl}`,
               `Gist: ${gistUrl}`,
               '',
               'Continue locally from a checkout with:',
@@ -652,16 +593,12 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GIST_URL: ${{ steps.gist.outputs.url }}
-          SHARE_URL: ${{ steps.gist.outputs.share_url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           script: |
             const lines = ['Pi issue analysis failed; no analysis was produced.', '', `Run: ${process.env.RUN_URL}`];
-            if (process.env.SHARE_URL) {
-              lines.push(`Partial session: ${process.env.SHARE_URL}`);
-            }
             if (process.env.GIST_URL) {
-              lines.push(`Gist: ${process.env.GIST_URL}`);
+              lines.push(`Partial session gist: ${process.env.GIST_URL}`);
             }
 
             await github.rest.issues.createComment({

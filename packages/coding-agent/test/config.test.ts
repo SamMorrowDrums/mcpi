@@ -4,8 +4,10 @@ import { delimiter, join } from "path";
 import { afterEach, describe, expect, test } from "vitest";
 import {
 	detectInstallMethod,
+	ENV_SHARE_VIEWER_URL,
 	getSelfUpdateCommand,
 	getSelfUpdateUnavailableInstruction,
+	getShareViewerUrl,
 	getUpdateInstruction,
 } from "../src/config.ts";
 
@@ -415,5 +417,27 @@ describe("detectInstallMethod", () => {
 
 		expect(getSelfUpdateCommand("@sammorrowdrums/mcpi")).toBeUndefined();
 		expect(getSelfUpdateUnavailableInstruction("@sammorrowdrums/mcpi")).toContain("the install path is not writable");
+	});
+});
+
+describe("share viewer url", () => {
+	const originalShareViewerUrl = process.env[ENV_SHARE_VIEWER_URL];
+
+	afterEach(() => {
+		if (originalShareViewerUrl === undefined) delete process.env[ENV_SHARE_VIEWER_URL];
+		else process.env[ENV_SHARE_VIEWER_URL] = originalShareViewerUrl;
+	});
+
+	test("has no viewer until one is configured", () => {
+		delete process.env[ENV_SHARE_VIEWER_URL];
+		expect(getShareViewerUrl("abc123")).toBeUndefined();
+
+		process.env[ENV_SHARE_VIEWER_URL] = "   ";
+		expect(getShareViewerUrl("abc123")).toBeUndefined();
+	});
+
+	test("builds a viewer link from the configured base url", () => {
+		process.env[ENV_SHARE_VIEWER_URL] = " https://viewer.example.test/session/ ";
+		expect(getShareViewerUrl("abc123")).toBe("https://viewer.example.test/session/#abc123");
 	});
 });

@@ -5,6 +5,12 @@ function isTruthyEnvFlag(value: string | undefined): boolean {
 	return value === "1" || value.toLowerCase() === "true" || value.toLowerCase() === "yes";
 }
 
+/**
+ * mcpi sends no telemetry of its own. This setting only controls whether outbound
+ * model requests carry attribution headers identifying mcpi as the calling client
+ * (see `provider-attribution.ts`); some providers use those headers for billing
+ * origin or client identification.
+ */
 export function isInstallTelemetryEnabled(
 	settingsManager: SettingsManager,
 	telemetryEnv: string | undefined = process.env.PI_TELEMETRY,

@@ -479,11 +479,18 @@ export function expandTildePath(path: string): string {
 	return normalizePath(path);
 }
 
-const DEFAULT_SHARE_VIEWER_URL = "https://pi.dev/session/";
+/**
+ * Base URL of a session share viewer.
+ *
+ * mcpi ships no hosted share viewer, so `/share` only produces a viewer link when an
+ * operator configures one. The gist itself is always created regardless.
+ */
+export const ENV_SHARE_VIEWER_URL = "MCPI_SHARE_VIEWER_URL";
 
-/** Get the share viewer URL for a gist ID */
-export function getShareViewerUrl(gistId: string): string {
-	const baseUrl = process.env.PI_SHARE_VIEWER_URL || DEFAULT_SHARE_VIEWER_URL;
+/** Get the share viewer URL for a gist ID, or undefined when no viewer is configured. */
+export function getShareViewerUrl(gistId: string): string | undefined {
+	const baseUrl = process.env[ENV_SHARE_VIEWER_URL]?.trim();
+	if (!baseUrl) return undefined;
 	return `${baseUrl}#${gistId}`;
 }
 

@@ -3,8 +3,18 @@ import { VERSION } from "../config.ts";
 import { fetchWithRetry } from "../utils/management-http.ts";
 import { getPiUserAgent } from "../utils/pi-user-agent.ts";
 
-const DEFAULT_CATALOG_BASE_URL = "https://pi.dev";
 export const REMOTE_CATALOG_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
+
+/**
+ * Opt-in remote model catalog overlay.
+ *
+ * mcpi ships the generated model catalog inside each release, so there is no default
+ * remote catalog endpoint and no catalog request is made unless an operator sets this.
+ */
+export function getConfiguredCatalogBaseUrl(): string | undefined {
+	const configured = process.env.MCPI_CATALOG_URL?.trim();
+	return configured ? configured : undefined;
+}
 
 function mergeModels(baseline: readonly Model<Api>[], dynamic: readonly Model<Api>[]): Model<Api>[] {
 	const merged = [...baseline];
@@ -41,12 +51,15 @@ function remoteModels(
 	return entry.models;
 }
 
-/** Add a persisted pi.dev catalog overlay to a static built-in provider. */
-export function withRemoteCatalog(
-	provider: Provider,
-	catalogBaseUrl: string = DEFAULT_CATALOG_BASE_URL,
-	localGeneratedAt?: number,
-): Provider {
+/**
+ * Add a persisted remote catalog overlay to a static built-in provider.
+ *
+ * Without an explicit `catalogBaseUrl` the provider is returned unchanged, so the
+ * models shipped in the release are used as-is and no network request is made.
+ */
+export function withRemoteCatalog(provider: Provider, catalogBaseUrl?: string, localGeneratedAt?: number): Provider {
+	if (!catalogBaseUrl) return provider;
+
 	let dynamicModels: readonly Model<Api>[] = [];
 
 	return {

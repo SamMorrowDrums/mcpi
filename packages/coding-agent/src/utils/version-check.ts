@@ -2,13 +2,23 @@ import { compare, valid } from "semver";
 import { fetchWithRetry } from "./management-http.ts";
 import { getPiUserAgent } from "./pi-user-agent.ts";
 
-const LATEST_VERSION_URL = "https://pi.dev/api/latest-version";
+/**
+ * mcpi publishes releases on GitHub, so update checks read the repository's release
+ * feed directly instead of a hosted version API. `/releases/latest` already excludes
+ * drafts and pre-releases.
+ */
+const LATEST_VERSION_URL = "https://api.github.com/repos/SamMorrowDrums/mcpi/releases/latest";
 const DEFAULT_VERSION_CHECK_TIMEOUT_MS = 10000;
 
 export interface LatestPiRelease {
 	version: string;
-	packageName?: string;
-	note?: string;
+}
+
+/** Turn a release tag such as `v1.2.3` into the bare version string `1.2.3`. */
+export function parseReleaseTag(tagName: string): string | undefined {
+	const trimmed = tagName.trim();
+	const version = trimmed.startsWith("v") || trimmed.startsWith("V") ? trimmed.slice(1).trim() : trimmed;
+	return version ? version : undefined;
 }
 
 /** Include useful errno details hidden behind Node's generic "fetch failed" error. */
@@ -59,7 +69,8 @@ export async function getLatestPiRelease(
 		{
 			headers: {
 				"User-Agent": getPiUserAgent(currentVersion),
-				accept: "application/json",
+				accept: "application/vnd.github+json",
+				"X-GitHub-Api-Version": "2022-11-28",
 			},
 		},
 		{
@@ -69,22 +80,10 @@ export async function getLatestPiRelease(
 	);
 	if (!response.ok) return undefined;
 
-	const data = (await response.json()) as {
-		packageName?: unknown;
-		version?: unknown;
-		note?: unknown;
-	};
-	if (typeof data.version !== "string" || !data.version.trim()) {
-		return undefined;
-	}
-	const packageName =
-		typeof data.packageName === "string" && data.packageName.trim() ? data.packageName.trim() : undefined;
-	const note = typeof data.note === "string" && data.note.trim() ? data.note.trim() : undefined;
-	return {
-		version: data.version.trim(),
-		packageName,
-		...(note ? { note } : {}),
-	};
+	const data = (await response.json()) as { tag_name?: unknown };
+	if (typeof data.tag_name !== "string") return undefined;
+	const version = parseReleaseTag(data.tag_name);
+	return version ? { version } : undefined;
 }
 
 export async function getLatestPiVersion(
