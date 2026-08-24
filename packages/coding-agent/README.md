@@ -480,8 +480,6 @@ mcpi is aggressively extensible so it doesn't have to dictate your workflow. Fea
 
 **No background bash.** Use tmux. Full observability, direct interaction.
 
-Read the [upstream pi blog post](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/) for the original rationale.
-
 ---
 
 ## CLI Reference

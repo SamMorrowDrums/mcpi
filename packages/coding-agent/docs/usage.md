@@ -137,8 +137,6 @@ Use `/export [file]` to write a session to HTML.
 
 Use `/share` to upload a private GitHub gist with a shareable HTML link.
 
-If you use mcpi for open source work and want to publish sessions for model, prompt, tool, and evaluation research, see the upstream [`badlogic/pi-share-hf`](https://github.com/badlogic/pi-share-hf) project. It publishes sessions to Hugging Face datasets.
-
 ## CLI Reference
 
 ```bash
@@ -302,5 +300,3 @@ mcpi --exclude-tools ask_question
 mcpi keeps the core small and pushes workflow-specific behavior into extensions, skills, prompt templates, and packages.
 
 It intentionally does not include built-in MCP, sub-agents, permission popups, plan mode, to-dos, or background bash. You can build or install those workflows as extensions or packages, or use external tools such as containers and tmux.
-
-For the original rationale, read the [upstream pi blog post](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/).

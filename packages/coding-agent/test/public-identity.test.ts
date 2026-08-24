@@ -1,4 +1,6 @@
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { printHelp } from "../src/cli/args.ts";
 import {
@@ -23,6 +25,7 @@ const PATH_ENV_NAMES = [
 	"XDG_STATE_HOME",
 	"XDG_CACHE_HOME",
 ] as const;
+const REPOSITORY_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
 describe("public mcpi identity", () => {
 	const originalEnvironment = new Map<string, string | undefined>();
@@ -96,5 +99,14 @@ describe("public mcpi identity", () => {
 		expect(output).toContain(join("/tmp/mcpi-state", "mcpi", "sessions"));
 		expect(output).not.toMatch(/\bPI_(?:CODING_AGENT|OFFLINE|TELEMETRY|CACHE|SHARE|CATALOG|HARDWARE|TUI)/);
 		expect(output).not.toContain("~/.pi");
+	});
+
+	it("uses mcpi names for ignored local artifacts", () => {
+		const gitignore = readFileSync(join(REPOSITORY_ROOT, ".gitignore"), "utf8");
+
+		expect(gitignore).toContain(".mcpi_config/");
+		expect(gitignore).toContain("mcpi-*.html");
+		expect(gitignore).not.toContain(".pi_config/");
+		expect(gitignore).not.toContain("\npi-*.html");
 	});
 });
