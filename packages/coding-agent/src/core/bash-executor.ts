@@ -10,10 +10,10 @@ import { randomBytes } from "node:crypto";
 import { createWriteStream, type WriteStream } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import stripAnsi from "strip-ansi";
-import { sanitizeBinaryOutput } from "../utils/shell.js";
-import type { BashOperations } from "./tools/bash.js";
-import { DEFAULT_MAX_BYTES, truncateTail } from "./tools/truncate.js";
+import { stripAnsi } from "../utils/ansi.ts";
+import { sanitizeBinaryOutput } from "../utils/shell.ts";
+import type { BashOperations } from "./tools/bash.ts";
+import { DEFAULT_MAX_BYTES, truncateTail } from "./tools/truncate.ts";
 
 // ============================================================================
 // Types
@@ -110,14 +110,13 @@ export async function executeBashWithOperations(
 			signal: options?.signal,
 		});
 
-		if (tempFileStream) {
-			tempFileStream.end();
-		}
-
 		const fullOutput = outputChunks.join("");
 		const truncationResult = truncateTail(fullOutput);
 		if (truncationResult.truncated) {
 			ensureTempFile();
+		}
+		if (tempFileStream) {
+			tempFileStream.end();
 		}
 		const cancelled = options?.signal?.aborted ?? false;
 
@@ -129,16 +128,15 @@ export async function executeBashWithOperations(
 			fullOutputPath: tempFilePath,
 		};
 	} catch (err) {
-		if (tempFileStream) {
-			tempFileStream.end();
-		}
-
 		// Check if it was an abort
 		if (options?.signal?.aborted) {
 			const fullOutput = outputChunks.join("");
 			const truncationResult = truncateTail(fullOutput);
 			if (truncationResult.truncated) {
 				ensureTempFile();
+			}
+			if (tempFileStream) {
+				tempFileStream.end();
 			}
 			return {
 				output: truncationResult.truncated ? truncationResult.content : fullOutput,
@@ -147,6 +145,10 @@ export async function executeBashWithOperations(
 				truncated: truncationResult.truncated,
 				fullOutputPath: tempFilePath,
 			};
+		}
+
+		if (tempFileStream) {
+			tempFileStream.end();
 		}
 
 		throw err;

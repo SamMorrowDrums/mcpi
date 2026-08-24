@@ -1,3 +1,4 @@
+import type { ApiKeyAuth, AuthCheck, OAuthAuth } from "@earendil-works/pi-ai";
 import {
 	Container,
 	type Focusable,
@@ -6,17 +7,21 @@ import {
 	Input,
 	Spacer,
 	TruncatedText,
-} from "@mariozechner/pi-tui";
-import type { AuthStorage } from "../../../core/auth-storage.js";
-import { theme } from "../theme/theme.js";
-import { getAuthSelectorIndicator } from "./auth-selector-status.js";
-import { DynamicBorder } from "./dynamic-border.js";
+} from "@earendil-works/pi-tui";
+import { theme } from "../theme/theme.ts";
+import { DynamicBorder } from "./dynamic-border.ts";
 
 export type AuthSelectorProvider = {
 	id: string;
 	name: string;
 	authType: "oauth" | "api_key";
+	method?: ApiKeyAuth | OAuthAuth;
+	status?: AuthCheck;
 };
+
+export function formatAuthSelectorProviderType(authType: AuthSelectorProvider["authType"]): string {
+	return authType === "oauth" ? "subscription" : "API key";
+}
 
 /**
  * Component that renders an auth provider selector
@@ -39,23 +44,23 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 	private filteredProviders: AuthSelectorProvider[];
 	private selectedIndex: number = 0;
 	private mode: "login" | "logout";
-	private authStorage: AuthStorage;
-	private onSelectCallback: (providerId: string) => void;
+	private onSelectCallback: (providerId: string, authType: AuthSelectorProvider["authType"]) => void;
 	private onCancelCallback: () => void;
+	private showAuthTypeLabels: boolean;
 
 	constructor(
 		mode: "login" | "logout",
-		authStorage: AuthStorage,
 		providers: AuthSelectorProvider[],
-		onSelect: (providerId: string) => void,
+		onSelect: (providerId: string, authType: AuthSelectorProvider["authType"]) => void,
 		onCancel: () => void,
+		initialSearchInput?: string,
 	) {
 		super();
 
 		this.mode = mode;
-		this.authStorage = authStorage;
 		this.allProviders = providers;
 		this.filteredProviders = providers;
+		this.showAuthTypeLabels = new Set(providers.map((provider) => provider.authType)).size > 1;
 		this.onSelectCallback = onSelect;
 		this.onCancelCallback = onCancel;
 
@@ -69,10 +74,13 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 		this.addChild(new Spacer(1));
 
 		this.searchInput = new Input();
+		if (initialSearchInput) {
+			this.searchInput.setValue(initialSearchInput);
+		}
 		this.searchInput.onSubmit = () => {
 			const selectedProvider = this.filteredProviders[this.selectedIndex];
 			if (selectedProvider) {
-				this.onSelectCallback(selectedProvider.id);
+				this.onSelectCallback(selectedProvider.id, selectedProvider.authType);
 			}
 		};
 		this.addChild(this.searchInput);
@@ -88,12 +96,16 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 		this.addChild(new DynamicBorder());
 
 		// Initial render
-		this.filterProviders("");
+		this.filterProviders(initialSearchInput ?? "");
 	}
 
 	private filterProviders(query: string): void {
 		this.filteredProviders = query
-			? fuzzyFilter(this.allProviders, query, (provider) => `${provider.name} ${provider.id} ${provider.authType}`)
+			? fuzzyFilter(
+					this.allProviders,
+					query,
+					(provider) => `${provider.name} ${provider.id} ${provider.authType} ${provider.method?.name ?? ""}`,
+				)
 			: this.allProviders;
 		this.selectedIndex = Math.max(0, Math.min(this.selectedIndex, Math.max(0, this.filteredProviders.length - 1)));
 		this.updateList();
@@ -116,14 +128,17 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 			const isSelected = i === this.selectedIndex;
 
 			const statusIndicator = this.formatStatusIndicator(provider);
+			const authTypeLabel = this.showAuthTypeLabels
+				? theme.fg("muted", ` [${formatAuthSelectorProviderType(provider.authType)}]`)
+				: "";
 			let line = "";
 			if (isSelected) {
 				const prefix = theme.fg("accent", "→ ");
 				const text = theme.fg("accent", provider.name);
-				line = prefix + text + statusIndicator;
+				line = prefix + text + authTypeLabel + statusIndicator;
 			} else {
 				const text = `  ${theme.fg("text", provider.name)}`;
-				line = text + statusIndicator;
+				line = text + authTypeLabel + statusIndicator;
 			}
 
 			this.listContainer.addChild(new TruncatedText(line, 1, 0));
@@ -147,29 +162,22 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 	}
 
 	private formatStatusIndicator(provider: AuthSelectorProvider): string {
-		const status = provider.authType === "api_key" ? this.authStorage.getAuthStatus(provider.id) : undefined;
-		const indicator = getAuthSelectorIndicator(provider.authType, this.authStorage.get(provider.id), status);
-
-		if (indicator.kind === "configured") {
-			return theme.fg("success", ` ✓ ${indicator.label}`);
+		if (!provider.status) return theme.fg("muted", " • unconfigured");
+		if (provider.status.type !== provider.authType) {
+			const label = provider.status.type === "oauth" ? "subscription configured" : "API key configured";
+			return theme.fg("muted", " • ") + theme.fg("warning", label);
 		}
-
-		if (indicator.kind === "configured-other") {
-			return theme.fg("muted", " • ") + theme.fg("warning", indicator.label);
+		if (
+			!provider.status.source ||
+			provider.status.source === "OAuth" ||
+			provider.status.source === "stored credential"
+		) {
+			return theme.fg("success", " ✓ configured");
 		}
-
-		const base = theme.fg("muted", " • unconfigured");
-		if (indicator.kind === "environment") {
-			return base + theme.fg("success", ` · env: ${indicator.label}`);
-		}
-		if (indicator.kind === "runtime") {
-			return base + theme.fg("success", " · runtime API key");
-		}
-		if (indicator.kind === "fallback") {
-			return base + theme.fg("success", " · custom API key");
-		}
-
-		return base;
+		const source = /^[A-Z][A-Z0-9_]*(?:, [A-Z][A-Z0-9_]*)*$/.test(provider.status.source)
+			? `env: ${provider.status.source}`
+			: provider.status.source;
+		return theme.fg("success", ` ✓ ${source}`);
 	}
 
 	handleInput(keyData: string): void {
@@ -190,7 +198,7 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 		else if (kb.matches(keyData, "tui.select.confirm")) {
 			const selectedProvider = this.filteredProviders[this.selectedIndex];
 			if (selectedProvider) {
-				this.onSelectCallback(selectedProvider.id);
+				this.onSelectCallback(selectedProvider.id, selectedProvider.authType);
 			}
 		}
 		// Escape or Ctrl+C

@@ -313,6 +313,22 @@
         return '';
       }
 
+      /**
+       * Parse a skill block from message text.
+       * Returns null if the text doesn't contain a skill block.
+       * Matches the format: <skill name="..." location="...">\n...\n</skill>\n\nuser message
+       */
+      function parseSkillBlock(text) {
+        const match = text.match(/^<skill name="([^"]+)" location="([^"]+)">\n([\s\S]*?)\n<\/skill>(?:\n\n([\s\S]+))?$/);
+        if (!match) return null;
+        return {
+          name: match[1],
+          location: match[2],
+          content: match[3],
+          userMessage: match[4]?.trim() || undefined,
+        };
+      }
+
       function getSearchableText(entry, label) {
         const parts = [];
         if (label) parts.push(label);
@@ -589,9 +605,24 @@
       }
 
       function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        return String(text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function sanitizeMarkdownUrl(value) {
+        const href = String(value || '').trim().replace(/[\x00-\x1f\x7f]/g, '');
+        if (!href) return href;
+
+        const scheme = href.match(/^([A-Za-z][A-Za-z0-9+.-]*):/);
+        if (scheme && !/^(https?|mailto|tel|ftp)$/i.test(scheme[1])) {
+          return null;
+        }
+
+        return href;
       }
 
       /**
@@ -613,7 +644,16 @@
           case 'message': {
             const msg = entry.message;
             if (msg.role === 'user') {
-              const content = truncate(normalize(extractContent(msg.content)));
+              const rawContent = extractContent(msg.content);
+              const skillBlock = parseSkillBlock(rawContent);
+              if (skillBlock) {
+                let treeHtml = labelHtml + `<span class="tree-role-skill">skill:</span> ${escapeHtml(skillBlock.name)}`;
+                if (skillBlock.userMessage) {
+                  treeHtml += ` · <span class="tree-role-user">user:</span> ${escapeHtml(truncate(normalize(skillBlock.userMessage)))}`;
+                }
+                return treeHtml;
+              }
+              const content = truncate(normalize(rawContent));
               return labelHtml + `<span class="tree-role-user">user:</span> ${escapeHtml(content)}`;
             }
             if (msg.role === 'assistant') {
@@ -634,13 +674,13 @@
               if (toolCall) {
                 return labelHtml + `<span class="tree-role-tool">${escapeHtml(formatToolCall(toolCall.name, toolCall.arguments))}</span>`;
               }
-              return labelHtml + `<span class="tree-role-tool">[${msg.toolName || 'tool'}]</span>`;
+              return labelHtml + `<span class="tree-role-tool">[${escapeHtml(msg.toolName || 'tool')}]</span>`;
             }
             if (msg.role === 'bashExecution') {
               const cmd = truncate(normalize(msg.command || ''));
               return labelHtml + `<span class="tree-role-tool">[bash]:</span> ${escapeHtml(cmd)}`;
             }
-            return labelHtml + `<span class="tree-muted">[${msg.role}]</span>`;
+            return labelHtml + `<span class="tree-muted">[${escapeHtml(msg.role)}]</span>`;
           }
           case 'compaction':
             return labelHtml + `<span class="tree-compaction">[compaction: ${Math.round(entry.tokensBefore/1000)}k tokens]</span>`;
@@ -653,11 +693,11 @@
             return labelHtml + `<span class="tree-custom">[${escapeHtml(entry.customType)}]:</span> ${escapeHtml(truncate(normalize(content)))}`;
           }
           case 'model_change':
-            return labelHtml + `<span class="tree-muted">[model: ${entry.modelId}]</span>`;
+            return labelHtml + `<span class="tree-muted">[model: ${escapeHtml(entry.modelId)}]</span>`;
           case 'thinking_level_change':
-            return labelHtml + `<span class="tree-muted">[thinking: ${entry.thinkingLevel}]</span>`;
+            return labelHtml + `<span class="tree-muted">[thinking: ${escapeHtml(entry.thinkingLevel)}]</span>`;
           default:
-            return labelHtml + `<span class="tree-muted">[${entry.type}]</span>`;
+            return labelHtml + `<span class="tree-muted">[${escapeHtml(entry.type)}]</span>`;
         }
       }
 
@@ -881,11 +921,12 @@
           const images = getResultImages();
           if (images.length === 0) return '';
           return '<div class="tool-images">' +
-            images.map(img => `<img src="data:${escapeHtml(img.mimeType || 'image/png')};base64,${img.data}" class="tool-image" />`).join('') +
+            images.map(img => `<img src="data:${escapeHtml(img.mimeType || 'image/png')};base64,${escapeHtml(img.data || '')}" class="tool-image" />`).join('') +
             '</div>';
         };
 
-        let html = `<div class="tool-execution ${statusClass}">`;
+        const toolDomId = `tool-call-${escapeHtml(call.id)}`;
+        let html = `<div class="tool-execution ${statusClass}" id="${toolDomId}">`;
         const args = call.arguments || {};
         const name = call.name;
 
@@ -1122,7 +1163,7 @@
        * Render the copy-link button HTML for a message.
        */
       function renderCopyLinkButton(entryId) {
-        return `<button class="copy-link-btn" data-entry-id="${entryId}" title="Copy link to this message">
+        return `<button class="copy-link-btn" data-entry-id="${escapeHtml(entryId)}" title="Copy link to this message">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
@@ -1133,29 +1174,65 @@
       function renderEntry(entry) {
         const ts = formatTimestamp(entry.timestamp);
         const tsHtml = ts ? `<div class="message-timestamp">${ts}</div>` : '';
-        const entryId = `entry-${entry.id}`;
+        const entryDomId = `entry-${escapeHtml(entry.id)}`;
         const copyBtnHtml = renderCopyLinkButton(entry.id);
 
         if (entry.type === 'message') {
           const msg = entry.message;
 
           if (msg.role === 'user') {
-            let html = `<div class="user-message" id="${entryId}">${copyBtnHtml}${tsHtml}`;
             const content = msg.content;
+            const text = typeof content === 'string' ? content :
+              content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+            const skillBlock = parseSkillBlock(text);
+
+            if (skillBlock) {
+              // Collect images from content array
+              const images = Array.isArray(content) ? content.filter(c => c.type === 'image') : [];
+              const hasUserContent = skillBlock.userMessage || images.length > 0;
+              let html = `<div class="skill-user-entry" id="${entryDomId}">${copyBtnHtml}${tsHtml}`;
+
+              // Skill invocation (collapsed by default, click to expand)
+              html += `<div class="skill-invocation" onclick="if(window.getSelection().toString())return;this.classList.toggle('expanded')">
+                <div class="skill-invocation-label">[skill] ${escapeHtml(skillBlock.name)}</div>
+                <div class="skill-invocation-collapsed">${escapeHtml(skillBlock.name)} (click to expand)</div>
+                <div class="skill-invocation-content markdown-content">${safeMarkedParse(skillBlock.content)}</div>
+              </div>`;
+
+              // User message (separate block if present)
+              if (hasUserContent) {
+                html += '<div class="user-message">';
+                if (images.length > 0) {
+                  html += '<div class="message-images">';
+                  for (const img of images) {
+                    html += `<img src="data:${escapeHtml(img.mimeType || 'image/png')};base64,${escapeHtml(img.data || '')}" class="message-image" />`;
+                  }
+                  html += '</div>';
+                }
+                if (skillBlock.userMessage) {
+                  html += `<div class="markdown-content">${safeMarkedParse(skillBlock.userMessage)}</div>`;
+                }
+                html += '</div>';
+              }
+
+              html += '</div>';
+              return html;
+            }
+
+            // No skill block - normal user message
+            let html = `<div class="user-message" id="${entryDomId}">${copyBtnHtml}${tsHtml}`;
 
             if (Array.isArray(content)) {
               const images = content.filter(c => c.type === 'image');
               if (images.length > 0) {
                 html += '<div class="message-images">';
                 for (const img of images) {
-                  html += `<img src="data:${escapeHtml(img.mimeType || 'image/png')};base64,${img.data}" class="message-image" />`;
+                  html += `<img src="data:${escapeHtml(img.mimeType || 'image/png')};base64,${escapeHtml(img.data || '')}" class="message-image" />`;
                 }
                 html += '</div>';
               }
             }
 
-            const text = typeof content === 'string' ? content :
-              content.filter(c => c.type === 'text').map(c => c.text).join('\n');
             if (text.trim()) {
               html += `<div class="markdown-content">${safeMarkedParse(text)}</div>`;
             }
@@ -1164,7 +1241,7 @@
           }
 
           if (msg.role === 'assistant') {
-            let html = `<div class="assistant-message" id="${entryId}">${copyBtnHtml}${tsHtml}`;
+            let html = `<div class="assistant-message" id="${entryDomId}">${copyBtnHtml}${tsHtml}`;
 
             for (const block of msg.content) {
               if (block.type === 'text' && block.text.trim()) {
@@ -1195,7 +1272,7 @@
 
           if (msg.role === 'bashExecution') {
             const isError = msg.cancelled || (msg.exitCode !== 0 && msg.exitCode !== null);
-            let html = `<div class="tool-execution ${isError ? 'error' : 'success'}" id="${entryId}">${tsHtml}`;
+            let html = `<div class="tool-execution ${isError ? 'error' : 'success'}" id="${entryDomId}">${tsHtml}`;
             html += `<div class="tool-command">$ ${escapeHtml(msg.command)}</div>`;
             if (msg.output) html += formatExpandableOutput(msg.output, 10);
             if (msg.cancelled) {
@@ -1211,11 +1288,11 @@
         }
 
         if (entry.type === 'model_change') {
-          return `<div class="model-change" id="${entryId}">${tsHtml}Switched to model: <span class="model-name">${escapeHtml(entry.provider)}/${escapeHtml(entry.modelId)}</span></div>`;
+          return `<div class="model-change" id="${entryDomId}">${tsHtml}Switched to model: <span class="model-name">${escapeHtml(entry.provider)}/${escapeHtml(entry.modelId)}</span></div>`;
         }
 
         if (entry.type === 'compaction') {
-          return `<div class="compaction" id="${entryId}" onclick="if(window.getSelection().toString())return;this.classList.toggle('expanded')">
+          return `<div class="compaction" id="${entryDomId}" onclick="if(window.getSelection().toString())return;this.classList.toggle('expanded')">
             <div class="compaction-label">[compaction]</div>
             <div class="compaction-collapsed">Compacted from ${entry.tokensBefore.toLocaleString()} tokens</div>
             <div class="compaction-content"><strong>Compacted from ${entry.tokensBefore.toLocaleString()} tokens</strong>\n\n${escapeHtml(entry.summary)}</div>
@@ -1223,14 +1300,14 @@
         }
 
         if (entry.type === 'branch_summary') {
-          return `<div class="branch-summary" id="${entryId}">${tsHtml}
+          return `<div class="branch-summary" id="${entryDomId}">${tsHtml}
             <div class="branch-summary-header">Branch Summary</div>
             <div class="markdown-content">${safeMarkedParse(entry.summary)}</div>
           </div>`;
         }
 
         if (entry.type === 'custom_message' && entry.display) {
-          return `<div class="hook-message" id="${entryId}">${tsHtml}
+          return `<div class="hook-message" id="${entryDomId}">${tsHtml}
             <div class="hook-type">[${escapeHtml(entry.customType)}]</div>
             <div class="markdown-content">${safeMarkedParse(typeof entry.content === 'string' ? entry.content : JSON.stringify(entry.content))}</div>
           </div>`;
@@ -1316,7 +1393,7 @@
             </div>
             <div class="header-info">
               <div class="info-item"><span class="info-label">Date:</span><span class="info-value">${header?.timestamp ? new Date(header.timestamp).toLocaleString() : 'unknown'}</span></div>
-              <div class="info-item"><span class="info-label">Models:</span><span class="info-value">${globalStats.models.join(', ') || 'unknown'}</span></div>
+              <div class="info-item"><span class="info-label">Models:</span><span class="info-value">${escapeHtml(globalStats.models.join(', ') || 'unknown')}</span></div>
               <div class="info-item"><span class="info-label">Messages:</span><span class="info-value">${msgParts.join(', ') || '0'}</span></div>
               <div class="info-item"><span class="info-label">Tool Calls:</span><span class="info-value">${globalStats.toolCalls}</span></div>
               <div class="info-item"><span class="info-label">Tokens:</span><span class="info-value">${tokenParts.join(' ') || '0'}</span></div>
@@ -1384,6 +1461,16 @@
       // Cache for rendered entry DOM nodes
       const entryCache = new Map();
 
+      function getScrollTargetElementId(entryId) {
+        const entry = byId.get(entryId);
+        if (entry?.type === 'message' && entry.message.role === 'toolResult' && entry.message.toolCallId) {
+          // getElementById() matches the parsed DOM id attribute, whose HTML entities
+          // were already resolved from the escaped id rendered by renderToolCall().
+          return `tool-call-${entry.message.toolCallId}`;
+        }
+        return `entry-${entryId}`;
+      }
+
       function renderEntryToNode(entry) {
         // Check cache first
         if (entryCache.has(entry.id)) {
@@ -1445,9 +1532,12 @@
           if (scrollMode === 'bottom') {
             content.scrollTop = content.scrollHeight;
           } else if (scrollMode === 'target') {
-            // If scrollToEntryId is provided, scroll to that specific entry
+            // If scrollToEntryId is provided, scroll to that specific entry.
+            // Tool result entries are rendered inside their assistant tool-call block,
+            // so route them to the visible tool-call element instead.
             const scrollTargetId = scrollToEntryId || targetId;
-            const targetEl = document.getElementById(`entry-${scrollTargetId}`);
+            const targetEl = document.getElementById(getScrollTargetElementId(scrollTargetId)) ||
+              document.getElementById(`entry-${scrollTargetId}`);
             if (targetEl) {
               targetEl.scrollIntoView({ block: 'center' });
               // Briefly highlight the target message
@@ -1491,10 +1581,11 @@
           }
         },
         renderer: {
-          // Sanitize link URLs to prevent javascript:/vbscript:/data: XSS
+          // Sanitize link URLs with a scheme allow-list. Browsers strip C0
+          // controls from schemes, so strip them before checking and emitting.
           link(token) {
-            const href = (token.href || '').trim();
-            if (/^\s*(javascript|vbscript|data):/i.test(href)) {
+            const href = sanitizeMarkdownUrl(token.href);
+            if (href === null) {
               return this.parser.parseInline(token.tokens);
             }
             let out = '<a href="' + escapeHtml(href) + '"';
@@ -1504,10 +1595,10 @@
             out += '>' + this.parser.parseInline(token.tokens) + '</a>';
             return out;
           },
-          // Sanitize image src URLs
+          // Sanitize image src URLs with the same scheme allow-list.
           image(token) {
-            const href = (token.href || '').trim();
-            if (/^\s*(javascript|vbscript|data):/i.test(href)) {
+            const href = sanitizeMarkdownUrl(token.href);
+            if (href === null) {
               return escapeHtml(token.text || '');
             }
             let out = '<img src="' + escapeHtml(href) + '" alt="' + escapeHtml(token.text || '') + '"';
@@ -1714,6 +1805,9 @@
           el.classList.toggle('expanded', toolOutputsExpanded);
         });
         document.querySelectorAll('.compaction').forEach(el => {
+          el.classList.toggle('expanded', toolOutputsExpanded);
+        });
+        document.querySelectorAll('.skill-invocation').forEach(el => {
           el.classList.toggle('expanded', toolOutputsExpanded);
         });
       };
