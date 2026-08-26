@@ -1548,7 +1548,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 				const m = model as ModelsDevModel;
 				if (m.tool_call !== true) continue;
 
-				models.push({
+				const workersModel: Model<"openai-completions"> = {
 					id: modelId,
 					name: m.name || modelId,
 					api: "openai-completions",
@@ -1565,8 +1565,18 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 					contextWindow: m.limit?.context || 4096,
 					maxTokens: m.limit?.output || 4096,
 					compat: { sendSessionAffinityHeaders: true },
+				};
+				models.push(workersModel, {
+					...workersModel,
+					id: `workers-ai/${modelId}`,
+					provider: "cloudflare-ai-gateway",
+					baseUrl: CLOUDFLARE_AI_GATEWAY_COMPAT_BASE_URL,
+					input: [...workersModel.input],
+					cost: { ...workersModel.cost },
+					compat: { ...workersModel.compat },
 				});
 				recordModelsDevReasoningOptions("cloudflare-workers-ai", modelId, m);
+				recordModelsDevReasoningOptions("cloudflare-ai-gateway", `workers-ai/${modelId}`, m);
 			}
 		}
 
@@ -1581,7 +1591,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 				const upstream = prefixedId.slice(0, slashIdx);
 				const nativeId = prefixedId.slice(slashIdx + 1);
 
-				let api: "anthropic-messages" | "openai-completions" | "openai-responses";
+				let api: "anthropic-messages" | "openai-responses";
 				let baseUrl: string;
 				let id: string;
 				if (upstream === "openai") {
@@ -1592,18 +1602,12 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 					api = "anthropic-messages";
 					baseUrl = CLOUDFLARE_AI_GATEWAY_ANTHROPIC_BASE_URL;
 					id = nativeId;
-				} else if (upstream === "workers-ai") {
-					api = "openai-completions";
-					baseUrl = CLOUDFLARE_AI_GATEWAY_COMPAT_BASE_URL;
-					id = prefixedId;
 				} else {
 					continue;
 				}
 
-				// Gateway passthroughs forward session affinity headers to upstreams that
-				// use them for cache/routing affinity.
-				const compat =
-					upstream === "anthropic" || upstream === "workers-ai" ? { sendSessionAffinityHeaders: true } : undefined;
+				// Anthropic passthroughs forward session affinity headers for cache/routing affinity.
+				const compat = upstream === "anthropic" ? { sendSessionAffinityHeaders: true } : undefined;
 
 				models.push({
 					id,

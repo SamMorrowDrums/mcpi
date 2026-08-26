@@ -6,6 +6,10 @@
 
 - Renamed the public npm package from `@earendil-works/pi-ai` to `@sammorrowdrums/mcpi-ai` and its executable from `pi-ai` to `mcpi-ai`. The new package explicitly publishes to the public npm registry and requires Node.js 22.19 or newer.
 
+### Fixed
+
+- Fixed Cloudflare AI Gateway catalog generation when upstream metadata omits Workers AI passthrough models.
+
 ## [0.84.2] - 2026-08-14
 
 ### Added
