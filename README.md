@@ -36,10 +36,14 @@ The public command, paths, and environment variables use the `mcpi`/`MCPI_*` ide
 | Package | Description |
 |---------|-------------|
 | **[@sammorrowdrums/mcpi-telemetry](packages/telemetry)** | Vendor-neutral telemetry contracts, reference adapter, conformance tests, and typed schemas |
-| **[@sammorrowdrums/mcpi-ai](packages/ai)** | Unified multi-provider LLM API (OpenAI, Anthropic, Google, etc.) |
-| **[@sammorrowdrums/mcpi-agent-core](packages/agent)** | Agent runtime with tool calling and state management |
-| **[@sammorrowdrums/mcpi](packages/coding-agent)** | Interactive coding agent CLI |
+| **[@sammorrowdrums/mcpi-protocol](packages/protocol)** | Transport-neutral CBOR protocol for remote sessions |
 | **[@sammorrowdrums/mcpi-tui](packages/tui)** | Terminal UI library with differential rendering |
+| **[@sammorrowdrums/mcpi-ai](packages/ai)** | Unified multi-provider LLM API (OpenAI, Anthropic, Google, etc.) |
+| **[@sammorrowdrums/mcpi-client](packages/client)** | Transport-neutral client for remote sessions |
+| **[@sammorrowdrums/mcpi-agent-core](packages/agent)** | Agent runtime with tool calling and state management |
+| **[@sammorrowdrums/mcpi-server](packages/server)** | Experimental remote-session server |
+| **[@sammorrowdrums/mcpi-session-backend-sqlite-node](packages/session-backends/sqlite-node)** | SQLite session backend for Node.js |
+| **[@sammorrowdrums/mcpi](packages/coding-agent)** | Interactive coding agent CLI |
 
 For Slack/chat automation and workflows see [earendil-works/pi-chat](https://github.com/earendil-works/pi-chat).
 
@@ -91,6 +95,7 @@ We treat npm dependency changes as reviewed code changes.
 - `npm run check` verifies pinned direct deps, native TypeScript import compatibility, and the generated coding-agent shrinkwrap.
 - The published CLI package includes `packages/coding-agent/npm-shrinkwrap.json`, generated from the root lockfile, to pin transitive deps for npm users.
 - Release smoke tests use `npm run release:local` to build, pack, and create isolated npm and Bun installs outside the repo before tagging a release.
+- [RELEASING.md](RELEASING.md) documents the nine-package publish DAG, trusted publishing, first-registration bootstrap, and partial-publish recovery.
 - Local release installs, documented npm installs, and `mcpi update --self` use `--ignore-scripts` where supported.
 - CI installs with `npm ci --ignore-scripts`, and a scheduled GitHub workflow runs `npm audit --omit=dev` plus `npm audit signatures --omit=dev`.
 - Shrinkwrap generation has an explicit allowlist for dependency lifecycle scripts; new lifecycle-script deps fail checks until reviewed.
