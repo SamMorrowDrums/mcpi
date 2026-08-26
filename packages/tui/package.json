@@ -22,7 +22,8 @@
 		"native/darwin/src/**/*.c",
 		"native/darwin/build.sh",
 		"native/darwin/README.md",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"keywords": [
 		"tui",

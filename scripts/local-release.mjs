@@ -4,6 +4,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symli
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { packPackage } from "./npm-package-utils.mjs";
 import { getPublicWorkspacePackages } from "./release-packages.mjs";
 
 function printUsage() {
@@ -174,22 +175,6 @@ function createCliShim(installDirectory) {
 	symlinkSync(join("node_modules", ".bin", "mcpi"), join(installDirectory, "mcpi"));
 }
 
-function packPackage(pkg, tarballDirectory) {
-	const packageJson = readPackageJson(pkg.directory);
-	if (packageJson.name !== pkg.name) {
-		throw new Error(`${pkg.directory}/package.json has name ${packageJson.name}, expected ${pkg.name}`);
-	}
-
-	const output = run("npm", ["pack", "--json", "--pack-destination", tarballDirectory], {
-		capture: true,
-		cwd: pkg.directory,
-	});
-	// npm <11.6 returns an array; newer npm returns an object keyed by package name.
-	const parsed = JSON.parse(output);
-	const packed = Array.isArray(parsed) ? parsed[0] : Object.values(parsed)[0];
-	return join(tarballDirectory, packed.filename);
-}
-
 const options = parseArgs();
 const repoRoot = process.cwd();
 const rootPackageJson = readPackageJson(repoRoot);
@@ -225,8 +210,8 @@ if (!options.skipTest) {
 
 const tarballs = new Map();
 for (const pkg of packages) {
-	const tarball = packPackage(pkg, tarballDirectory);
-	tarballs.set(pkg.name, tarball);
+	const packed = packPackage(pkg, { destination: tarballDirectory });
+	tarballs.set(pkg.name, join(tarballDirectory, packed.filename));
 }
 
 let binaryPlatform;

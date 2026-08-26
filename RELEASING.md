@@ -20,22 +20,29 @@ The release tooling validates and processes exactly these packages, serially, in
 
 The repository root, `@sammorrowdrums/mcpi-evals`, the generated installer lock package, and extension examples are private and are never selected.
 
-Inspect the release manifest without building or contacting npm:
+Inspect the release manifest without building or contacting npm. The manifest records the authoritative root `LICENSE` SHA-256 and the package-local license path for every public package, and fails if any copy drifts:
 
 ```bash
 npm run release:manifest
 ```
 
-From a clean, already-built tree, validate every tarball without running package lifecycle scripts:
+From a clean, already-built tree, validate every tarball without running package lifecycle scripts. Dry-run validation requires exactly one `LICENSE` entry with the authoritative byte length:
 
 ```bash
 npm run release:pack -- --dry-run
 ```
 
-Pack all nine tarballs to an empty directory outside the repository:
+Pack all nine tarballs to an empty directory outside the repository. Actual packing extracts each `package/LICENSE` entry and compares it byte-for-byte with the authoritative license:
 
 ```bash
 npm run release:pack -- --out /tmp/mcpi-packages
+```
+
+If the root license changes, regenerate and verify all nine tracked copies before packing:
+
+```bash
+npm run sync:licenses
+npm run check:licenses
 ```
 
 ## First registration bootstrap

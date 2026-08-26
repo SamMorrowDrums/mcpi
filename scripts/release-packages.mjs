@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertPublicPackageLicenses, PACKAGE_LICENSE_FILENAME } from "./package-licenses.mjs";
 import { findPackageDirectories } from "./package-workspaces.mjs";
 
 const defaultRepoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -97,6 +98,7 @@ export function getPublicWorkspacePackages(repoRoot = defaultRepoRoot) {
 		throw new Error(`Public workspace selection does not match the release manifest (${errors.join("; ")})`);
 	}
 
+	const { packageLicenses } = assertPublicPackageLicenses(repoRoot, PUBLIC_PACKAGE_ORDER);
 	const packages = PUBLIC_PACKAGE_ORDER.map(({ directory, name }) => {
 		const manifest = readPackageJson(repoRoot, directory);
 		if (manifest.name !== name) {
@@ -111,6 +113,12 @@ export function getPublicWorkspacePackages(repoRoot = defaultRepoRoot) {
 		if (manifest.publishConfig?.registry !== "https://registry.npmjs.org/") {
 			throw new Error(`${name} must declare the public npm registry in publishConfig.registry`);
 		}
+		if (manifest.license !== "MIT") {
+			throw new Error(`${name} must declare the authoritative MIT license`);
+		}
+		if (!Array.isArray(manifest.files) || !manifest.files.includes(PACKAGE_LICENSE_FILENAME)) {
+			throw new Error(`${name} must include ${PACKAGE_LICENSE_FILENAME} in package.json files`);
+		}
 		if (
 			manifest.repository?.url !== "git+https://github.com/SamMorrowDrums/mcpi.git" ||
 			manifest.repository?.directory !== directory
@@ -121,7 +129,13 @@ export function getPublicWorkspacePackages(repoRoot = defaultRepoRoot) {
 		const dependencies = Object.fromEntries(
 			Object.entries(packageDependencies(manifest)).filter(([dependencyName]) => isMcpiPackage(dependencyName)),
 		);
-		return { dependencies, directory, name, version: manifest.version };
+		return {
+			dependencies,
+			directory,
+			license: packageLicenses.get(directory),
+			name,
+			version: manifest.version,
+		};
 	});
 
 	validatePublicPackageOrder(packages);
@@ -133,11 +147,18 @@ export function getReleaseManifest(options = {}) {
 	return {
 		distTag: options.distTag ?? "latest",
 		version: packages[0].version,
+		license: {
+			name: "MIT",
+			source: "LICENSE",
+			sha256: packages[0].license.sha256,
+			size: packages[0].license.size,
+		},
 		packages: packages.map((pkg, index) => ({
 			order: index + 1,
 			name: pkg.name,
 			directory: pkg.directory,
 			dependencies: Object.keys(pkg.dependencies),
+			license: pkg.license.path,
 		})),
 	};
 }

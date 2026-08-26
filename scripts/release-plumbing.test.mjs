@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { BOOTSTRAP_DIST_TAG, validateBootstrapInvocation } from "./bootstrap-publish.mjs";
 import { isPackageRegistered } from "./npm-package-utils.mjs";
+import { assertPublicPackageLicenses, syncPublicPackageLicenses } from "./package-licenses.mjs";
 import { getPublishArguments, publishPackages } from "./publish.mjs";
 import {
 	PUBLIC_PACKAGE_ORDER,
+	getReleaseManifest,
 	getPublicWorkspacePackages,
 	validatePublicPackageOrder,
 } from "./release-packages.mjs";
@@ -88,6 +92,56 @@ test("selects exactly nine public packages in dependency order", () => {
 	]) {
 		assert.equal(readJson(path).private, true, `${path} must stay private`);
 	}
+});
+
+test("public package manifests and release manifest pin exact authoritative license bytes", () => {
+	const authoritative = readFileSync(join(repoRoot, "LICENSE"));
+	const digest = createHash("sha256").update(authoritative).digest("hex");
+	const packages = getPublicWorkspacePackages(repoRoot);
+	const manifest = getReleaseManifest({ repoRoot });
+
+	assert.deepEqual(manifest.license, {
+		name: "MIT",
+		source: "LICENSE",
+		sha256: digest,
+		size: authoritative.length,
+	});
+	assert.deepEqual(
+		manifest.packages.map(({ license }) => license),
+		packages.map(({ directory }) => `${directory}/LICENSE`),
+	);
+
+	for (const pkg of packages) {
+		assert.deepEqual(readFileSync(join(repoRoot, pkg.license.path)), authoritative, pkg.name);
+		assert.deepEqual(pkg.license, {
+			path: `${pkg.directory}/LICENSE`,
+			sha256: digest,
+			size: authoritative.length,
+		});
+		const packageJson = readJson(`${pkg.directory}/package.json`);
+		assert.equal(packageJson.license, "MIT", pkg.name);
+		assert.ok(packageJson.files.includes("LICENSE"), `${pkg.name} must explicitly pack LICENSE`);
+	}
+});
+
+test("license synchronization excludes private packages and detects public package drift", (t) => {
+	const fixtureRoot = mkdtempSync(join(tmpdir(), "mcpi-license-test-"));
+	t.after(() => rmSync(fixtureRoot, { force: true, recursive: true }));
+	const packages = [{ directory: "packages/public", name: "@test/public" }];
+	mkdirSync(join(fixtureRoot, "packages/public"), { recursive: true });
+	mkdirSync(join(fixtureRoot, "packages/private"), { recursive: true });
+	writeFileSync(join(fixtureRoot, "LICENSE"), "authoritative license\n");
+	writeFileSync(join(fixtureRoot, "packages/private/LICENSE"), "private sentinel\n");
+
+	syncPublicPackageLicenses(fixtureRoot, packages);
+	assert.equal(readFileSync(join(fixtureRoot, "packages/public/LICENSE"), "utf8"), "authoritative license\n");
+	assert.equal(readFileSync(join(fixtureRoot, "packages/private/LICENSE"), "utf8"), "private sentinel\n");
+
+	writeFileSync(join(fixtureRoot, "packages/public/LICENSE"), "drifted\n");
+	assert.throws(
+		() => assertPublicPackageLicenses(fixtureRoot, packages),
+		/packages\/public\/LICENSE differs from LICENSE/,
+	);
 });
 
 test("public changelogs match the development or release-tag state", () => {

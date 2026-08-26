@@ -31,7 +31,8 @@
 		"examples",
 		"containerization.md",
 		"CHANGELOG.md",
-		"npm-shrinkwrap.json"
+		"npm-shrinkwrap.json",
+		"LICENSE"
 	],
 	"scripts": {
 		"clean": "shx rm -rf dist",
