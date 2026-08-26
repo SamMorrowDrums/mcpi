@@ -5,7 +5,38 @@ import { dirname, join, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(scriptDir, "..");
+const defaultRepoRoot = resolve(scriptDir, "..");
+
+function parseArgs(args) {
+	const options = { checkOnly: false, repoRoot: defaultRepoRoot };
+	for (let index = 0; index < args.length; index++) {
+		const arg = args[index];
+		if (arg === "--check") {
+			options.checkOnly = true;
+			continue;
+		}
+		if (arg === "--repo-root") {
+			const value = args[++index];
+			if (!value) {
+				throw new Error("--repo-root requires a directory");
+			}
+			options.repoRoot = resolve(value);
+			continue;
+		}
+		throw new Error(`Unknown argument: ${arg}`);
+	}
+	return options;
+}
+
+let options;
+try {
+	options = parseArgs(process.argv.slice(2));
+} catch (error) {
+	console.error(error instanceof Error ? error.message : String(error));
+	process.exit(1);
+}
+
+const { checkOnly, repoRoot } = options;
 const codingAgentDir = join(repoRoot, "packages/coding-agent");
 const outputDir = join(codingAgentDir, "install-lock");
 const rootLockfilePath = join(repoRoot, "package-lock.json");
@@ -20,16 +51,6 @@ const allowedInstallScriptPackages = new Map([
 	["@google/genai@1.52.0", "preinstall is a no-op in the published package"],
 	["protobufjs@7.6.5", "postinstall only warns about protobufjs version scheme mismatches"],
 ]);
-
-const args = new Set(process.argv.slice(2));
-const checkOnly = args.has("--check");
-
-for (const arg of args) {
-	if (arg !== "--check") {
-		console.error(`Unknown argument: ${arg}`);
-		process.exit(1);
-	}
-}
 
 function readJson(path) {
 	return JSON.parse(readFileSync(path, "utf8"));

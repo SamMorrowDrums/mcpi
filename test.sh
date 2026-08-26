@@ -70,8 +70,8 @@ for name in SystemRoot SYSTEMROOT WINDIR COMSPEC PATHEXT; do
 	[[ -z "$value" ]] || test_env+=("$name=$value")
 done
 
-# Preserve CI detection only for runner behavior and test reporting.
-for name in CI GITHUB_ACTIONS; do
+# Preserve CI detection for runner behavior and the release tag for changelog validation.
+for name in CI GITHUB_ACTIONS RELEASE_TAG; do
 	value="${!name-}"
 	[[ -z "$value" ]] || test_env+=("$name=$value")
 done

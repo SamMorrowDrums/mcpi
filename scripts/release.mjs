@@ -8,22 +8,24 @@
  *
  * Steps:
  * 1. Check for uncommitted changes
- * 2. Verify every public workspace package is registered on npm
- * 3. Bump version via npm run version:xxx or set an explicit version
- * 4. Update CHANGELOG.md files: [Unreleased] -> [version] - date
- * 5. Regenerate release artifacts
- * 6. Run checks and tests
- * 7. Commit and tag the release
- * 8. Add new [Unreleased] section to changelogs
- * 9. Commit next-cycle changelog updates
- * 10. Push main and the tag to trigger CI publication
+ * 2. Verify HEAD is the reviewed origin/main tip
+ * 3. Verify every public workspace package is registered on npm
+ * 4. Bump version via npm run version:xxx or set an explicit version
+ * 5. Update CHANGELOG.md files: [Unreleased] -> [version] - date
+ * 6. Regenerate release artifacts
+ * 7. Run checks and tests
+ * 8. Commit and tag the release
+ * 9. Add new [Unreleased] section to changelogs
+ * 10. Commit next-cycle changelog updates
+ * 11. Atomically push main and the tag to trigger CI publication
  */
 
-import { execSync, spawnSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { findPackageDirectories } from "./package-workspaces.mjs";
+import { isPackageRegistered } from "./npm-package-utils.mjs";
 import { getPublicWorkspacePackages } from "./release-packages.mjs";
+import { assertReleaseRefSafety } from "./release-ref-safety.mjs";
 
 const RELEASE_TARGET = process.argv[2];
 const BUMP_TYPES = new Set(["major", "minor", "patch"]);
@@ -58,23 +60,11 @@ function assertPackagesAreRegisteredWithNpm() {
 
 	console.log("Checking npm package registration...");
 	for (const packageName of packageNames) {
-		const result = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["view", packageName, "version", "--json"], {
-			encoding: "utf8",
-			stdio: ["ignore", "pipe", "pipe"],
-		});
-
-		if (result.status === 0 && result.stdout.trim()) {
+		if (isPackageRegistered(packageName)) {
 			console.log(`  ${packageName}`);
 			continue;
 		}
-
-		const output = [result.stdout, result.stderr, result.error?.message].filter(Boolean).join("\n");
-		if (output.includes("E404") || output.includes("404 Not Found")) {
-			unregisteredPackages.push(packageName);
-			continue;
-		}
-
-		throw new Error(output ? `Failed to query npm registration for ${packageName}\n${output}` : `Failed to query npm registration for ${packageName}`);
+		unregisteredPackages.push(packageName);
 	}
 
 	if (unregisteredPackages.length > 0) {
@@ -165,9 +155,13 @@ function bumpOrSetVersion(target) {
 }
 
 function getChangelogs() {
-	return findPackageDirectories()
-		.map((directory) => join(directory, "CHANGELOG.md"))
-		.filter((path) => existsSync(path));
+	return getPublicWorkspacePackages().map(({ directory, name }) => {
+		const path = join(directory, "CHANGELOG.md");
+		if (!existsSync(path)) {
+			throw new Error(`${name} is missing ${path}`);
+		}
+		return path;
+	});
 }
 
 function updateChangelogsForRelease(version) {
@@ -176,16 +170,12 @@ function updateChangelogsForRelease(version) {
 
 	for (const changelog of changelogs) {
 		const content = readFileSync(changelog, "utf-8");
-
-		if (!content.includes("## [Unreleased]")) {
-			console.log(`  Skipping ${changelog}: no [Unreleased] section`);
-			continue;
+		const unreleasedSections = content.match(/^## \[Unreleased\]$/gm) ?? [];
+		if (unreleasedSections.length !== 1) {
+			throw new Error(`${changelog} must contain exactly one [Unreleased] section before release`);
 		}
 
-		const updated = content.replace(
-			"## [Unreleased]",
-			`## [${version}] - ${date}`
-		);
+		const updated = content.replace("## [Unreleased]", `## [${version}] - ${date}`);
 		writeFileSync(changelog, updated);
 		console.log(`  Updated ${changelog}`);
 	}
@@ -197,12 +187,15 @@ function addUnreleasedSection() {
 
 	for (const changelog of changelogs) {
 		const content = readFileSync(changelog, "utf-8");
+		if (content.includes("## [Unreleased]")) {
+			throw new Error(`${changelog} already contains an [Unreleased] section`);
+		}
 
 		// Insert after "# Changelog\n\n"
-		const updated = content.replace(
-			/^(# Changelog\n\n)/,
-			`$1${unreleasedSection}`
-		);
+		const updated = content.replace(/^(# Changelog\n\n)/, `$1${unreleasedSection}`);
+		if (updated === content) {
+			throw new Error(`${changelog} does not start with the expected changelog heading`);
+		}
 		writeFileSync(changelog, updated);
 		console.log(`  Added [Unreleased] to ${changelog}`);
 	}
@@ -221,19 +214,22 @@ if (status && status.trim()) {
 }
 console.log("  Working directory clean\n");
 
-// 2. Verify npm package registration before modifying the worktree.
+// 2. Require the reviewed origin/main tip before modifying the worktree.
+assertReleaseRefSafety();
+
+// 3. Verify npm package registration before modifying the worktree.
 assertPackagesAreRegisteredWithNpm();
 
-// 3. Bump or set version
+// 4. Bump or set version
 const version = bumpOrSetVersion(RELEASE_TARGET);
 console.log(`  New version: ${version}\n`);
 
-// 4. Update changelogs
+// 5. Update changelogs
 console.log("Updating CHANGELOG.md files...");
 updateChangelogsForRelease(version);
 console.log();
 
-// 5. Regenerate release artifacts
+// 6. Regenerate release artifacts
 console.log("Regenerating release artifacts...");
 run("npm run generate:models");
 run("npm run check:model-data");
@@ -241,7 +237,7 @@ run("npm run shrinkwrap:coding-agent");
 run("npm run install-lock:coding-agent");
 console.log();
 
-// 6. Run checks and tests
+// 7. Run checks and tests
 console.log("Running checks...");
 run("npm run check");
 console.log();
@@ -251,31 +247,30 @@ run("npm run build:offline");
 console.log();
 
 console.log("Running tests...");
-run("./test.sh");
+run("./test.sh", { env: { ...process.env, RELEASE_TAG: `v${version}` } });
 console.log();
 
-// 7. Commit and tag
+// 8. Commit and tag
 console.log("Committing and tagging...");
 stageChangedFiles();
 run(`git commit -m "Release v${version}"`);
 run(`git tag v${version}`);
 console.log();
 
-// 8. Add new [Unreleased] sections
+// 9. Add new [Unreleased] sections
 console.log("Adding [Unreleased] sections for next cycle...");
 addUnreleasedSection();
 console.log();
 
-// 9. Commit
+// 10. Commit
 console.log("Committing changelog updates...");
 stageChangedFiles();
 run(`git commit -m "Add [Unreleased] section for next cycle"`);
 console.log();
 
-// 10. Push
-console.log("Pushing to remote...");
-run("git push origin main");
-run(`git push origin v${version}`);
+// 11. Push the reviewed main ref and tag atomically.
+console.log("Pushing main and tag to remote atomically...");
+run(`git push --atomic origin HEAD:refs/heads/main refs/tags/v${version}`);
 console.log();
 
 console.log(`=== Prepared release v${version}; CI publication starts after the tag push ===`);
