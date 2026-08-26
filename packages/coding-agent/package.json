@@ -107,6 +107,10 @@
 	"bugs": {
 		"url": "https://github.com/SamMorrowDrums/mcpi/issues"
 	},
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
 	"engines": {
 		"node": ">=22.19.0"
 	}

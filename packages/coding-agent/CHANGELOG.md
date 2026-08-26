@@ -4,6 +4,7 @@
 
 ### Breaking Changes
 
+- Renamed the public npm package from `@earendil-works/pi-coding-agent` to `@sammorrowdrums/mcpi`, the executable from `pi` to `mcpi`, and the package metadata field from `piConfig` to `mcpiConfig` with `name: "mcpi"`. The new package explicitly publishes to the public npm registry and requires Node.js 22.19 or newer.
 - mcpi no longer reads the legacy single-root layout or old names as a silent fallback. Move settings, auth, models, trust data, and user extensions/skills/prompts/themes to the platform config directory (`$XDG_CONFIG_HOME/mcpi`, fallback `~/.config/mcpi`; `%APPDATA%\mcpi` on Windows); move sessions to the platform state directory's `sessions/` subdirectory (`$XDG_STATE_HOME/mcpi`, fallback `~/.local/state/mcpi`; `%LOCALAPPDATA%\mcpi` on Windows); and recreate disposable package installs, binaries, and catalog caches under the platform cache directory (`$XDG_CACHE_HOME/mcpi`, fallback `~/.cache/mcpi`; `%LOCALAPPDATA%\mcpi` on Windows). Rename project `.pi` directories to `.mcpi` and every public `PI_*` variable or secret to `MCPI_*`. `MCPI_CODING_AGENT_DIR` remains an explicit single-root override. The extension API identifier and parameter `pi`, `pi.setEnv()`/`pi.unsetEnv()`, the extension package manifest `pi` field, internal upstream API/protocol symbols, Radius, `@mariozechner/clipboard`, and upstream attribution/licensing deliberately retain their existing names.
 
 ### Added

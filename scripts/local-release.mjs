@@ -4,18 +4,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symli
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-
-const packages = [
-	{ directory: "packages/telemetry", name: "@sammorrowdrums/mcpi-telemetry" },
-	{ directory: "packages/ai", name: "@sammorrowdrums/mcpi-ai" },
-	{ directory: "packages/tui", name: "@sammorrowdrums/mcpi-tui" },
-	{ directory: "packages/agent", name: "@sammorrowdrums/mcpi-agent-core" },
-	{ directory: "packages/protocol", name: "@sammorrowdrums/mcpi-protocol" },
-	{ directory: "packages/client", name: "@sammorrowdrums/mcpi-client" },
-	{ directory: "packages/session-backends/sqlite-node", name: "@sammorrowdrums/mcpi-session-backend-sqlite-node" },
-	{ directory: "packages/server", name: "@sammorrowdrums/mcpi-server" },
-	{ directory: "packages/coding-agent", name: "@sammorrowdrums/mcpi" },
-];
+import { getPublicWorkspacePackages } from "./release-packages.mjs";
 
 function printUsage() {
 	console.log(`Usage: node scripts/local-release.mjs [options]
@@ -209,6 +198,7 @@ if (rootPackageJson.name !== "mcpi-monorepo") {
 	throw new Error("Run this script from the repository root");
 }
 
+const packages = getPublicWorkspacePackages(repoRoot);
 const outDir = prepareOutputDirectory(options, repoRoot);
 const tarballDirectory = join(outDir, "tarballs");
 const nodeInstallDirectory = join(outDir, "node");

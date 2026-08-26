@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Breaking Changes
+
+- Renamed the public npm package from `@earendil-works/pi-agent-core` to `@sammorrowdrums/mcpi-agent-core`. The new package explicitly publishes to the public npm registry and requires Node.js 22.19 or newer.
+
 ## [0.84.2] - 2026-08-14
 
 ### Fixed
