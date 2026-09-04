@@ -12,8 +12,16 @@
 
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
+import { convertMessages } from "../src/api/openai-completions.ts";
 import { completeSimple, getEnvApiKey, getModel } from "../src/compat.ts";
-import type { AssistantMessage, Message, Tool, ToolResultMessage } from "../src/types.ts";
+import type {
+	AssistantMessage,
+	Message,
+	Model,
+	OpenAICompletionsCompat,
+	Tool,
+	ToolResultMessage,
+} from "../src/types.ts";
 import { resolveApiKey } from "./oauth.ts";
 
 // Resolve API keys
@@ -35,7 +43,7 @@ const echoTool: Tool<typeof echoToolSchema> = {
 /**
  * Test 1: Live cross-provider handoff
  *
- * 1. Use github-copilot gpt-5.2-codex to generate a tool call
+ * 1. Use github-copilot gpt-5.3-codex to generate a tool call
  * 2. Switch to openrouter openai/gpt-5.2-codex and complete
  * 3. Switch to openai-codex gpt-5.5 and complete
  *
@@ -45,7 +53,7 @@ describe("Tool Call ID Normalization - Live Handoff", () => {
 	it.skipIf(!copilotToken || !openrouterKey)(
 		"github-copilot -> openrouter should normalize pipe-separated IDs",
 		async () => {
-			const copilotModel = getModel("github-copilot", "gpt-5.2-codex");
+			const copilotModel = getModel("github-copilot", "gpt-5.3-codex");
 			const openrouterModel = getModel("openrouter", "openai/gpt-5.2-codex");
 
 			// Step 1: Generate tool call with github-copilot
@@ -69,18 +77,16 @@ describe("Tool Call ID Normalization - Live Handoff", () => {
 
 			const toolCall = assistantResponse.content.find((c) => c.type === "toolCall");
 			expect(toolCall).toBeDefined();
-			expect(toolCall!.type).toBe("toolCall");
-
-			// Verify it's a pipe-separated ID (OpenAI Responses format)
-			if (toolCall?.type === "toolCall") {
-				expect(toolCall.id).toContain("|");
-				console.log(`Tool call ID from github-copilot: ${toolCall.id.slice(0, 80)}...`);
+			if (!toolCall || toolCall.type !== "toolCall") {
+				throw new Error("Expected GitHub Copilot to return a tool call");
 			}
+			expect(toolCall.id).toContain("|");
+			console.log(`Tool call ID from github-copilot: ${toolCall.id.slice(0, 80)}...`);
 
 			// Create tool result
 			const toolResult: ToolResultMessage = {
 				role: "toolResult",
-				toolCallId: (toolCall as any).id,
+				toolCallId: toolCall.id,
 				toolName: "echo",
 				content: [{ type: "text", text: "hello world" }],
 				isError: false,
@@ -115,7 +121,7 @@ describe("Tool Call ID Normalization - Live Handoff", () => {
 	it.skipIf(!copilotToken || !codexToken)(
 		"github-copilot -> openai-codex should normalize pipe-separated IDs",
 		async () => {
-			const copilotModel = getModel("github-copilot", "gpt-5.2-codex");
+			const copilotModel = getModel("github-copilot", "gpt-5.3-codex");
 			const codexModel = getModel("openai-codex", "gpt-5.5");
 
 			// Step 1: Generate tool call with github-copilot
@@ -139,11 +145,14 @@ describe("Tool Call ID Normalization - Live Handoff", () => {
 
 			const toolCall = assistantResponse.content.find((c) => c.type === "toolCall");
 			expect(toolCall).toBeDefined();
+			if (!toolCall || toolCall.type !== "toolCall") {
+				throw new Error("Expected GitHub Copilot to return a tool call");
+			}
 
 			// Create tool result
 			const toolResult: ToolResultMessage = {
 				role: "toolResult",
-				toolCallId: (toolCall as any).id,
+				toolCallId: toolCall.id,
 				toolName: "echo",
 				content: [{ type: "text", text: "test message" }],
 				isError: false,
@@ -235,6 +244,65 @@ describe("Tool Call ID Normalization - Prefilled Context", () => {
 
 		return [userMessage, assistantMessage, toolResult, followUpUser];
 	}
+
+	it("normalizes historical tool call IDs without requiring the source model in the catalog", () => {
+		const targetModel: Model<"openai-completions"> = {
+			id: "synthetic-openai-completions",
+			name: "Synthetic OpenAI Completions",
+			api: "openai-completions",
+			provider: "openrouter",
+			baseUrl: "https://example.invalid/v1",
+			reasoning: false,
+			input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 128000,
+			maxTokens: 4096,
+		};
+		const compat: Omit<Required<OpenAICompletionsCompat>, "deferredToolsMode"> & {
+			deferredToolsMode?: OpenAICompletionsCompat["deferredToolsMode"];
+		} = {
+			supportsStore: true,
+			supportsDeveloperRole: true,
+			supportsReasoningEffort: true,
+			supportsUsageInStreaming: true,
+			supportsFinishReason: true,
+			maxTokensField: "max_completion_tokens",
+			requiresToolResultName: false,
+			requiresAssistantAfterToolResult: false,
+			requiresThinkingAsText: false,
+			requiresReasoningContentOnAssistantMessages: false,
+			thinkingFormat: "openai",
+			openRouterRouting: {},
+			vercelGatewayRouting: {},
+			chatTemplateKwargs: {},
+			chatTemplateArgs: {},
+			zaiToolStream: false,
+			supportsThinkingTokenBudget: false,
+			supportsStrictMode: true,
+			supportsOpenAIGrammarTools: false,
+			cacheControlFormat: "anthropic",
+			sendSessionAffinityHeaders: false,
+			sessionAffinityFormat: "openrouter",
+			supportsLongCacheRetention: true,
+		};
+
+		const messages = convertMessages(targetModel, { messages: buildPrefilledMessages(), tools: [echoTool] }, compat);
+		const assistantMessage = messages.find((message) => message.role === "assistant");
+		const toolResult = messages.find((message) => message.role === "tool");
+		if (!assistantMessage || assistantMessage.role !== "assistant" || !toolResult || toolResult.role !== "tool") {
+			throw new Error("Expected converted assistant and tool messages");
+		}
+		const normalizedId = assistantMessage.tool_calls?.[0]?.id;
+		if (!normalizedId) {
+			throw new Error("Expected converted assistant message to contain a tool call ID");
+		}
+
+		expect(normalizedId).toBe("call_pAYbIr76hXIjncD9UE4eGfnS_1q6evuz1");
+		expect(normalizedId).toBe(toolResult.tool_call_id);
+		expect(normalizedId).not.toBe(FAILING_TOOL_CALL_ID);
+		expect(normalizedId.length).toBeLessThanOrEqual(40);
+		expect(normalizedId).toMatch(/^[a-zA-Z0-9_-]+$/);
+	});
 
 	it.skipIf(!openrouterKey)(
 		"openrouter should handle prefilled context with long pipe-separated IDs",
