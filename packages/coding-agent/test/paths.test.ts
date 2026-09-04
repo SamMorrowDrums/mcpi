@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
 	canonicalizePath,
 	getCwdRelativePath,
+	getFileRevision,
 	isLocalPath,
 	normalizePath,
 	normalizeWindowsShellPath,
@@ -66,6 +67,16 @@ describe("canonicalizePath", () => {
 		symlinkSync(target, link);
 		// realpathSync would throw, so canonicalizePath returns the link path.
 		expect(canonicalizePath(link)).toBe(link);
+	});
+});
+
+describe("getFileRevision", () => {
+	it("distinguishes same-size content snapshots with identical file metadata", () => {
+		const dir = createTempDir();
+		const file = join(dir, "file.txt");
+		writeFileSync(file, "old");
+
+		expect(getFileRevision(file, "old")).not.toBe(getFileRevision(file, "new"));
 	});
 });
 

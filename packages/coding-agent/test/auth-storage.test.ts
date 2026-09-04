@@ -113,6 +113,14 @@ describe("AuthStorage", () => {
 		expect(lockSpy).toHaveBeenCalledTimes(2);
 	});
 
+	test("reloads rapid same-size external credential edits", async () => {
+		writeAuthJson({ anthropic: { type: "api_key", key: "old" } });
+		const storage = AuthStorage.create(authJsonPath);
+		writeAuthJson({ anthropic: { type: "api_key", key: "new" } });
+
+		await expect(storage.read("anthropic")).resolves.toEqual({ type: "api_key", key: "new" });
+	});
+
 	test("keeps a coalesced reload alive while another credential reader is waiting", async () => {
 		writeAuthJson({ anthropic: { type: "api_key", key: "old" } });
 		const storage = AuthStorage.create(authJsonPath);

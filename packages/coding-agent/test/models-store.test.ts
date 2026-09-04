@@ -91,6 +91,15 @@ describe("FileModelsStore", () => {
 		expect(lockSpy).toHaveBeenCalledTimes(3);
 	});
 
+	it("reloads rapid same-size external catalog edits", async () => {
+		writeFileSync(sharedModelsPath, JSON.stringify({ one: { models: [model("one", "old")] } }));
+		const store = new FileModelsStore(sharedModelsPath);
+		await expect(store.read("one")).resolves.toMatchObject({ models: [{ id: "old" }] });
+
+		writeFileSync(sharedModelsPath, JSON.stringify({ one: { models: [model("one", "new")] } }));
+		await expect(store.read("one")).resolves.toMatchObject({ models: [{ id: "new" }] });
+	});
+
 	it("keeps a coalesced reload alive while another reader is still waiting", async () => {
 		writeFileSync(sharedModelsPath, JSON.stringify({ one: { models: [model("one", "stored")] } }));
 		const store = new FileModelsStore(sharedModelsPath);

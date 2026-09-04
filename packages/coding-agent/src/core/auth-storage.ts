@@ -381,7 +381,7 @@ export class AuthStorage implements CredentialStore {
 		try {
 			this.storage.withLock((current) => {
 				content = current;
-				revision = this.authPath ? getFileRevision(this.authPath) : undefined;
+				revision = this.authPath ? getFileRevision(this.authPath, current) : undefined;
 				return { result: undefined };
 			});
 			this.updateReadState(this.parseStorageData(content), revision);
@@ -393,7 +393,7 @@ export class AuthStorage implements CredentialStore {
 	private async reloadFromStorageAsync(options?: AuthOperationOptions): Promise<AuthStorageData> {
 		return this.storage.withLockAsync(async (content) => {
 			const currentData = this.parseStorageData(content);
-			const revision = this.authPath ? getFileRevision(this.authPath) : undefined;
+			const revision = this.authPath ? getFileRevision(this.authPath, content) : undefined;
 			this.updateReadState(currentData, revision);
 			return { result: currentData };
 		}, options);
