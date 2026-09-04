@@ -1,4 +1,4 @@
-import { join, resolve } from "node:path";
+import { join, parse, resolve } from "node:path";
 import { Text, type TUI } from "@sammorrowdrums/mcpi-tui";
 import { Type } from "typebox";
 import { beforeAll, describe, expect, test } from "vitest";
@@ -29,6 +29,8 @@ function createFakeTui(): TUI {
 		requestRender: () => {},
 	} as unknown as TUI;
 }
+
+const outsideAgentsPath = resolve(parse(process.cwd()).root, "mcpi-test-outside", "AGENTS.md");
 
 describe("ToolExecutionComponent parity", () => {
 	beforeAll(() => {
@@ -481,9 +483,9 @@ describe("ToolExecutionComponent parity", () => {
 		},
 		{
 			title: "outside AGENTS.md",
-			path: resolve(process.cwd(), "..", "AGENTS.md"),
+			path: outsideAgentsPath,
 			content: "Hidden outside resource instructions",
-			compact: `read resource ${resolve(process.cwd(), "..", "AGENTS.md").replace(/\\/g, "/")}`,
+			compact: `read resource ${outsideAgentsPath.replace(/\\/g, "/")}`,
 			hidden: "Hidden outside resource instructions",
 			absent: undefined,
 		},
