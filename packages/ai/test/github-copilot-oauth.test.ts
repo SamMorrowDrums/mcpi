@@ -5,6 +5,23 @@ import { createModels } from "../src/models.ts";
 import { githubCopilotProvider } from "../src/providers/github-copilot.ts";
 
 const neverAbortedSignal = new AbortController().signal;
+const pickerModelId = "synthetic-picker-model";
+const policyModelId = "synthetic-policy-model";
+const disabledModelId = "synthetic-disabled-model";
+const unlistedModelId = "synthetic-unlisted-model";
+
+function githubCopilotProviderWithSyntheticModels() {
+	const provider = githubCopilotProvider();
+	const template = provider.getModels()[0];
+	if (!template) {
+		throw new Error("GitHub Copilot provider needs at least one model template");
+	}
+	const modelIds = [pickerModelId, policyModelId, disabledModelId, unlistedModelId];
+	return {
+		...provider,
+		getModels: () => modelIds.map((id) => ({ ...template, id, name: id })),
+	};
+}
 
 function jsonResponse(body: unknown, status: number = 200): Response {
 	return new Response(JSON.stringify(body), {
@@ -102,48 +119,48 @@ describe("GitHub Copilot OAuth device flow", () => {
 	it("filters models to the authenticated account picker catalog", async () => {
 		const credentials = await refreshGitHubCopilotModelsForTest([
 			{
-				id: "gpt-4.1",
+				id: pickerModelId,
 				model_picker_enabled: true,
 				capabilities: { supports: { tool_calls: true } },
 			},
 			{
-				id: "claude-opus-4.7",
+				id: disabledModelId,
 				model_picker_enabled: true,
 				policy: { state: "disabled" },
 				capabilities: { supports: { tool_calls: true } },
 			},
 			{
-				id: "gpt-5.4-nano",
+				id: policyModelId,
 				model_picker_enabled: false,
 				policy: { state: "enabled" },
 				capabilities: { supports: { tool_calls: true } },
 			},
 		]);
-		expect(credentials.availableModelIds).toEqual(["gpt-4.1"]);
+		expect(credentials.availableModelIds).toEqual([pickerModelId]);
 
 		const store = new InMemoryCredentialStore();
 		await store.modify("github-copilot", async () => ({ ...credentials, type: "oauth" }));
 		const models = createModels({ credentials: store });
-		models.setProvider(githubCopilotProvider());
-		expect((await models.getAvailable("github-copilot")).map((model) => model.id)).toEqual(["gpt-4.1"]);
+		models.setProvider(githubCopilotProviderWithSyntheticModels());
+		expect((await models.getAvailable("github-copilot")).map((model) => model.id)).toEqual([pickerModelId]);
 	});
 
 	it("falls back to explicitly enabled policy models when the picker catalog is empty", async () => {
 		const credentials = await refreshGitHubCopilotModelsForTest([
 			{
-				id: "gpt-4.1",
+				id: policyModelId,
 				model_picker_enabled: false,
 				policy: { state: "enabled" },
 				capabilities: { supports: { tool_calls: true } },
 			},
 			{
-				id: "claude-opus-4.7",
+				id: disabledModelId,
 				model_picker_enabled: false,
 				policy: { state: "disabled" },
 				capabilities: { supports: { tool_calls: true } },
 			},
 			{
-				id: "gpt-5.4-nano",
+				id: unlistedModelId,
 				model_picker_enabled: false,
 				capabilities: { supports: { tool_calls: true } },
 			},
@@ -155,20 +172,20 @@ describe("GitHub Copilot OAuth device flow", () => {
 			},
 		]);
 
-		expect(credentials.availableModelIds).toEqual(["gpt-4.1"]);
+		expect(credentials.availableModelIds).toEqual([policyModelId]);
 
 		const store = new InMemoryCredentialStore();
 		await store.modify("github-copilot", async () => ({ ...credentials, type: "oauth" }));
 		const models = createModels({ credentials: store });
-		models.setProvider(githubCopilotProvider());
-		expect((await models.getAvailable("github-copilot")).map((model) => model.id)).toEqual(["gpt-4.1"]);
+		models.setProvider(githubCopilotProviderWithSyntheticModels());
+		expect((await models.getAvailable("github-copilot")).map((model) => model.id)).toEqual([policyModelId]);
 	});
 
 	it("does not fall back to policy models for non-Individual accounts", async () => {
 		const credentials = await refreshGitHubCopilotModelsForTest(
 			[
 				{
-					id: "gpt-4.1",
+					id: policyModelId,
 					model_picker_enabled: false,
 					policy: { state: "enabled" },
 					capabilities: { supports: { tool_calls: true } },
