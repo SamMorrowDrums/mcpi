@@ -1,6 +1,6 @@
 {
 	"name": "@sammorrowdrums/mcpi-telemetry",
-	"version": "0.84.2",
+	"version": "0.85.0",
 	"description": "Vendor-neutral telemetry contracts and typed schema utilities for mcpi",
 	"type": "module",
 	"main": "./dist/index.js",

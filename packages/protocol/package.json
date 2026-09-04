@@ -1,6 +1,6 @@
 {
 	"name": "@sammorrowdrums/mcpi-protocol",
-	"version": "0.84.2",
+	"version": "0.85.0",
 	"description": "Transport-neutral CBOR protocol for remote mcpi sessions",
 	"type": "module",
 	"main": "./dist/index.js",

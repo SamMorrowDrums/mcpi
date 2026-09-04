@@ -1,6 +1,6 @@
 {
 	"name": "@sammorrowdrums/mcpi-evals",
-	"version": "0.84.2",
+	"version": "0.85.0",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -9,8 +9,8 @@
 		"test": "vitest run --config vitest.test.config.ts"
 	},
 	"devDependencies": {
-		"@sammorrowdrums/mcpi-ai": "^0.84.2",
-		"@sammorrowdrums/mcpi": "^0.84.2",
+		"@sammorrowdrums/mcpi-ai": "^0.85.0",
+		"@sammorrowdrums/mcpi": "^0.85.0",
 		"@types/node": "24.12.4",
 		"shx": "0.4.0",
 		"typescript": "5.9.3",

@@ -1,6 +1,6 @@
 {
 	"name": "@sammorrowdrums/mcpi-client",
-	"version": "0.84.2",
+	"version": "0.85.0",
 	"description": "Transport-neutral client for remote mcpi sessions over framed CBOR bytes",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -56,7 +56,7 @@
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"@sammorrowdrums/mcpi-protocol": "^0.84.2"
+		"@sammorrowdrums/mcpi-protocol": "^0.85.0"
 	},
 	"devDependencies": {
 		"shx": "0.4.0",
