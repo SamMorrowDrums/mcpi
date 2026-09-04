@@ -77,4 +77,6 @@ for name in CI GITHUB_ACTIONS RELEASE_TAG; do
 done
 
 echo "Running tests without API keys in isolated home: $test_root/home"
+env -i "${test_env[@]}" npm run build:offline
+env -i "${test_env[@]}" node scripts/prepare-test-tools.mjs
 env -i "${test_env[@]}" npm test

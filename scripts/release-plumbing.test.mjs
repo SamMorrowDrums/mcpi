@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -373,6 +374,88 @@ test("release ref safety only accepts the reviewed origin main tip", () => {
 			}),
 		/does not match fetched origin\/main/,
 	);
+});
+
+test("standalone test orchestration builds and prepares managed tools before testing", () => {
+	const testScript = readFileSync(join(repoRoot, "test.sh"), "utf8");
+	const runTestScript = (source) => {
+		const fixture = mkdtempSync(join(tmpdir(), "mcpi-test-orchestration-"));
+		try {
+			const binDirectory = join(fixture, "bin");
+			mkdirSync(binDirectory);
+			writeFileSync(join(fixture, "test.sh"), source);
+			writeFileSync(
+				join(binDirectory, "npm"),
+				`#!/usr/bin/env bash
+set -euo pipefail
+printf 'npm %s\n' "$*" >> trace.log
+case "$*" in
+	"run build:offline")
+		mkdir -p packages/coding-agent/dist
+		: > packages/coding-agent/dist/cli.js
+		;;
+	"test")
+		test -f packages/coding-agent/dist/cli.js
+		test -x "$XDG_CACHE_HOME/mcpi/bin/fd"
+		test -x "$XDG_CACHE_HOME/mcpi/bin/rg"
+		;;
+	*)
+		exit 64
+		;;
+esac
+`,
+			);
+			writeFileSync(
+				join(binDirectory, "node"),
+				`#!/usr/bin/env bash
+set -euo pipefail
+printf 'node %s\n' "$*" >> trace.log
+test "$*" = "scripts/prepare-test-tools.mjs"
+test -f packages/coding-agent/dist/cli.js
+mkdir -p "$XDG_CACHE_HOME/mcpi/bin"
+for tool in fd rg; do
+	printf '#!/usr/bin/env bash\n' > "$XDG_CACHE_HOME/mcpi/bin/$tool"
+	chmod +x "$XDG_CACHE_HOME/mcpi/bin/$tool"
+done
+`,
+			);
+			chmodSync(join(fixture, "test.sh"), 0o755);
+			chmodSync(join(binDirectory, "npm"), 0o755);
+			chmodSync(join(binDirectory, "node"), 0o755);
+
+			const result = spawnSync("bash", ["test.sh"], {
+				cwd: fixture,
+				encoding: "utf8",
+				env: {
+					...process.env,
+					PATH: `${binDirectory}:${process.env.PATH ?? ""}`,
+				},
+			});
+			const trace = readFileSync(join(fixture, "trace.log"), "utf8").trim().split("\n");
+			return { result, trace };
+		} finally {
+			rmSync(fixture, { force: true, recursive: true });
+		}
+	};
+
+	const passing = runTestScript(testScript);
+	assert.equal(passing.result.status, 0, passing.result.stderr);
+	assert.deepEqual(passing.trace, [
+		"npm run build:offline",
+		"node scripts/prepare-test-tools.mjs",
+		"npm test",
+	]);
+
+	const withoutBuild = testScript.replace('env -i "${test_env[@]}" npm run build:offline\n', "");
+	assert.notEqual(withoutBuild, testScript);
+	assert.notEqual(runTestScript(withoutBuild).result.status, 0);
+
+	const withoutManagedTools = testScript.replace(
+		'env -i "${test_env[@]}" node scripts/prepare-test-tools.mjs\n',
+		"",
+	);
+	assert.notEqual(withoutManagedTools, testScript);
+	assert.notEqual(runTestScript(withoutManagedTools).result.status, 0);
 });
 
 test("release script pushes HEAD and the tag atomically", () => {
