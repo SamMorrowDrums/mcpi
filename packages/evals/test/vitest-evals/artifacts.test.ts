@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import {
+	MCPI_SESSION_SNAPSHOT_ARTIFACT,
 	persistEvalArtifactReferences,
 	recordEvalSessionArtifact,
 	recordEvalSourceArtifact,
@@ -11,7 +12,7 @@ import {
 it("records session and source artifacts against the explicit test task", async ({ task }) => {
 	const runId = "run-1";
 	await recordEvalSessionArtifact(task, {
-		artifacts: { runId, piSessionJsonl: '{"type":"session"}\n' },
+		artifacts: { runId, [MCPI_SESSION_SNAPSHOT_ARTIFACT]: '{"type":"session"}\n' },
 	});
 	await recordEvalSourceArtifact(task, runId, {
 		name: "hello.ts",
