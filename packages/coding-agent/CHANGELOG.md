@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Corrected published mcpi-ext installation and ownership guidance, settings scope, legacy `.pi` migration, and provider/model selection across documentation and CLI help ([#6](https://github.com/SamMorrowDrums/mcpi/pull/6)).
+
 ## [0.85.0] - 2026-09-04
 
 ### Breaking Changes
