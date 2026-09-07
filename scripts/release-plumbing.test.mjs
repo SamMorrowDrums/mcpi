@@ -36,6 +36,15 @@ function readJson(path) {
 	return JSON.parse(readFileSync(join(repoRoot, path), "utf8"));
 }
 
+function getWorkflowJob(workflow, name) {
+	const marker = `  ${name}:\n`;
+	const start = workflow.indexOf(marker);
+	assert.notEqual(start, -1, `Workflow job not found: ${name}`);
+	const remainder = workflow.slice(start + marker.length);
+	const nextJob = remainder.search(/^  [a-z][a-z0-9-]+:\n/m);
+	return nextJob === -1 ? remainder : remainder.slice(0, nextJob);
+}
+
 test("build-binaries is the sole npm publisher and approval gate", () => {
 	const workflowDirectory = join(repoRoot, ".github/workflows");
 	const workflows = readdirSync(workflowDirectory)
@@ -68,6 +77,22 @@ test("build-binaries is the sole npm publisher and approval gate", () => {
 	assert.match(publishEntrypoints[0].text, /--source-ref "\$\{RELEASE_SHA\}"/);
 	assert.doesNotMatch(combinedWorkflowText, /\bNPM_TOKEN\b/);
 	assert.doesNotMatch(readFileSync(join(workflowDirectory, "release.yml"), "utf8"), /\bnpm publish\b|publish\.mjs/);
+});
+
+test("release reruns stage drafts after npm and retain them for publication retries", () => {
+	const workflow = readFileSync(join(repoRoot, ".github/workflows/build-binaries.yml"), "utf8");
+	const publishNpm = getWorkflowJob(workflow, "publish-npm");
+	const stageGithubRelease = getWorkflowJob(workflow, "stage-github-release");
+	const publishGithubRelease = getWorkflowJob(workflow, "publish-github-release");
+
+	assert.match(publishNpm, /^\s{4}needs: build$/m);
+	assert.doesNotMatch(publishNpm, /stage-github-release/);
+	assert.match(stageGithubRelease, /^\s{4}needs:\n\s{6}- build\n\s{6}- publish-npm$/m);
+	assert.match(publishGithubRelease, /^\s{4}needs:\n\s{6}- stage-github-release\n\s{6}- publish-npm$/m);
+	assert.doesNotMatch(workflow, /^  cleanup-draft-github-release:$/m);
+	assert.doesNotMatch(workflow, /Delete draft GitHub Release after failure/);
+	assert.match(stageGithubRelease, /already published; leaving it unchanged[\s\S]*exit 0/);
+	assert.match(publishGithubRelease, /already published\.[\s\S]*exit 0/);
 });
 
 test("selects exactly nine public packages in dependency order", () => {
