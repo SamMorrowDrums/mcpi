@@ -146,6 +146,7 @@ mcpi [options] [@files...] [messages...]
 ### Package Commands
 
 ```bash
+mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0
 mcpi install <source> [-l]       # Install package, -l for project-local
 mcpi remove <source> [-l]        # Remove package
 mcpi uninstall <source> [-l]     # Alias for remove
@@ -160,6 +161,10 @@ mcpi config                      # Enable/disable package resources
 ```
 
 These commands manage mcpi packages and `mcpi update` can update the mcpi CLI installation. To uninstall mcpi itself, see [Quickstart](quickstart.md#uninstall). `mcpi config` and project package commands accept `--approve`/`--no-approve` to trust or ignore project-local settings for one command. `mcpi update` never prompts for project trust.
+
+For MCP support, mcpi owns the mcpi-ext package installation and scope. Follow the
+[mcpi-ext Quick Start](https://github.com/SamMorrowDrums/mcpi-ext#quick-start) for MCP server
+configuration and runtime usage.
 
 See [mcpi Packages](packages.md) for package sources and security notes.
 

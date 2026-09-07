@@ -366,6 +366,31 @@ describe("package commands", () => {
 			const stdout = logSpy.mock.calls.map(([message]) => String(message)).join("\n");
 			expect(stdout).toContain("Usage:");
 			expect(stdout).toContain("mcpi install <source> [-l]");
+			expect(stdout).toContain("add it to user settings by default");
+			expect(stdout).toContain("mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0");
+			expect(stdout).toContain("mcpi list");
+			expect(stdout).toContain("mcpi config");
+			expect(errorSpy).not.toHaveBeenCalled();
+			expect(process.exitCode).toBeUndefined();
+		} finally {
+			logSpy.mockRestore();
+			errorSpy.mockRestore();
+		}
+	});
+
+	it("shows list and config scope guidance", async () => {
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		try {
+			await expect(main(["list", "--help"])).resolves.toBeUndefined();
+			await expect(main(["config", "--help"])).resolves.toBeUndefined();
+
+			const stdout = logSpy.mock.calls.map(([message]) => String(message)).join("\n");
+			expect(stdout).toContain("user settings and trusted project settings");
+			expect(stdout).toContain("Without -l, starts in global settings");
+			expect(stdout).toContain("Press Tab in the TUI to switch between global and project-local modes.");
+			expect(stdout).toContain("-l, --local       Edit project overrides (.mcpi/settings.json)");
 			expect(errorSpy).not.toHaveBeenCalled();
 			expect(process.exitCode).toBeUndefined();
 		} finally {

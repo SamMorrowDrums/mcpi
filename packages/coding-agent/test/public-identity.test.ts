@@ -94,6 +94,11 @@ describe("public mcpi identity", () => {
 		const output = log.mock.calls.map(([message]) => String(message)).join("\n");
 		expect(output).toContain("mcpi - AI coding assistant");
 		expect(output).toContain("mcpi update [source|self|mcpi]");
+		expect(output).toContain("mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0");
+		expect(output).toContain("Remove package source from settings");
+		expect(output).toContain("Update mcpi, packages, or model catalogs");
+		expect(output).toContain("List installed packages from settings");
+		expect(output).not.toContain("List installed extensions from settings");
 		expect(output).toContain("MCPI_CODING_AGENT_DIR");
 		expect(output).toContain("MCPI_CODING_AGENT_SESSION_DIR");
 		expect(output).toContain(join("/tmp/mcpi-state", "mcpi", "sessions"));

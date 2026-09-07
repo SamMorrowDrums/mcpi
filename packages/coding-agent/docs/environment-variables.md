@@ -20,7 +20,7 @@ mcpi separates configuration, persistent state, and disposable cache data:
 
 Sessions are stored under the state directory's `sessions/` subdirectory. `MCPI_CODING_AGENT_DIR` is an explicit single-root override: when set, mcpi uses that one directory for config, state, and cache data.
 
-## Breaking Migration from Upstream pi
+## Migrating legacy `.pi` data
 
 mcpi does not read old `PI_*` variables or legacy pi paths, and it does not copy or move old data automatically. Migrate durable files explicitly before starting mcpi. If mcpi finds legacy data while the corresponding mcpi destination is absent, startup stops with the exact source and destination paths.
 
@@ -93,7 +93,7 @@ Commands run by the bash tool receive the current mcpi session state:
 | `MCPI_MODEL` | Currently selected model ID |
 | `MCPI_REASONING_LEVEL` | Current effective reasoning level: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max` |
 
-The values are resolved when each command starts. Switching models or changing the reasoning level therefore affects the next bash command without restarting mcpi. `MCPI_PROVIDER` and `MCPI_MODEL` identify the selected mcpi model, not a different upstream model that a router may choose internally.
+The values are resolved when each command starts. Switching models or changing the reasoning level therefore affects the next bash command without restarting mcpi. `MCPI_PROVIDER` and `MCPI_MODEL` identify the selected mcpi model, not a different model that a router may choose internally.
 
 When asked which model or provider is running, inspect these variables instead of inferring the answer from the system prompt:
 

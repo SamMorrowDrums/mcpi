@@ -1,7 +1,12 @@
 import { InMemoryModelsStore } from "@sammorrowdrums/mcpi-ai";
 import { describe, expect, test, vi } from "vitest";
 import { parseArgs } from "../src/cli/args.ts";
-import { AuthCommandError, isAuthCommandHelp, parseAuthCommand } from "../src/cli/auth-command.ts";
+import {
+	AuthCommandError,
+	isAuthCommandHelp,
+	parseAuthCommand,
+	printAuthCommandHelp,
+} from "../src/cli/auth-command.ts";
 import { resolveCredentialForPrint } from "../src/cli/credential-print.ts";
 import { ENV_AGENT_DIR } from "../src/config.ts";
 import { AuthStorage } from "../src/core/auth-storage.ts";
@@ -84,6 +89,21 @@ describe("credential print commands", () => {
 			vi.unstubAllEnvs();
 			process.exitCode = originalExitCode;
 			errorSpy.mockRestore();
+		}
+	});
+
+	test("distinguishes credential inspection from provider login in auth help", () => {
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		try {
+			printAuthCommandHelp();
+
+			const stdout = logSpy.mock.calls.map(([message]) => String(message)).join("\n");
+			expect(stdout).toContain("they do not sign in");
+			expect(stdout).toContain("use /login");
+			expect(stdout).toContain("github-copilot/claude-opus-5");
+			expect(stdout).toContain("mcpi auth check --provider github-copilot");
+		} finally {
+			logSpy.mockRestore();
 		}
 	});
 

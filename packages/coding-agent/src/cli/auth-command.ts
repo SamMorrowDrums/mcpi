@@ -38,11 +38,16 @@ export function isAuthCommandHelp(args: string[]): boolean {
 
 export function printAuthCommandHelp(): void {
 	console.log(`Usage:
-  mcpi auth print-api-key [--provider <provider>] [--model <model>]
-  mcpi auth print-bearer-token [--provider <provider>] [--model <model>] [--min-expiry <duration>]
-  mcpi auth check [--provider <provider>] [--model <model>] [--json] [--credentials] [--no-refresh]
+  ${APP_NAME} auth print-api-key [--provider <provider>] [--model <model>]
+  ${APP_NAME} auth print-bearer-token [--provider <provider>] [--model <model>] [--min-expiry <duration>]
+  ${APP_NAME} auth check [--provider <provider>] [--model <model>] [--json] [--credentials] [--no-refresh]
 
-Auth commands require at least one of --provider or --model. Checks refresh expired OAuth credentials by default; --no-refresh prevents this. --credentials emits the credential, or includes it in JSON output.`);
+These commands inspect credentials that are already configured; they do not sign in. Start ${APP_NAME} interactively and use /login to add or replace provider credentials, then /model to select a model such as github-copilot/claude-opus-5.
+
+Auth commands require at least one of --provider or --model. Checks refresh expired OAuth credentials by default; --no-refresh prevents this. --credentials emits the credential, or includes it in JSON output.
+
+Example:
+  ${APP_NAME} auth check --provider github-copilot`);
 }
 
 export function parseAuthCommand(args: string[]): AuthCommand | undefined {
