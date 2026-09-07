@@ -22,8 +22,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Keep the public GitHub Release publication last. Binary assets are staged in
-  # a draft release first; cleanup removes the draft if later publishing fails.
+  # Keep the public GitHub Release publication last. Stage its draft only after
+  # npm succeeds so failed-job reruns cannot reuse a deleted draft.
   build:
     runs-on: ubuntu-latest
     outputs:
@@ -140,7 +140,9 @@ jobs:
 
   stage-github-release:
     runs-on: ubuntu-latest
-    needs: build
+    needs:
+      - build
+      - publish-npm
     permissions:
       actions: read
       contents: write
@@ -207,8 +209,8 @@ jobs:
 
           existing_release="$(gh release view "${RELEASE_TAG}" --json isDraft --jq .isDraft 2>/dev/null || true)"
           if [[ "${existing_release}" == "false" ]]; then
-            echo "::error::GitHub Release ${RELEASE_TAG} is already published. Refusing to mutate a public release."
-            exit 1
+            echo "GitHub Release ${RELEASE_TAG} is already published; leaving it unchanged."
+            exit 0
           fi
           if [[ "${existing_release}" == "true" ]]; then
             gh release delete "${RELEASE_TAG}" --yes
@@ -232,9 +234,7 @@ jobs:
 
   publish-npm:
     runs-on: ubuntu-latest
-    needs:
-      - build
-      - stage-github-release
+    needs: build
     environment: npm-publish
     permissions:
       contents: read
@@ -309,33 +309,8 @@ jobs:
             exit 1
           fi
           if [[ "${existing_release}" == "false" ]]; then
-            echo "::error::GitHub Release ${RELEASE_TAG} is already published."
-            exit 1
+            echo "GitHub Release ${RELEASE_TAG} is already published."
+            exit 0
           fi
 
           gh release edit "${RELEASE_TAG}" --draft=false
-
-  cleanup-draft-github-release:
-    runs-on: ubuntu-latest
-    needs:
-      - build
-      - stage-github-release
-      - publish-npm
-      - publish-github-release
-    if: ${{ always() && needs.stage-github-release.result != 'skipped' && (needs.stage-github-release.result != 'success' || needs.publish-npm.result != 'success' || needs.publish-github-release.result != 'success') }}
-    permissions:
-      contents: write
-    env:
-      GH_REPO: ${{ github.repository }}
-      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
-    steps:
-      - name: Delete draft GitHub Release after failure
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          existing_release="$(gh release view "${RELEASE_TAG}" --json isDraft --jq .isDraft 2>/dev/null || true)"
-          if [[ "${existing_release}" == "true" ]]; then
-            gh release delete "${RELEASE_TAG}" --yes
-          fi
