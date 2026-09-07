@@ -103,7 +103,7 @@ Options:
   -na, --no-approve Ignore project-local files for this command
 
 Examples:
-  ${APP_NAME} install npm:@sammorrowdrums/mcpi-ext@1.0.0
+  ${APP_NAME} install npm:@sammorrowdrums/mcpi-ext
   ${APP_NAME} install npm:@foo/bar
   ${APP_NAME} install git:github.com/user/repo
   ${APP_NAME} install git:git@github.com:user/repo

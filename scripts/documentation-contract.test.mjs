@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const extensionInstall = "mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0";
+const extensionInstall = "mcpi install npm:@sammorrowdrums/mcpi-ext";
 const extensionQuickStart = "https://github.com/SamMorrowDrums/mcpi-ext#quick-start";
 
 function read(path) {
@@ -36,10 +36,13 @@ test("core docs teach the package-managed mcpi-ext flow and defer MCP configurat
 	}
 
 	const combined = packageManagedExtensionDocs.map(read).join("\n");
+	assert.doesNotMatch(combined, /mcpi install npm:@sammorrowdrums\/mcpi-ext@\S+/);
 	assert.doesNotMatch(combined, /npm root -g.*mcpi-ext/);
 	assert.doesNotMatch(combined, /--mcp-config/);
 	assert.doesNotMatch(combined, /export\s+GITHUB_PERSONAL_ACCESS_TOKEN/);
 	assert.doesNotMatch(combined, /\$\{GITHUB_PERSONAL_ACCESS_TOKEN\}/);
+	assert.doesNotMatch(combined, /ghcr\.io\/github\/github-mcp-server:skill-discovery/);
+	assert.doesNotMatch(combined, /io\.modelcontextprotocol\/skills/);
 });
 
 test("active user docs do not direct readers to retired upstream instructions", () => {

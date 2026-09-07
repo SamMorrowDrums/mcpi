@@ -311,7 +311,7 @@ Extensions can register additional flags (e.g., --plan from plan-mode extension)
 
 ${chalk.bold("Examples:")}
   # Install the supported MCP extension package
-  ${APP_NAME} install npm:@sammorrowdrums/mcpi-ext@1.0.0
+  ${APP_NAME} install npm:@sammorrowdrums/mcpi-ext
   ${APP_NAME} list
 
   # Print a provider API key for an external client

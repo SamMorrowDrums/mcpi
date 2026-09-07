@@ -37,7 +37,7 @@ mcpi --model github-copilot/claude-opus-5
 Install the supported MCP extension through mcpi's package manager:
 
 ```bash
-mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0
+mcpi install npm:@sammorrowdrums/mcpi-ext
 mcpi list
 mcpi config
 ```

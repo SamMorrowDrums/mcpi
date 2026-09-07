@@ -81,7 +81,7 @@ Then just talk to mcpi. By default, mcpi gives the model four tools: `read`, `wr
 Install the supported MCP extension through mcpi's package manager:
 
 ```bash
-mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0
+mcpi install npm:@sammorrowdrums/mcpi-ext
 mcpi list
 mcpi config
 ```
@@ -430,7 +430,7 @@ Bundle and share extensions, skills, prompts, and themes via npm or git.
 > **Security:** mcpi packages run with full system access. Extensions execute arbitrary code, and skills can instruct the model to perform any action including running executables. Review source code before installing third-party packages.
 
 ```bash
-mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0
+mcpi install npm:@sammorrowdrums/mcpi-ext
 mcpi install npm:@foo/mcpi-tools
 mcpi install npm:@foo/mcpi-tools@1.2.3      # pinned version
 mcpi install git:github.com/user/repo

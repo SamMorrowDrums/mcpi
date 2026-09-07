@@ -98,13 +98,13 @@ See [Providers](providers.md) for all supported providers, environment variables
 Install the supported MCP extension through mcpi:
 
 ```bash
-mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0
+mcpi install npm:@sammorrowdrums/mcpi-ext
 mcpi list
 mcpi config
 ```
 
 The default install is stored in the global mcpi `settings.json` and applies to every project. Use
-`mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0 -l` for project-local `.mcpi/settings.json`
+`mcpi install npm:@sammorrowdrums/mcpi-ext -l` for project-local `.mcpi/settings.json`
 scope. `mcpi list` shows user packages and packages from trusted project settings. `mcpi config`
 enables or disables installed resources; press Tab to switch scope, or use `mcpi config -l` to
 start in project-local mode.

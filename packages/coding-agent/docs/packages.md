@@ -20,7 +20,7 @@ mcpi packages bundle extensions, skills, prompt templates, and themes so you can
 > **Security:** mcpi packages run with full system access. Extensions execute arbitrary code, and skills can instruct the model to perform any action including running executables. Review source code before installing third-party packages.
 
 ```bash
-mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0
+mcpi install npm:@sammorrowdrums/mcpi-ext
 mcpi list
 mcpi config
 

@@ -94,7 +94,8 @@ describe("public mcpi identity", () => {
 		const output = log.mock.calls.map(([message]) => String(message)).join("\n");
 		expect(output).toContain("mcpi - AI coding assistant");
 		expect(output).toContain("mcpi update [source|self|mcpi]");
-		expect(output).toContain("mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0");
+		expect(output).toContain("mcpi install npm:@sammorrowdrums/mcpi-ext");
+		expect(output).not.toContain("npm:@sammorrowdrums/mcpi-ext@");
 		expect(output).toContain("Remove package source from settings");
 		expect(output).toContain("Update mcpi, packages, or model catalogs");
 		expect(output).toContain("List installed packages from settings");

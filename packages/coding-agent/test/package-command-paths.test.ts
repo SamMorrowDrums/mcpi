@@ -367,7 +367,8 @@ describe("package commands", () => {
 			expect(stdout).toContain("Usage:");
 			expect(stdout).toContain("mcpi install <source> [-l]");
 			expect(stdout).toContain("add it to user settings by default");
-			expect(stdout).toContain("mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0");
+			expect(stdout).toContain("mcpi install npm:@sammorrowdrums/mcpi-ext");
+			expect(stdout).not.toContain("npm:@sammorrowdrums/mcpi-ext@");
 			expect(stdout).toContain("mcpi list");
 			expect(stdout).toContain("mcpi config");
 			expect(errorSpy).not.toHaveBeenCalled();

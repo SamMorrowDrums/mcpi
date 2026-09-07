@@ -59,7 +59,7 @@ This section shows how to author and test a local extension. To install the publ
 integration instead, use mcpi's package manager:
 
 ```bash
-mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0
+mcpi install npm:@sammorrowdrums/mcpi-ext
 mcpi list
 mcpi config
 ```

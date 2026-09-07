@@ -34,7 +34,7 @@ Authenticate with `/login` for subscription providers, or set an API key such as
 To add the supported MCP extension:
 
 ```bash
-mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0
+mcpi install npm:@sammorrowdrums/mcpi-ext
 mcpi list
 mcpi config
 ```

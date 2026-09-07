@@ -146,7 +146,7 @@ mcpi [options] [@files...] [messages...]
 ### Package Commands
 
 ```bash
-mcpi install npm:@sammorrowdrums/mcpi-ext@1.0.0
+mcpi install npm:@sammorrowdrums/mcpi-ext
 mcpi install <source> [-l]       # Install package, -l for project-local
 mcpi remove <source> [-l]        # Remove package
 mcpi uninstall <source> [-l]     # Alias for remove
