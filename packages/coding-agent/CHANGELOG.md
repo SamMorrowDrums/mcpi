@@ -2,10 +2,6 @@
 
 ## [Unreleased]
 
-### Fixed
-
-- Corrected the published installation, package-scope, legacy-path migration, provider login, Claude Opus 5 selection, and mcpi-ext ownership documentation, and aligned `install`, `list`, `config`, and `auth` help with the shipped CLI behavior.
-
 ## [0.85.0] - 2026-09-04
 
 ### Breaking Changes
