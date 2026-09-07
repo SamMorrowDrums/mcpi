@@ -254,7 +254,7 @@ console.log();
 console.log("Committing and tagging...");
 stageChangedFiles();
 run(`git commit -m "Release v${version}"`);
-run(`git tag v${version}`);
+run(`git tag -s -m "Release v${version}" v${version}`);
 console.log();
 
 // 9. Add new [Unreleased] sections

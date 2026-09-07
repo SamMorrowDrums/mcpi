@@ -483,12 +483,13 @@ done
 	assert.notEqual(runTestScript(withoutManagedTools).result.status, 0);
 });
 
-test("release script pushes HEAD and the tag atomically", () => {
+test("release script signs the tag and pushes it atomically with main", () => {
 	const releaseScript = readFileSync(join(repoRoot, "scripts/release.mjs"), "utf8");
 	const testScript = readFileSync(join(repoRoot, "test.sh"), "utf8");
 	assert.match(releaseScript, /assertReleaseRefSafety\(\)/);
 	assert.match(releaseScript, /RELEASE_TAG: `v\$\{version\}`/);
 	assert.match(testScript, /CI GITHUB_ACTIONS RELEASE_TAG/);
+	assert.match(releaseScript, /git tag -s -m "Release v\$\{version\}" v\$\{version\}/);
 	assert.match(releaseScript, /git push --atomic origin HEAD:refs\/heads\/main refs\/tags\/v/);
 	assert.doesNotMatch(releaseScript, /git push origin main/);
 });
