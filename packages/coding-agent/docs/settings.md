@@ -284,7 +284,7 @@ String form loads all resources from a package:
 
 ```json
 {
-  "packages": ["mcpi-skills", "@org/my-extension"]
+  "packages": ["npm:mcpi-skills", "npm:@org/my-extension"]
 }
 ```
 
@@ -294,7 +294,7 @@ Object form filters which resources to load:
 {
   "packages": [
     {
-      "source": "mcpi-skills",
+      "source": "npm:mcpi-skills",
       "skills": ["brave-search", "transcribe"],
       "extensions": []
     }
@@ -309,7 +309,7 @@ See [packages.md](packages.md) for package management details.
 ```json
 {
   "defaultProvider": "anthropic",
-  "defaultModel": "claude-sonnet-4-20250514",
+  "defaultModel": "claude-opus-5",
   "defaultThinkingLevel": "medium",
   "theme": "dark",
   "compaction": {
@@ -325,7 +325,7 @@ See [packages.md](packages.md) for package management details.
   "warnings": {
     "anthropicExtraUsage": true
   },
-  "packages": ["mcpi-skills"]
+  "packages": ["npm:mcpi-skills"]
 }
 ```
 

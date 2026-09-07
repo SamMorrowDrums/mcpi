@@ -8,10 +8,49 @@
 
 An agent harness and self-extensible coding agent.
 
-mcpi is a fork of [earendil-works/pi](https://github.com/earendil-works/pi), tracking
-upstream's version numbering. Upstream's website is [pi.dev](https://pi.dev) and its
-documentation at [pi.dev/docs/latest](https://pi.dev/docs/latest) still describes most
-behaviour accurately; where this fork differs, the documentation in this repository wins.
+mcpi has its own public commands, data layout, release cadence, and documentation. The
+documentation in this repository and the README shipped with `@sammorrowdrums/mcpi` are
+authoritative.
+
+## Install and run
+
+```bash
+npm install -g --ignore-scripts @sammorrowdrums/mcpi
+mcpi
+```
+
+Use `/login` for subscription or stored API-key providers, then `/model` to choose a model.
+For Claude Opus 5, select `claude-opus-5` under Anthropic or GitHub Copilot. After login, either
+provider can also be selected directly:
+
+```bash
+mcpi --model anthropic/claude-opus-5
+mcpi --model github-copilot/claude-opus-5
+```
+
+`mcpi auth check --provider <provider>` checks existing credentials; it does not sign in. See the
+[published CLI README](packages/coding-agent/README.md) and
+[Quickstart](packages/coding-agent/docs/quickstart.md) for the complete first-run flow.
+
+## Install mcpi-ext
+
+Install the supported MCP extension through mcpi's package manager:
+
+```bash
+mcpi install npm:@sammorrowdrums/mcpi-ext
+mcpi list
+mcpi config
+```
+
+The default install is recorded in the global `settings.json` and is available in every project.
+Pass `-l` to `mcpi install` for project-local `.mcpi/settings.json` scope. `mcpi list` shows user
+and trusted project packages; `mcpi config` enables or disables package resources and uses Tab to
+switch scope.
+
+mcpi owns package installation, scope, and enablement. mcpi-ext owns MCP server configuration and
+runtime usage; follow the
+[mcpi-ext Quick Start](https://github.com/SamMorrowDrums/mcpi-ext#quick-start) instead of copying a
+manual `--extension` command into mcpi configuration.
 
 ## Configuration and data
 
@@ -26,6 +65,16 @@ mcpi separates global data by purpose:
 Project resources live in `.mcpi/`. `MCPI_CODING_AGENT_DIR` explicitly replaces all three global roots with one directory.
 
 The public command, paths, and environment variables use the `mcpi`/`MCPI_*` identity. The extension API parameter and identifier `pi`, `pi.setEnv()`/`pi.unsetEnv()`, the extension package manifest `pi` field, internal upstream API/protocol symbols, Radius, `@mariozechner/clipboard`, and upstream attribution/licensing deliberately retain their established names.
+
+### Migrating legacy `.pi` data
+
+mcpi does not silently read or move legacy `.pi` data. Rename project `.pi/` directories to
+`.mcpi/`, move durable files from `~/.pi/agent/` into the config and state directories above,
+recreate disposable packages and caches under the cache directory, and rename product-owned
+`PI_*` variables to `MCPI_*`. Startup reports exact source and destination paths when migration is
+required. See
+[Environment Variables: Migrating legacy `.pi` data](packages/coding-agent/docs/environment-variables.md#migrating-legacy-pi-data)
+for the complete mapping.
 
 * **[@sammorrowdrums/mcpi](packages/coding-agent)**: Interactive coding agent CLI
 * **[@sammorrowdrums/mcpi-agent-core](packages/agent)**: Agent runtime with tool calling and state management
@@ -45,8 +94,6 @@ The public command, paths, and environment variables use the `mcpi`/`MCPI_*` ide
 | **[@sammorrowdrums/mcpi-session-backend-sqlite-node](packages/session-backends/sqlite-node)** | SQLite session backend for Node.js |
 | **[@sammorrowdrums/mcpi](packages/coding-agent)** | Interactive coding agent CLI |
 
-For Slack/chat automation and workflows see [earendil-works/pi-chat](https://github.com/earendil-works/pi-chat).
-
 ## Permissions & Containerization
 
 mcpi does not include a built-in permission system for restricting filesystem, process, network, or credential access. By default, it runs with the permissions of the user and process that launched it.
@@ -59,7 +106,7 @@ If you need stronger boundaries, containerize or sandbox mcpi. See [packages/cod
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [AGENTS.md](AGENTS.md) for project-specific rules (for both humans and agents).  Longer term plans for upstream pi can be found in its [RFCs](https://rfc.earendil.com/keyword/pi/).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [AGENTS.md](AGENTS.md) for project-specific rules (for both humans and agents).
 
 ## Development
 

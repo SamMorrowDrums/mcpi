@@ -25,6 +25,18 @@ Use `/login` in interactive mode, then select a provider:
 
 Use `/logout` to clear credentials. Tokens are stored in the mcpi config directory's `auth.json` and auto-refresh when expired. OpenRouter instead mints a user-controlled API key that does not expire automatically.
 
+After logging in to Anthropic or GitHub Copilot, run `/model` and select `claude-opus-5`. Claude
+Opus 5 is the default for both providers, and saved credentials can be used with an explicit CLI
+selection:
+
+```bash
+mcpi --model anthropic/claude-opus-5
+mcpi --model github-copilot/claude-opus-5
+```
+
+`mcpi auth check --provider <provider>` verifies existing provider readiness and can refresh stored
+OAuth credentials. It does not start a provider login; use `/login` interactively for that.
+
 ### OpenAI Codex
 
 - Requires ChatGPT Plus or Pro subscription
@@ -224,7 +236,7 @@ export AWS_REGION=us-west-2
 Also supports ECS task roles (`AWS_CONTAINER_CREDENTIALS_*`) and IRSA (`AWS_WEB_IDENTITY_TOKEN_FILE`).
 
 ```bash
-mcpi --provider amazon-bedrock --model us.anthropic.claude-sonnet-4-20250514-v1:0
+mcpi --provider amazon-bedrock --model us.anthropic.claude-opus-5
 ```
 
 Prompt caching is enabled automatically for Claude models whose ID contains a recognizable model name (base models and system-defined inference profiles). For application inference profiles (whose ARNs don't contain the model name), set `AWS_BEDROCK_FORCE_CACHE=1` to enable cache points:

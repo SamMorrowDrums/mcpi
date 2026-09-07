@@ -253,11 +253,11 @@ ${chalk.bold("Usage:")}
   ${APP_NAME} [options] [@files...] [messages...]
 
 ${chalk.bold("Commands:")}
-  ${APP_NAME} install <source> [-l]     Install extension source and add to settings
-  ${APP_NAME} remove <source> [-l]      Remove extension source from settings
+  ${APP_NAME} install <source> [-l]     Install package source and add to settings
+  ${APP_NAME} remove <source> [-l]      Remove package source from settings
   ${APP_NAME} uninstall <source> [-l]   Alias for remove
-  ${APP_NAME} update [source|self|mcpi] Update mcpi, extensions, or model catalogs
-  ${APP_NAME} list                      List installed extensions from settings
+  ${APP_NAME} update [source|self|mcpi] Update mcpi, packages, or model catalogs
+  ${APP_NAME} list                      List installed packages from settings
   ${APP_NAME} config [-l]               Open TUI to enable/disable package resources (Tab switches scope)
   ${APP_NAME} auth <command>            Print credentials or check provider readiness
   ${APP_NAME} <command> --help          Show help for install/remove/uninstall/update/list/config/auth
@@ -310,6 +310,10 @@ ${chalk.bold("Options:")}
 Extensions can register additional flags (e.g., --plan from plan-mode extension).${extensionFlagsText}
 
 ${chalk.bold("Examples:")}
+  # Install the supported MCP extension package
+  ${APP_NAME} install npm:@sammorrowdrums/mcpi-ext
+  ${APP_NAME} list
+
   # Print a provider API key for an external client
   ${APP_NAME} auth print-api-key --provider openai
 

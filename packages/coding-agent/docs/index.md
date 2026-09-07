@@ -31,6 +31,18 @@ mcpi
 
 Authenticate with `/login` for subscription providers, or set an API key such as `ANTHROPIC_API_KEY` before starting mcpi.
 
+To add the supported MCP extension:
+
+```bash
+mcpi install npm:@sammorrowdrums/mcpi-ext
+mcpi list
+mcpi config
+```
+
+mcpi manages installation and scope. Continue with the
+[mcpi-ext Quick Start](https://github.com/SamMorrowDrums/mcpi-ext#quick-start) for MCP server
+configuration and runtime usage.
+
 For the full first-run flow, see [Quickstart](quickstart.md).
 
 ## Start here

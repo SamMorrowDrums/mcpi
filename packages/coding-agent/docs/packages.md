@@ -20,6 +20,10 @@ mcpi packages bundle extensions, skills, prompt templates, and themes so you can
 > **Security:** mcpi packages run with full system access. Extensions execute arbitrary code, and skills can instruct the model to perform any action including running executables. Review source code before installing third-party packages.
 
 ```bash
+mcpi install npm:@sammorrowdrums/mcpi-ext
+mcpi list
+mcpi config
+
 mcpi install npm:@foo/bar@1.0.0
 mcpi install git:github.com/user/repo@v1
 mcpi install https://github.com/user/repo  # raw URLs work too
@@ -40,7 +44,22 @@ mcpi update --extension npm:@foo/bar
 
 These commands manage mcpi packages and `mcpi update` can update the mcpi CLI installation. To uninstall mcpi itself, see [Quickstart](quickstart.md#uninstall).
 
-By default, `install` and `remove` write to the config directory's `settings.json`. Use `-l` to write to project settings (`.mcpi/settings.json`) instead. Project settings can be shared with your team, and mcpi installs any missing packages automatically on startup after the project is trusted.
+For mcpi-ext, mcpi owns package installation, settings scope, and resource enablement. The
+[mcpi-ext Quick Start](https://github.com/SamMorrowDrums/mcpi-ext#quick-start) owns MCP server
+configuration and runtime usage. A package-managed install loads automatically and does not need a
+global mcpi-ext installation or a manual `--extension` path.
+
+By default, `install` and `remove` write to `$XDG_CONFIG_HOME/mcpi/settings.json` (fallback
+`~/.config/mcpi/settings.json`; `%APPDATA%\mcpi\settings.json` on Windows). Use `-l` to write to
+project settings (`.mcpi/settings.json`) instead. User npm packages install under the mcpi cache
+directory's `npm/` subdirectory; project npm packages install under `.mcpi/npm/`. Project settings
+can be shared with your team, and mcpi installs any missing packages automatically on startup
+after the project is trusted.
+
+`mcpi list` labels packages as **User packages** or **Project packages**. Project packages appear
+only when project settings are trusted; pass `--approve` for a one-command trust override when
+appropriate. `mcpi config` starts in global settings, `mcpi config -l` starts in project overrides,
+and Tab switches scope in the TUI.
 
 To try a package without installing it, use `--extension` or `-e`. This installs to a temporary directory for the current run only:
 

@@ -32,6 +32,22 @@ bun uninstall -g @sammorrowdrums/mcpi
 
 Uninstalling mcpi leaves settings and credentials in `$XDG_CONFIG_HOME/mcpi` (fallback `~/.config/mcpi`; `%APPDATA%\mcpi` on Windows), sessions in `$XDG_STATE_HOME/mcpi` (fallback `~/.local/state/mcpi`; `%LOCALAPPDATA%\mcpi` on Windows), and disposable package/cache data in `$XDG_CACHE_HOME/mcpi` (fallback `~/.cache/mcpi`; `%LOCALAPPDATA%\mcpi` on Windows).
 
+### Migrating legacy `.pi` data
+
+mcpi does not read or move legacy `.pi` data automatically. Before the first mcpi run:
+
+- Rename project `<project>/.pi/` directories to `<project>/.mcpi/`.
+- Move settings, credentials, models, trust data, and user resources from `~/.pi/agent/` to the
+  mcpi config directory.
+- Move sessions to the state directory's `sessions/` subdirectory and logs to the state directory.
+- Recreate disposable package installs, binaries, and model catalog caches under the cache
+  directory.
+- Rename product-owned `PI_*` variables to `MCPI_*`.
+
+Startup stops with exact source and destination paths when it detects an incomplete migration. See
+[Environment Variables: Migrating legacy `.pi` data](environment-variables.md#migrating-legacy-pi-data)
+for the full XDG, Windows, and variable mapping.
+
 Then start mcpi in the project directory you want it to work on:
 
 ```bash
@@ -53,6 +69,17 @@ Start mcpi and run:
 
 Then select a provider. Built-in subscription logins include Claude Pro/Max, ChatGPT Plus/Pro (Codex), and GitHub Copilot.
 
+For Claude Opus 5, log in to Anthropic or GitHub Copilot, then run `/model` and select
+`claude-opus-5`. Once credentials are stored, either provider can be selected directly:
+
+```bash
+mcpi --model anthropic/claude-opus-5
+mcpi --model github-copilot/claude-opus-5
+```
+
+`mcpi auth check --provider <provider>` checks credentials already configured for automation or
+external clients. It does not log in; use `/login` to create or replace credentials.
+
 ### Option 2: API key
 
 Set an API key before launching mcpi:
@@ -65,6 +92,27 @@ mcpi
 You can also run `/login` and select an API-key provider to store the key in `$XDG_CONFIG_HOME/mcpi/auth.json` (fallback `~/.config/mcpi/auth.json`; `%APPDATA%\mcpi\auth.json` on Windows).
 
 See [Providers](providers.md) for all supported providers, environment variables, and cloud-provider setup.
+
+## Install mcpi-ext
+
+Install the supported MCP extension through mcpi:
+
+```bash
+mcpi install npm:@sammorrowdrums/mcpi-ext
+mcpi list
+mcpi config
+```
+
+The default install is stored in the global mcpi `settings.json` and applies to every project. Use
+`mcpi install npm:@sammorrowdrums/mcpi-ext -l` for project-local `.mcpi/settings.json`
+scope. `mcpi list` shows user packages and packages from trusted project settings. `mcpi config`
+enables or disables installed resources; press Tab to switch scope, or use `mcpi config -l` to
+start in project-local mode.
+
+mcpi owns package installation, settings scope, and resource enablement. mcpi-ext owns MCP server
+configuration and runtime behavior; follow the
+[mcpi-ext Quick Start](https://github.com/SamMorrowDrums/mcpi-ext#quick-start). Do not add a manual
+global `--extension` path after installing the package through mcpi.
 
 ## First session
 

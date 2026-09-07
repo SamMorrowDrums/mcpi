@@ -95,7 +95,7 @@ function printPackageCommandHelp(command: PackageCommand): void {
 			console.log(`${chalk.bold("Usage:")}
   ${getPackageCommandUsage("install")}
 
-Install a package and add it to settings.
+Install a package and add it to user settings by default.
 
 Options:
   -l, --local       Install project-locally (${CONFIG_DIR_NAME}/settings.json)
@@ -103,12 +103,17 @@ Options:
   -na, --no-approve Ignore project-local files for this command
 
 Examples:
+  ${APP_NAME} install npm:@sammorrowdrums/mcpi-ext
   ${APP_NAME} install npm:@foo/bar
   ${APP_NAME} install git:github.com/user/repo
   ${APP_NAME} install git:git@github.com:user/repo
   ${APP_NAME} install https://github.com/user/repo
   ${APP_NAME} install ssh://git@github.com/user/repo
   ${APP_NAME} install ./local/path
+
+After installation:
+  ${APP_NAME} list
+  ${APP_NAME} config
 `);
 			return;
 
@@ -159,7 +164,7 @@ Short forms:
 			console.log(`${chalk.bold("Usage:")}
   ${getPackageCommandUsage("list")}
 
-List installed packages from user and project settings.
+List installed packages from user settings and trusted project settings.
 
 Options:
   -a, --approve      Trust project-local files for this command

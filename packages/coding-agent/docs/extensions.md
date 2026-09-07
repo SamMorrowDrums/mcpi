@@ -55,6 +55,20 @@ See [examples/extensions/](../examples/extensions/) for working implementations.
 
 ## Quick Start
 
+This section shows how to author and test a local extension. To install the published mcpi-ext MCP
+integration instead, use mcpi's package manager:
+
+```bash
+mcpi install npm:@sammorrowdrums/mcpi-ext
+mcpi list
+mcpi config
+```
+
+mcpi owns package installation, global or project-local scope, and resource enablement. mcpi-ext
+owns MCP server configuration and runtime usage; follow the
+[mcpi-ext Quick Start](https://github.com/SamMorrowDrums/mcpi-ext#quick-start). Do not add a manual
+global `--extension` path after a package-managed install.
+
 Create `$XDG_CONFIG_HOME/mcpi/extensions/my-extension.ts` (fallback `~/.config/mcpi/extensions/my-extension.ts`; `%APPDATA%\mcpi\extensions\my-extension.ts` on Windows):
 
 ```typescript

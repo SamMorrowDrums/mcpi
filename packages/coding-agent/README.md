@@ -2,11 +2,11 @@
   <a href="https://www.npmjs.com/package/@sammorrowdrums/mcpi"><img alt="npm" src="https://img.shields.io/npm/v/@sammorrowdrums/mcpi?style=flat-square" /></a>
 </p>
 
-> New issues and PRs from new contributors are auto-closed by default. Maintainers review auto-closed issues daily. See [CONTRIBUTING.md](../../CONTRIBUTING.md).
+> New issues and PRs from new contributors are auto-closed by default. Maintainers review auto-closed issues daily. See [CONTRIBUTING.md](https://github.com/SamMorrowDrums/mcpi/blob/main/CONTRIBUTING.md).
 
 ---
 
-mcpi is a minimal terminal coding harness, forked from [earendil-works/pi](https://github.com/earendil-works/pi). Adapt it to your workflows, not the other way around, without having to fork and modify its internals. Extend it with TypeScript [Extensions](#extensions), [Skills](#skills), [Prompt Templates](#prompt-templates), and [Themes](#themes). Put your extensions, skills, prompt templates, and themes in [mcpi packages](#mcpi-packages) and share them with others via npm or git.
+mcpi is a minimal terminal coding harness with its own public commands, paths, releases, and documentation. Adapt it to your workflows, not the other way around. Extend it with TypeScript [Extensions](#extensions), [Skills](#skills), [Prompt Templates](#prompt-templates), and [Themes](#themes). Put your extensions, skills, prompt templates, and themes in [mcpi packages](#mcpi-packages) and share them with others via npm or git.
 
 mcpi ships with powerful defaults but skips features like sub agents and plan mode. Instead, you can ask it to build what you want or install a third-party mcpi package that matches your workflow.
 
@@ -63,7 +63,53 @@ mcpi
 /login  # Then select provider
 ```
 
+For Claude Opus 5, log in to Anthropic or GitHub Copilot, run `/model`, and select
+`claude-opus-5`. Once credentials are saved, you can select it directly:
+
+```bash
+mcpi --model anthropic/claude-opus-5
+mcpi --model github-copilot/claude-opus-5
+```
+
+`mcpi auth check --provider <provider>` verifies existing credentials. The `mcpi auth` commands do
+not log in; use `/login` interactively to add or replace provider credentials.
+
 Then just talk to mcpi. By default, mcpi gives the model four tools: `read`, `write`, `edit`, and `bash`. The model uses these to fulfill your requests. Add capabilities via [skills](#skills), [prompt templates](#prompt-templates), [extensions](#extensions), or [mcpi packages](#mcpi-packages).
+
+### Install mcpi-ext
+
+Install the supported MCP extension through mcpi's package manager:
+
+```bash
+mcpi install npm:@sammorrowdrums/mcpi-ext
+mcpi list
+mcpi config
+```
+
+The default install is recorded in `$XDG_CONFIG_HOME/mcpi/settings.json` (fallback
+`~/.config/mcpi/settings.json`; `%APPDATA%\mcpi\settings.json` on Windows) and its package data is
+stored under the mcpi cache directory. Pass `-l` to `mcpi install` to use project-local
+`.mcpi/settings.json` and `.mcpi/npm/` instead. `mcpi list` shows packages from user and trusted
+project settings. `mcpi config` enables or disables package resources; press Tab to switch between
+global and project-local scope.
+
+mcpi owns package installation, scope, and enablement. mcpi-ext owns MCP server configuration and
+runtime usage; continue with the
+[mcpi-ext Quick Start](https://github.com/SamMorrowDrums/mcpi-ext#quick-start). The installed package
+loads automatically, so the package-managed flow does not require a global mcpi-ext install or a
+manual `--extension` path.
+
+### Migrating legacy `.pi` data
+
+mcpi does not silently read or move legacy `.pi` data. Rename project `.pi/` directories to
+`.mcpi/`, move settings, credentials, models, trust data, and user resources from
+`~/.pi/agent/` to the mcpi config directory, move sessions and logs to the state directory, and
+recreate disposable package and catalog caches under the cache directory. Rename product-owned
+`PI_*` variables to `MCPI_*`.
+
+If migration is required, startup stops and prints the exact source and destination paths. See
+[Environment Variables: Migrating legacy `.pi` data](docs/environment-variables.md#migrating-legacy-pi-data)
+for the complete XDG, Windows, and environment-variable mapping.
 
 **Platform notes:** [Windows](docs/windows.md) | [Termux (Android)](docs/termux.md) | [tmux](docs/tmux.md) | [Terminal setup](docs/terminal-setup.md) | [Shell aliases](docs/shell-aliases.md)
 
@@ -379,11 +425,12 @@ Place in `$XDG_CONFIG_HOME/mcpi/themes/`, `.mcpi/themes/`, or an [mcpi package](
 
 ### mcpi Packages
 
-Bundle and share extensions, skills, prompts, and themes via npm or git. Find packages on [npmjs.com](https://www.npmjs.com/search?q=keywords%3Amcpi-package) or [Discord](https://discord.com/channels/1456806362351669492/1457744485428629628).
+Bundle and share extensions, skills, prompts, and themes via npm or git.
 
 > **Security:** mcpi packages run with full system access. Extensions execute arbitrary code, and skills can instruct the model to perform any action including running executables. Review source code before installing third-party packages.
 
 ```bash
+mcpi install npm:@sammorrowdrums/mcpi-ext
 mcpi install npm:@foo/mcpi-tools
 mcpi install npm:@foo/mcpi-tools@1.2.3      # pinned version
 mcpi install git:github.com/user/repo
@@ -408,6 +455,10 @@ mcpi config                                 # enable/disable extensions, skills,
 ```
 
 Packages install to `$XDG_CACHE_HOME/mcpi/git/` (git) or `$XDG_CACHE_HOME/mcpi/npm/` (npm), defaulting to `~/.cache/mcpi/`. Use `-l` for project-local installs (`.mcpi/git/`, `.mcpi/npm/`). Git `@ref` values are pinned tags or commits; pinned packages are skipped by `mcpi update --extensions` and `mcpi update --all`, so use `mcpi install git:host/user/repo@new-ref` to move an existing package to a new ref. Git packages install dependencies with `npm install --omit=dev` by default, so runtime deps must be listed under `dependencies`; when `npmCommand` is configured, git packages use plain `install` for compatibility with wrappers. If you use a Node version manager and want package installs to reuse a stable npm context, set `npmCommand` in `settings.json`, for example `["mise", "exec", "node@20", "--", "npm"]`.
+
+For mcpi-ext, use the package command above for installation and scope. Its
+[Quick Start](https://github.com/SamMorrowDrums/mcpi-ext#quick-start) owns MCP server configuration
+and runtime instructions.
 
 Create a package by adding a `pi` key to `package.json`. This field name is retained as a stable extension-package compatibility API:
 
@@ -468,7 +519,9 @@ See [docs/rpc.md](docs/rpc.md) for the protocol.
 
 mcpi is aggressively extensible so it doesn't have to dictate your workflow. Features that other tools bake in can be built with [extensions](#extensions), [skills](#skills), or installed from third-party [mcpi packages](#mcpi-packages). This keeps the core minimal while letting you shape mcpi to fit how you work.
 
-**No MCP.** Build CLI tools with READMEs (see [Skills](#skills)), or build an extension that adds MCP support. [Why?](https://mariozechner.at/posts/2025-11-02-what-if-you-dont-need-mcp/)
+**No built-in MCP client.** Install
+[`@sammorrowdrums/mcpi-ext`](https://github.com/SamMorrowDrums/mcpi-ext#quick-start) when you want MCP
+support. mcpi manages the extension package and scope; mcpi-ext owns MCP configuration and usage.
 
 **No sub-agents.** There are many ways to do this. Spawn mcpi instances via tmux, build your own with [extensions](#extensions), or install a package that does it your way.
 
@@ -667,7 +720,7 @@ These values are resolved when each command starts. See [Environment Variables](
 
 ## Contributing & Development
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines and [docs/development.md](docs/development.md) for setup, forking, and debugging.
+See [CONTRIBUTING.md](https://github.com/SamMorrowDrums/mcpi/blob/main/CONTRIBUTING.md) for guidelines and [docs/development.md](docs/development.md) for setup and debugging.
 
 ## License
 
