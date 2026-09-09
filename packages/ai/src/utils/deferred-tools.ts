@@ -23,8 +23,11 @@ export interface SplitDeferredToolsOptions {
 	/** False when the target model cannot withhold any schema. */
 	enabled: boolean;
 	/**
-	 * False when the API can only load a schema at a transcript marker. Registration
-	 * deferral has no anchor on turn zero there, so honoring it would hide the tool for good.
+	 * False when the API can only reveal a schema at a transcript marker, because it has no
+	 * turn-zero anchor and no server-side catalog the model could search. Deferring a
+	 * registered tool there would leave it in `Context.tools` but name it nowhere in the
+	 * request, so the model could never discover or call it. Those tools stay immediate for
+	 * the whole session instead, and are reported through `unsupported`.
 	 */
 	registrationDeferral?: boolean;
 	/** Applied to every tool name before comparison, for APIs that rewrite names. */
@@ -52,6 +55,11 @@ function listRegistrationDeferred(uniqueTools: ReadonlyMap<string, Tool>): Set<s
  * block always has a schema behind it. Promotion is sticky because the call stays in the
  * transcript, and promoted tools are appended after the registration-immediate ones so the
  * cacheable prefix of the tools array does not shift.
+ *
+ * Deferring is withholding a schema, never withholding a name. An API that keeps deferred
+ * entries in its own tools array, such as Anthropic's `defer_loading`, leaves the model able
+ * to find a deferred tool through the provider's own tool search with no marker and no loader
+ * involved. `registrationDeferral: false` exists for the APIs that cannot do that.
  *
  * Deferral is resolved even for an API that cannot express it. Those names come back in
  * `unsupported` with their full schemas kept immediate, so the caller can report the
@@ -89,14 +97,15 @@ export function splitDeferredTools(context: Context, options: SplitDeferredTools
 		if (!uniqueTools.has(name)) deferredNames.delete(name);
 	}
 
-	// An API that only loads schemas at a transcript marker has no turn-zero anchor, so a
-	// registration-deferred tool that no marker covers would stay hidden for good. Send it up
-	// front and report it. A marker-covered tool keeps its anchor and stays deferred.
+	// An API with no turn-zero anchor cannot withhold a registered tool's schema without also
+	// withholding its name, which would make the tool undiscoverable. Those tools are sent up
+	// front and stay that way: a later marker must not pull one back out of the tools array,
+	// because the model has already seen it and removing it would churn the cached prefix.
 	const unanchored = new Set<string>();
 	if (!honorRegistration) {
 		for (const name of registrationDeferred) {
-			if (loadedNames.has(name)) continue;
-			if (deferredNames.delete(name)) unanchored.add(name);
+			deferredNames.delete(name);
+			unanchored.add(name);
 		}
 	}
 	// Registration order keeps the reported names stable across turns.

@@ -10,6 +10,7 @@ interface AnthropicToolPayload {
 	description?: string;
 	defer_loading?: boolean;
 	cache_control?: unknown;
+	input_schema?: { properties?: Record<string, unknown> };
 }
 
 interface AnthropicContentBlock {
@@ -302,6 +303,42 @@ describe("registration-deferred tools", () => {
 		expect(toolReferenceNames(payload)).toEqual(["mcp_deploy"]);
 	});
 
+	it("keeps an unmarked deferred tool in the request, definition and all", async () => {
+		const payload = await capturePayload<AnthropicPayload>(
+			anthropicDeferring,
+			turnZero([makeTool("read"), makeTool("mcp_deploy", true)]),
+		);
+		const deferred = (payload.tools ?? []).find((tool) => tool.name === "mcp_deploy");
+
+		// No loader, no skill, and no marker anywhere in the transcript. The provider still gets
+		// the whole definition, so the tool is part of the request and a later load costs a
+		// tool_reference instead of a re-sent schema. Only the model's view of it is withheld.
+		expect(deferredToolNames(payload)).toEqual(["mcp_deploy"]);
+		expect(deferred?.description).toBe("The mcp_deploy tool");
+		expect(Object.keys(deferred?.input_schema?.properties ?? {})).toEqual(["value"]);
+	});
+
+	it("promotes a deferred tool the model called with no loader or marker", async () => {
+		const tools = [makeTool("read"), makeTool("mcp_deploy", true)];
+		const payload = await capturePayload<AnthropicPayload>(anthropicDeferring, {
+			systemPrompt: "You are a test agent.",
+			messages: [
+				makeUserMessage(1),
+				makeAssistantToolCall("mcp_deploy"),
+				makeToolResult([], { toolName: "mcp_deploy" }),
+				makeUserMessage(4),
+			],
+			tools,
+		});
+
+		// The model found it through the provider's search and called it. Nothing authorized
+		// that call, because deferral never gated dispatch; the schema simply becomes immediate
+		// so the replayed tool_use block still has a definition behind it.
+		expect(toolNames(payload)).toEqual(["read", "mcp_deploy"]);
+		expect(deferredToolNames(payload)).toEqual([]);
+		expect(toolReferenceNames(payload)).toEqual([]);
+	});
+
 	it("ignores markers for names that are not registered", async () => {
 		const payload = await capturePayload<AnthropicPayload>(
 			anthropicDeferring,
@@ -323,22 +360,43 @@ describe("registration-deferred tools", () => {
 		expect(openAIToolNames(openai)).toEqual(["mcp_a", "mcp_b"]);
 	});
 
-	it("withholds registration-deferred OpenAI schemas until an additional_tools load point", async () => {
+	it("keeps a registration-deferred OpenAI tool reachable, because it has no turn-zero anchor", async () => {
 		const tools = [makeTool("read"), makeTool("mcp_deploy", true)];
-		const before = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.4"), turnZero(tools));
-		const after = await capturePayload<OpenAIPayload>(
+		const { payload, message } = await capture<OpenAIPayload>(getModel("openai", "gpt-5.4"), turnZero(tools));
+
+		// Withholding the schema here would withhold the name too, leaving the model unable to
+		// name a tool that is still registered and dispatchable.
+		expect(openAIToolNames(payload)).toEqual(["read", "mcp_deploy"]);
+		expect((payload.input ?? []).some((item) => item.type === "additional_tools")).toBe(false);
+		expect(expansionDiagnostics(message)[0]?.details?.deferredCandidates).toEqual(["mcp_deploy"]);
+	});
+
+	it("does not re-inject an OpenAI schema that was already sent up front", async () => {
+		const tools = [makeTool("read"), makeTool("mcp_deploy", true)];
+		const payload = await capturePayload<OpenAIPayload>(
 			getModel("openai", "gpt-5.4"),
 			afterLoad(tools, ["mcp_deploy"]),
 		);
-		const additional = (after.input ?? []).find((item) => item.type === "additional_tools");
 
-		expect(openAIToolNames(before)).toEqual(["read"]);
-		expect((before.input ?? []).some((item) => item.type === "additional_tools")).toBe(false);
-		expect(openAIToolNames(after)).toEqual(["read"]);
+		// Moving it to a load point now would drop it from the tools array the model has
+		// already seen, invalidating the cached prefix to re-send a schema it already has.
+		expect(openAIToolNames(payload)).toEqual(["read", "mcp_deploy"]);
+		expect((payload.input ?? []).some((item) => item.type === "additional_tools")).toBe(false);
+	});
+
+	it("still defers an OpenAI tool a marker introduced without registration deferral", async () => {
+		const tools = [makeTool("read"), makeTool("mcp_deploy")];
+		const payload = await capturePayload<OpenAIPayload>(
+			getModel("openai", "gpt-5.4"),
+			afterLoad(tools, ["mcp_deploy"]),
+		);
+		const additional = (payload.input ?? []).find((item) => item.type === "additional_tools");
+
+		expect(openAIToolNames(payload)).toEqual(["read"]);
 		expect(additional?.tools?.map((tool) => tool.name)).toEqual(["mcp_deploy"]);
 	});
 
-	it("replays the namespace of a registration-deferred call across a model switch", async () => {
+	it("drops the namespace of a call whose schema is now sent up front", async () => {
 		const context: Context = {
 			messages: [
 				makeUserMessage(1),
@@ -358,6 +416,38 @@ describe("registration-deferred tools", () => {
 				makeUserMessage(6),
 			],
 			tools: [makeTool("read"), makeTool("mcp_deploy", true)],
+		};
+		const payload = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.4"), context);
+		const call = (payload.input ?? []).find((item) => item.type === "function_call" && item.name === "mcp_deploy");
+
+		// An OpenAI namespace is defined by the load item that introduced the tool. This request
+		// sends the schema up front and emits no load item, so replaying the namespace would
+		// point at one that does not exist here.
+		expect(openAIToolNames(payload)).toEqual(["read", "mcp_deploy"]);
+		expect(call).toBeDefined();
+		expect(call).not.toHaveProperty("namespace");
+	});
+
+	it("replays the namespace of a marker-deferred call across a model switch", async () => {
+		const context: Context = {
+			messages: [
+				makeUserMessage(1),
+				makeAssistantToolCall("tool_search"),
+				makeToolResult(["mcp_deploy"]),
+				{
+					...makeAssistantToolCall("mcp_deploy", {
+						id: "call_2|fc_2",
+						timestamp: 4,
+						namespace: "mcp",
+					}),
+					api: "openai-responses",
+					provider: "openai",
+					model: "gpt-5.5",
+				},
+				makeToolResult([], { toolCallId: "call_2|fc_2", toolName: "mcp_deploy", timestamp: 5 }),
+				makeUserMessage(6),
+			],
+			tools: [makeTool("read"), makeTool("mcp_deploy")],
 		};
 		const payload = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.4"), context);
 		const call = (payload.input ?? []).find((item) => item.type === "function_call" && item.name === "mcp_deploy");
@@ -397,14 +487,19 @@ describe("registration-deferred tools", () => {
 		expect(injected?.tools?.map((tool) => tool.function.name)).toEqual(["mcp_deploy"]);
 	});
 
-	it("keeps a Kimi marker anchor for a registration-deferred tool while other deferrals expand", async () => {
-		const tools = [makeTool("read"), makeTool("mcp_deploy", true), makeTool("mcp_rollback", true)];
-		const { payload, message } = await capture<KimiPayload>(makeKimiModel(), afterLoad(tools, ["mcp_deploy"]));
+	it("never both lists a Kimi tool up front and re-injects it at a load point", async () => {
+		const tools = [makeTool("read"), makeTool("mcp_deploy", true), makeTool("mcp_rollback")];
+		const { payload, message } = await capture<KimiPayload>(
+			makeKimiModel(),
+			afterLoad(tools, ["mcp_deploy", "mcp_rollback"]),
+		);
 		const injected = payload.messages.find((entry) => entry.tools !== undefined);
 
-		expect(payload.tools?.map((tool) => tool.function.name)).toEqual(["read", "mcp_rollback"]);
-		expect(injected?.tools?.map((tool) => tool.function.name)).toEqual(["mcp_deploy"]);
-		expect(expansionDiagnostics(message)[0]?.details?.deferredCandidates).toEqual(["mcp_rollback"]);
+		// mcp_deploy was registration-deferred, so it was already sent up front and stays there.
+		// mcp_rollback was introduced by the marker alone, so it still loads at the load point.
+		expect(payload.tools?.map((tool) => tool.function.name)).toEqual(["read", "mcp_deploy"]);
+		expect(injected?.tools?.map((tool) => tool.function.name)).toEqual(["mcp_rollback"]);
+		expect(expansionDiagnostics(message)[0]?.details?.deferredCandidates).toEqual(["mcp_deploy"]);
 	});
 
 	it("does not inject a Kimi schema for a tool the model already used", async () => {
@@ -460,7 +555,7 @@ describe("registration-deferred tools", () => {
 			};
 			const payload = await capturePayload<OpenAIPayload>(
 				model,
-				afterLoad([makeTool("read"), makeTool("mcp_deploy", true)], ["mcp_deploy"]),
+				afterLoad([makeTool("read"), makeTool("mcp_deploy")], ["mcp_deploy"]),
 			);
 			const searchOutput = (payload.input ?? []).find((item) => item.type === "tool_search_output");
 

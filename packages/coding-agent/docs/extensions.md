@@ -2584,6 +2584,15 @@ Registration deferral composes with the `setActiveTools()` lifecycle above:
 
 On a model or provider without native deferred loading, the deferred schemas are sent up front, exactly as if `deferred` had not been set. mcpi records a `deferred_tools_unsupported` diagnostic on that assistant message naming the provider, the model, and the expanded tools, so the fallback is visible rather than silent. The [compatibility matrix](#models-with-native-deferred-loading) above lists which providers support it.
 
+**How a deferred tool is discovered.** Deferral hides a schema from the model, so something visible has to point at the hidden tool. That is the job of the tools you leave immediate: a loader, an index, or a search tool the model can always see. The model calls one, its result names tools through `addedToolNames`, and their schemas arrive at that position. Anthropic also ships a server-side tool-search tool that lets the model search a deferred catalog by itself; mcpi does not send it, so discovery in mcpi always runs through your own immediate tools. Keep at least one such tool immediate, or the deferred ones can never be found.
+
+**Registration deferral needs a turn-zero anchor, and not every provider has one.**
+
+- Anthropic keeps deferred tools in the request's `tools` array, carrying the full name, description, and input schema alongside `defer_loading: true`. The server holds the definition and withholds it from the model's context, so the tool is still part of the request: loading it later costs only a `tool_reference` rather than a re-sent schema, and a call the model does make resolves normally.
+- The OpenAI family loads tools from an item anchored to a tool result — `additional_tools`, or a client-executed `tool_search_output` that mcpi synthesizes. On turn zero there is no tool result to anchor to, so a withheld tool would be absent from the request entirely. It would not merely be hidden; naming it would fail, because the API was never told it exists.
+
+That second case would turn deferral into a dispatch gate, which it is not. So on OpenAI-family models, tools registered with `deferred: true` are sent up front with the `deferred_tools_unsupported` diagnostic, and stay up front for the rest of the session even if a loader later names them. Moving an already-sent schema to a load point would drop it out of the tools array the model has already seen, invalidating the cached prefix to re-send a definition it already has. Tools that reach `setActiveTools()` without being registration-deferred are unaffected and still load at the tool-result position.
+
 One safeguard applies regardless: if every registered tool is deferred, mcpi sends all of them up front. A request with tools registered but no schema at all leaves the model unable to discover anything.
 
 ## Custom UI

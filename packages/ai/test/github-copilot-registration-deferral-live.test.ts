@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getModel, streamSimple } from "../src/compat.ts";
-import type { Context, Model, Tool } from "../src/types.ts";
+import type { AssistantMessage, Context, Model, Tool, ToolCall } from "../src/types.ts";
 
 /**
  * Credential-gated live probe for *registration-time* deferral on GitHub Copilot's Anthropic
@@ -176,7 +176,16 @@ function toolReferenceNames(payload: AnthropicPayload | undefined): string[] {
 
 async function probe(context: Context): Promise<ProbeResult> {
 	const base = getModel("github-copilot", "claude-opus-5");
-	const model: Model<"anthropic-messages"> = BASE_URL ? { ...base, baseUrl: BASE_URL } : base;
+	// Force the capability on. The host seam is what this probe exercises; whether the Copilot
+	// catalog advertises deferral by default is separate metadata that lands with the provider
+	// change, and is covered offline by the provider matrix test. Pinning it here keeps the probe
+	// measuring the one thing only a live request can show: that the real gateway accepts
+	// `defer_loading` and actually withholds the schemas from the billed prompt.
+	const model: Model<"anthropic-messages"> = {
+		...base,
+		compat: { ...base.compat, supportsToolReferences: true },
+		...(BASE_URL ? { baseUrl: BASE_URL } : {}),
+	};
 	let payload: AnthropicPayload | undefined;
 	const s = streamSimple(model, context, {
 		apiKey: TOKEN,
@@ -200,6 +209,33 @@ async function probe(context: Context): Promise<ProbeResult> {
 		deferred: (payload?.tools ?? []).filter((t) => t.defer_loading).map((t) => t.name),
 		toolReferences: toolReferenceNames(payload),
 	};
+}
+
+/** Like `probe`, but keeps the assistant reply so a second turn can build on it. */
+async function call(
+	context: Context,
+): Promise<{ message: AssistantMessage; payload: AnthropicPayload | undefined; calls: ToolCall[] }> {
+	const base = getModel("github-copilot", "claude-opus-5");
+	const model: Model<"anthropic-messages"> = {
+		...base,
+		compat: { ...base.compat, supportsToolReferences: true },
+		...(BASE_URL ? { baseUrl: BASE_URL } : {}),
+	};
+	let payload: AnthropicPayload | undefined;
+	const s = streamSimple(model, context, {
+		apiKey: TOKEN,
+		maxTokens: 1024,
+		onPayload: (p) => {
+			payload = p as AnthropicPayload;
+			return p;
+		},
+	});
+	for await (const _ of s) {
+		// Drain the stream.
+	}
+	const message = await s.result();
+	expect(message.errorMessage).toBeFalsy();
+	return { message, payload, calls: message.content.filter((entry) => entry.type === "toolCall") };
 }
 
 describe.skipIf(!TOKEN)("GitHub Copilot registration deferral (live)", () => {
@@ -232,4 +268,54 @@ describe.skipIf(!TOKEN)("GitHub Copilot registration deferral (live)", () => {
 			expect(inline.promptTokens - deferredRun.promptTokens).toBeGreaterThan(500);
 		},
 	);
+
+	/**
+	 * Reachability. A registration-deferred tool that no skill ever mentions must still be usable.
+	 * Anthropic's `defer_loading` hides a schema from the model but provides no discovery of its
+	 * own unless the request also carries a tool-search server tool, which mcpi does not send. The
+	 * always-immediate search tool is what makes deferred tools reachable: the model calls it, the
+	 * result names a tool through `addedToolNames`, and the schema arrives as a `tool_reference`.
+	 *
+	 * This depends on the model choosing to search, so it is a live behavioral check rather than a
+	 * wire-shape assertion; the deterministic shape is covered offline in
+	 * `registration-deferred-tools.test.ts`.
+	 */
+	it("reaches a deferred tool no skill named, through the search tool", { retry: 2, timeout: 180000 }, async () => {
+		const tools = makeTools(true);
+		const target = "catalogue_reviews";
+		const system =
+			`You are a librarian. Only ${IMMEDIATE_NAME} is loaded right now. Call it first to find out which ` +
+			"section handles the reader's question, then call the section tool it names. Always use a tool.";
+		const question = "What have reviewers written about 'Dune'?";
+		const discovery: Context = {
+			systemPrompt: system,
+			messages: [{ role: "user", content: question, timestamp: 1 }],
+			tools,
+		};
+		const found = await call(discovery);
+		expect(found.calls.map((entry) => entry.name)).toContain(IMMEDIATE_NAME);
+
+		const searchCall = found.calls.find((entry) => entry.name === IMMEDIATE_NAME);
+		const used = await call({
+			systemPrompt: system,
+			messages: [
+				{ role: "user", content: question, timestamp: 1 },
+				found.message,
+				{
+					role: "toolResult",
+					toolCallId: searchCall?.id ?? "call_1",
+					toolName: IMMEDIATE_NAME,
+					content: [{ type: "text", text: `Reader reviews are handled by ${target}. Call it now.` }],
+					addedToolNames: [target],
+					isError: false,
+					timestamp: 3,
+				},
+			],
+			tools,
+		});
+
+		// Loaded by a generic search result, not by a skill, and callable immediately after.
+		expect(toolReferenceNames(used.payload)).toEqual([target]);
+		expect(used.calls.map((entry) => entry.name)).toContain(target);
+	});
 });

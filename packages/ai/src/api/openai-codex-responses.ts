@@ -272,6 +272,7 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 				model,
 				splitDeferredTools(context, {
 					enabled: Boolean(model.compat?.supportsAdditionalTools || model.compat?.supportsToolSearch),
+					registrationDeferral: false,
 				}).unsupported,
 			);
 			const nextBody = await options?.onPayload?.(body, model);
@@ -537,7 +538,13 @@ function buildRequestBody(
 		: model.compat?.supportsToolSearch
 			? "tool-search"
 			: undefined;
-	const toolPlacement = splitDeferredTools(context, { enabled: deferredToolsMode !== undefined });
+	// Both OpenAI modes reveal a schema only at a transcript load point: `additional_tools` is
+	// message-anchored and the tool search is replayed client-side. Neither leaves the server a
+	// catalog to search, so a registration-deferred tool with no marker would be unreachable.
+	const toolPlacement = splitDeferredTools(context, {
+		enabled: deferredToolsMode !== undefined,
+		registrationDeferral: false,
+	});
 	const messages = convertResponsesMessages(model, context, CODEX_TOOL_CALL_PROVIDERS, {
 		includeSystemPrompt: false,
 		grammarToolInputProperties,
