@@ -2584,7 +2584,13 @@ Registration deferral composes with the `setActiveTools()` lifecycle above:
 
 On a model or provider without native deferred loading, the deferred schemas are sent up front, exactly as if `deferred` had not been set. mcpi records a `deferred_tools_unsupported` diagnostic on that assistant message naming the provider, the model, and the expanded tools, so the fallback is visible rather than silent. The [compatibility matrix](#models-with-native-deferred-loading) above lists which providers support it.
 
-**How a deferred tool is discovered.** Deferral hides a schema from the model, so something visible has to point at the hidden tool. That is the job of the tools you leave immediate: a loader, an index, or a search tool the model can always see. The model calls one, its result names tools through `addedToolNames`, and their schemas arrive at that position. Anthropic also ships a server-side tool-search tool that lets the model search a deferred catalog by itself; mcpi does not send it, so discovery in mcpi always runs through your own immediate tools. Keep at least one such tool immediate, or the deferred ones can never be found.
+**How a deferred tool is discovered.** Deferral hides a schema from the model, so something visible has to point at the hidden tool. There are two routes, and a given request may have either or both.
+
+The first is the tools you leave immediate: a loader, an index, or a search tool the model can always see. The model calls one, its result names tools through `addedToolNames`, and their schemas arrive at that position. This route works on every provider that supports deferred loading at all, and it is the one to rely on if you are unsure.
+
+The second is a provider's own tool-search tool, which lets the model search the deferred catalog without any help from your extension. It only exists where the provider holds the catalog server-side and mcpi sends that search tool; the [compatibility matrix](#models-with-native-deferred-loading) above records where that applies.
+
+If neither route is available for your provider, keep at least one tool immediate, or the deferred ones can never be found.
 
 **Registration deferral needs a turn-zero anchor, and not every provider has one.**
 
@@ -2593,7 +2599,7 @@ On a model or provider without native deferred loading, the deferred schemas are
 
 That second case would turn deferral into a dispatch gate, which it is not. So on OpenAI-family models, tools registered with `deferred: true` are sent up front with the `deferred_tools_unsupported` diagnostic, and stay up front for the rest of the session even if a loader later names them. Moving an already-sent schema to a load point would drop it out of the tools array the model has already seen, invalidating the cached prefix to re-send a definition it already has. Tools that reach `setActiveTools()` without being registration-deferred are unaffected and still load at the tool-result position.
 
-One safeguard applies regardless: if every registered tool is deferred, mcpi sends all of them up front. A request with tools registered but no schema at all leaves the model unable to discover anything.
+One safeguard applies regardless: if every registered tool is deferred, mcpi sends all of them up front, because a request with tools registered but no schema at all leaves the model unable to discover anything. The safeguard lifts on providers whose own tool search can reach the deferred catalog, since there the model does have somewhere to start.
 
 ## Custom UI
 

@@ -671,5 +671,40 @@ describe("registration-deferred tools", () => {
 			expect(placement.deferred.size).toBe(0);
 			expect(placement.unsupported).toEqual(["mcp_deploy"]);
 		});
+
+		it("expands a fully deferred set when nothing can reach it", () => {
+			const placement = splitDeferredTools(turnZero([makeTool("mcp_a", true), makeTool("mcp_b", true)]), {
+				enabled: true,
+			});
+
+			expect(placement.immediate.map((tool) => tool.name)).toEqual(["mcp_a", "mcp_b"]);
+			expect(placement.deferred.size).toBe(0);
+			expect(placement.unsupported).toEqual(["mcp_a", "mcp_b"]);
+		});
+
+		it("keeps a fully deferred set deferred when the caller supplies a search tool", () => {
+			const placement = splitDeferredTools(turnZero([makeTool("mcp_a", true), makeTool("mcp_b", true)]), {
+				enabled: true,
+				providesToolSearch: true,
+			});
+
+			// The floor only guarantees the model has somewhere to start. A discovery tool the
+			// caller appends is that starting point, so expanding every schema here would defeat
+			// deferral for exactly the case it helps most: a tool set that is entirely MCP proxies.
+			expect(placement.immediate).toEqual([]);
+			expect([...placement.deferred.keys()]).toEqual(["mcp_a", "mcp_b"]);
+			expect(placement.unsupported).toEqual([]);
+		});
+
+		it("still expands a fully deferred set when the API cannot defer at registration", () => {
+			const placement = splitDeferredTools(turnZero([makeTool("mcp_a", true), makeTool("mcp_b", true)]), {
+				enabled: true,
+				providesToolSearch: true,
+				registrationDeferral: false,
+			});
+
+			expect(placement.immediate.map((tool) => tool.name)).toEqual(["mcp_a", "mcp_b"]);
+			expect(placement.unsupported).toEqual(["mcp_a", "mcp_b"]);
+		});
 	});
 });

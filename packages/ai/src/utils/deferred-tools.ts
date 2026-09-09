@@ -30,6 +30,13 @@ export interface SplitDeferredToolsOptions {
 	 * the whole session instead, and are reported through `unsupported`.
 	 */
 	registrationDeferral?: boolean;
+	/**
+	 * True when the caller adds its own discovery tool to the request, such as Anthropic's
+	 * server-side tool-search tool. The safety floor below exists only to guarantee the model
+	 * has something to start from; a discovery tool provides that, so the floor stands down and
+	 * a fully deferred tool set stays deferred.
+	 */
+	providesToolSearch?: boolean;
 	/** Applied to every tool name before comparison, for APIs that rewrite names. */
 	normalizeName?: ToolNameNormalizer;
 }
@@ -57,9 +64,9 @@ function listRegistrationDeferred(uniqueTools: ReadonlyMap<string, Tool>): Set<s
  * cacheable prefix of the tools array does not shift.
  *
  * Deferring is withholding a schema, never withholding a name. An API that keeps deferred
- * entries in its own tools array, such as Anthropic's `defer_loading`, leaves the model able
- * to find a deferred tool through the provider's own tool search with no marker and no loader
- * involved. `registrationDeferral: false` exists for the APIs that cannot do that.
+ * entries in its own tools array, such as Anthropic's `defer_loading`, still names every tool
+ * in the request, so a call the model does make resolves. `registrationDeferral: false` exists
+ * for the APIs that would instead drop the tool from the request altogether.
  *
  * Deferral is resolved even for an API that cannot express it. Those names come back in
  * `unsupported` with their full schemas kept immediate, so the caller can report the
@@ -131,8 +138,9 @@ export function splitDeferredTools(context: Context, options: SplitDeferredTools
 	}
 	immediate.push(...promoted);
 
-	// Safety floor: never leave a request without an up-front tool while tools are registered.
-	if (immediate.length === 0 && deferred.size > 0) {
+	// Safety floor: never leave a request without an up-front tool while tools are registered,
+	// unless the caller supplies a discovery tool that can reach the deferred ones.
+	if (options.providesToolSearch !== true && immediate.length === 0 && deferred.size > 0) {
 		return {
 			immediate: [...uniqueTools.values()],
 			deferred: new Map(),
