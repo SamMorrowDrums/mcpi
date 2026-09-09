@@ -47,6 +47,7 @@ import type {
 	ToolCall,
 	ToolResultMessage,
 } from "../types.ts";
+import { appendDeferredToolExpansionDiagnostic, listDeferredToolNames } from "../utils/deferred-tools.ts";
 import { appendAssistantMessageDiagnostic } from "../utils/diagnostics.ts";
 import { normalizeProviderError } from "../utils/error-body.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
@@ -250,6 +251,7 @@ export const stream: StreamFunction<"bedrock-converse-stream", BedrockOptions> =
 				commandInput = nextCommandInput as typeof commandInput;
 			}
 			const command = new ConverseStreamCommand(commandInput);
+			appendDeferredToolExpansionDiagnostic(output, model, listDeferredToolNames(context.tools));
 
 			const response = await client.send(command, { abortSignal: options.signal });
 			responseRequestId = normalizeDiagnosticValue(response.$metadata.requestId);

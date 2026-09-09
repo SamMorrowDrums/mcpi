@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added `deferred` to the extension `ToolDefinition`, so `pi.registerTool({ ..., deferred: true })` withholds the tool's schema from the model until a load point rather than sending it on the first request. This is visibility, not authorization: the tool stays registered and active, remains in `pi.getAllTools()` and `pi.getActiveTools()`, and is still dispatchable, so a direct call executes normally. Because no tool is removed and no prompt metadata changes, the system prompt is not rebuilt and the cached prompt prefix is preserved. Registration deferral composes with `pi.setActiveTools()`: a loader tool naming a deferred tool loads its schema at that tool-result position, and once the model has called a tool it stays immediate. On providers without native deferred loading the schemas are sent up front and a `deferred_tools_expanded` diagnostic is recorded. See [Deferring a tool from turn zero](docs/extensions.md#deferring-a-tool-from-turn-zero).
+
 ## [0.85.1] - 2026-09-08
 
 ### Fixed

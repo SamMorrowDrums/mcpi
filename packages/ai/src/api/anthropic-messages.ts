@@ -29,7 +29,11 @@ import type {
 	ToolCall,
 	ToolResultMessage,
 } from "../types.ts";
-import { splitDeferredTools } from "../utils/deferred-tools.ts";
+import {
+	appendDeferredToolExpansionDiagnostic,
+	listDeferredToolNames,
+	splitDeferredTools,
+} from "../utils/deferred-tools.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { headersToRecord } from "../utils/headers.ts";
 import { parseJsonWithRepair, parseStreamingJson } from "../utils/json-parse.ts";
@@ -562,6 +566,9 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 				isOAuth = created.isOAuthToken;
 			}
 			let params = buildParams(model, context, isOAuth, options);
+			if (!getAnthropicCompat(model).supportsToolReferences) {
+				appendDeferredToolExpansionDiagnostic(output, model, listDeferredToolNames(context.tools));
+			}
 			const nextParams = await options?.onPayload?.(params, model);
 			if (nextParams !== undefined) {
 				params = nextParams as MessageCreateParamsStreaming;
@@ -966,15 +973,10 @@ function buildParams(
 	const normalizeToolName = isOAuthToken ? toClaudeCodeName : (name: string) => name;
 	const toolPlacement = splitDeferredTools(
 		{ ...context, messages: transformedMessages },
-		compat.supportsToolReferences,
-		normalizeToolName,
+		{ enabled: compat.supportsToolReferences, normalizeName: normalizeToolName },
 	);
-	let immediateTools = toolPlacement.immediate;
-	let deferredTools = [...toolPlacement.deferred.values()];
-	if (immediateTools.length === 0 && deferredTools.length > 0) {
-		immediateTools = deferredTools;
-		deferredTools = [];
-	}
+	const immediateTools = toolPlacement.immediate;
+	const deferredTools = [...toolPlacement.deferred.values()];
 	const deferredToolNames = new Set(deferredTools.map((tool) => normalizeToolName(tool.name)));
 	const params: MessageCreateParamsStreaming = {
 		model: model.id,

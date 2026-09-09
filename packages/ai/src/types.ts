@@ -504,6 +504,19 @@ export interface Tool<TParameters extends TSchema = TSchema> {
 	description: string;
 	parameters: TParameters;
 	constrainedSampling?: false | ConstrainedSamplingConfig;
+	/**
+	 * Registration-time visibility hint. When true the tool is still a member of
+	 * `Context.tools` from the first turn — it stays dispatchable and keeps its slot
+	 * in the provider tools array — but APIs with native deferred loading withhold its
+	 * schema until a `ToolResultMessage.addedToolNames` marker loads it.
+	 *
+	 * This is visibility, not authorization: a model that names a deferred tool anyway
+	 * still gets it executed, and the tool is promoted to a full schema from then on.
+	 *
+	 * APIs without deferred loading send the full schema and report a
+	 * `deferred_tools_expanded` diagnostic on the assistant message.
+	 */
+	deferred?: boolean;
 }
 
 export interface Context {

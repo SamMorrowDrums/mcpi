@@ -10,6 +10,7 @@ import type {
 	StreamFunction,
 	StreamOptions,
 } from "../types.ts";
+import { appendDeferredToolExpansionDiagnostic, listDeferredToolNames } from "../utils/deferred-tools.ts";
 import { formatProviderError, normalizeProviderError } from "../utils/error-body.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { headersToRecord } from "../utils/headers.ts";
@@ -106,6 +107,7 @@ export const stream: StreamFunction<"azure-openai-responses", AzureOpenAIRespons
 				model.compat?.supportsOpenAIGrammarTools ?? false,
 			);
 			let params = buildParams(model, context, options, deploymentName, grammarToolInputProperties);
+			appendDeferredToolExpansionDiagnostic(output, model, listDeferredToolNames(context.tools));
 			const nextParams = await options?.onPayload?.(params, model);
 			if (nextParams !== undefined) {
 				params = nextParams as ResponseCreateParamsStreaming;

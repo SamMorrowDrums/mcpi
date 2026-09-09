@@ -20,6 +20,7 @@ import type {
 	ThinkingLevel,
 	ToolCall,
 } from "../types.ts";
+import { appendDeferredToolExpansionDiagnostic, listDeferredToolNames } from "../utils/deferred-tools.ts";
 import { formatProviderError, normalizeProviderError } from "../utils/error-body.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { providerHeadersToRecord } from "../utils/headers.ts";
@@ -85,6 +86,7 @@ export const stream: StreamFunction<"google-generative-ai", GoogleOptions> = (
 			}
 			const client = createClient(model, apiKey, options?.headers);
 			let params = buildParams(model, context, options);
+			appendDeferredToolExpansionDiagnostic(output, model, listDeferredToolNames(context.tools));
 			const nextParams = await options?.onPayload?.(params, model);
 			if (nextParams !== undefined) {
 				params = nextParams as GenerateContentParameters;
