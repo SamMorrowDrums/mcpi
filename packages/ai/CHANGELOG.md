@@ -5,12 +5,12 @@
 ### Added
 
 - Added `Tool.deferred`, a registration-time flag that withholds a tool's schema from the model on turn zero without removing the tool. Deferred tools stay in `Context.tools` and in the provider tools array, so grammar membership and dispatch are unchanged and a direct call still resolves. Models with native deferred loading receive `defer_loading` (Anthropic) or an anchored `additional_tools`/`tool_search_output` load point (OpenAI); the schema is loaded when a `ToolResultMessage.addedToolNames` marker names the tool, and a tool the model has already called stays immediate for the rest of the transcript.
-- Added a `deferred_tools_expanded` assistant-message diagnostic naming the provider, model, and tool names whenever a model without native deferred loading receives deferred schemas up front, so the fallback is reported instead of silent.
+- Added a `deferred_tools_unsupported` assistant-message diagnostic naming the provider, model, and the tools whose schemas were sent up front because the selected model cannot withhold them, so losing progressive disclosure is reported instead of silent.
 
 ### Changed
 
-- Moved the deferred-tools safety floor out of the Anthropic path into `splitDeferredTools`, so every API sends all tools up front when every registered tool would otherwise be deferred. `splitDeferredTools` now takes an options object and is the single source of truth for the Chat Completions Kimi path as well, which previously derived its own deferred set and could therefore both list a tool up front and re-inject its schema at a load point.
-- Kimi anchors deferred schemas to a system message after a tool result, so it has no turn-zero anchor and does not honor `Tool.deferred`; those schemas are sent up front with a `deferred_tools_expanded` diagnostic. Its existing `addedToolNames` load points are unchanged.
+- Moved the deferred-tools safety floor out of the Anthropic path into `splitDeferredTools`, so every API sends all tools up front when every registered tool would otherwise be deferred. `splitDeferredTools` now takes an options object, resolves deferral even for an API that cannot express it so the expanded names are reported rather than silently inlined, and is the single source of truth for the Chat Completions Kimi path as well, which previously derived its own deferred set and could therefore both list a tool up front and re-inject its schema at a load point.
+- Kimi anchors deferred schemas to a system message after a tool result, so it has no turn-zero anchor and does not honor `Tool.deferred`. A registration-deferred tool that no load point covers is sent up front with a `deferred_tools_unsupported` diagnostic; one a marker does cover keeps its anchor and stays deferred. Its existing `addedToolNames` load points are unchanged.
 
 ## [0.85.1] - 2026-09-08
 

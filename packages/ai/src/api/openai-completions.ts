@@ -34,11 +34,7 @@ import type {
 	ToolCall,
 	ToolResultMessage,
 } from "../types.ts";
-import {
-	appendDeferredToolExpansionDiagnostic,
-	listDeferredToolNames,
-	splitDeferredTools,
-} from "../utils/deferred-tools.ts";
+import { appendDeferredToolsUnsupportedDiagnostic, splitDeferredTools } from "../utils/deferred-tools.ts";
 import { formatProviderError, normalizeProviderError } from "../utils/error-body.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { shortHash } from "../utils/hash.ts";
@@ -230,7 +226,14 @@ export const stream: StreamFunction<"openai-completions", OpenAICompletionsOptio
 			const cacheSessionId = cacheRetention === "none" ? undefined : options?.sessionId;
 			const client = createClient(model, context, apiKey, options?.headers, options?.fetch, cacheSessionId, compat);
 			let params = buildParams(model, context, options, compat, cacheRetention, grammarToolInputProperties);
-			appendDeferredToolExpansionDiagnostic(output, model, listDeferredToolNames(context.tools));
+			appendDeferredToolsUnsupportedDiagnostic(
+				output,
+				model,
+				splitDeferredTools(context, {
+					enabled: compat.deferredToolsMode === "kimi",
+					registrationDeferral: false,
+				}).unsupported,
+			);
 			const nextParams = await options?.onPayload?.(params, model);
 			if (nextParams !== undefined) {
 				params = nextParams as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming;

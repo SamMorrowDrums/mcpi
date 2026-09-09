@@ -15,11 +15,7 @@ import type {
 	StreamOptions,
 	Usage,
 } from "../types.ts";
-import {
-	appendDeferredToolExpansionDiagnostic,
-	listDeferredToolNames,
-	splitDeferredTools,
-} from "../utils/deferred-tools.ts";
+import { appendDeferredToolsUnsupportedDiagnostic, splitDeferredTools } from "../utils/deferred-tools.ts";
 import { formatProviderError, normalizeProviderError } from "../utils/error-body.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { headersToRecord } from "../utils/headers.ts";
@@ -142,9 +138,12 @@ export const stream: StreamFunction<"openai-responses", OpenAIResponsesOptions> 
 			);
 			const client = createClient(model, context, apiKey, options?.headers, options?.fetch, cacheSessionId);
 			let params = buildParams(model, context, options, compat, grammarToolInputProperties);
-			if (!compat.supportsAdditionalTools && !compat.supportsToolSearch) {
-				appendDeferredToolExpansionDiagnostic(output, model, listDeferredToolNames(context.tools));
-			}
+			appendDeferredToolsUnsupportedDiagnostic(
+				output,
+				model,
+				splitDeferredTools(context, { enabled: compat.supportsAdditionalTools || compat.supportsToolSearch })
+					.unsupported,
+			);
 			const nextParams = await options?.onPayload?.(params, model);
 			if (nextParams !== undefined) {
 				params = nextParams as ResponseCreateParamsStreaming;

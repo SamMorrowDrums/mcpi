@@ -2582,7 +2582,7 @@ Registration deferral composes with the `setActiveTools()` lifecycle above:
 - Once the model has actually called a tool, it stays immediate for the rest of the session. Its schema was visible when the call was made, so withholding it again would leave a `tool_use` block in the transcript with no definition behind it.
 - Promoted tools are appended after the tools that were never deferred, so the order of the up-front schemas does not shift when a tool is promoted.
 
-On a model or provider without native deferred loading, the deferred schemas are sent up front, exactly as if `deferred` had not been set. mcpi records a `deferred_tools_expanded` diagnostic on that assistant message naming the provider, the model, and the expanded tools, so the fallback is visible rather than silent. The [compatibility matrix](#models-with-native-deferred-loading) above lists which providers support it.
+On a model or provider without native deferred loading, the deferred schemas are sent up front, exactly as if `deferred` had not been set. mcpi records a `deferred_tools_unsupported` diagnostic on that assistant message naming the provider, the model, and the expanded tools, so the fallback is visible rather than silent. The [compatibility matrix](#models-with-native-deferred-loading) above lists which providers support it.
 
 One safeguard applies regardless: if every registered tool is deferred, mcpi sends all of them up front. A request with tools registered but no schema at all leaves the model unable to discover anything.
 

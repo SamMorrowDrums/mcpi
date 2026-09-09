@@ -514,7 +514,7 @@ export interface Tool<TParameters extends TSchema = TSchema> {
 	 * still gets it executed, and the tool is promoted to a full schema from then on.
 	 *
 	 * APIs without deferred loading send the full schema and report a
-	 * `deferred_tools_expanded` diagnostic on the assistant message.
+	 * `deferred_tools_unsupported` diagnostic on the assistant message.
 	 */
 	deferred?: boolean;
 }

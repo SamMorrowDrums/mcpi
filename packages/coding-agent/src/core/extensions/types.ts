@@ -466,7 +466,7 @@ export interface ToolDefinition<TParams extends TSchema = TSchema, TDetails = un
 	 * stays dispatchable, and executes normally if the model names it. Models with native
 	 * deferred loading receive only the name until an `AgentToolResult.addedToolNames`
 	 * marker loads the schema; models without it receive the full schema and the assistant
-	 * message carries a `deferred_tools_expanded` diagnostic.
+	 * message carries a `deferred_tools_unsupported` diagnostic.
 	 *
 	 * This is visibility, not authorization. Use `setActiveTools` to change what may run.
 	 */

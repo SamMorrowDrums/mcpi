@@ -21,11 +21,7 @@ import type {
 	Usage,
 } from "../types.ts";
 import { combineAbortSignals } from "../utils/abort-signals.ts";
-import {
-	appendDeferredToolExpansionDiagnostic,
-	listDeferredToolNames,
-	splitDeferredTools,
-} from "../utils/deferred-tools.ts";
+import { appendDeferredToolsUnsupportedDiagnostic, splitDeferredTools } from "../utils/deferred-tools.ts";
 import {
 	appendAssistantMessageDiagnostic,
 	createAssistantMessageDiagnostic,
@@ -271,9 +267,13 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 			const cacheSessionId = options?.cacheRetention === "none" ? undefined : options?.sessionId;
 			const codexSessionId = clampOpenAIPromptCacheKey(cacheSessionId);
 			let body = buildRequestBody(model, context, options, codexSessionId, grammarToolInputProperties);
-			if (!model.compat?.supportsAdditionalTools && !model.compat?.supportsToolSearch) {
-				appendDeferredToolExpansionDiagnostic(output, model, listDeferredToolNames(context.tools));
-			}
+			appendDeferredToolsUnsupportedDiagnostic(
+				output,
+				model,
+				splitDeferredTools(context, {
+					enabled: Boolean(model.compat?.supportsAdditionalTools || model.compat?.supportsToolSearch),
+				}).unsupported,
+			);
 			const nextBody = await options?.onPayload?.(body, model);
 			if (nextBody !== undefined) {
 				body = nextBody as RequestBody;

@@ -29,11 +29,7 @@ import type {
 	ToolCall,
 	ToolResultMessage,
 } from "../types.ts";
-import {
-	appendDeferredToolExpansionDiagnostic,
-	listDeferredToolNames,
-	splitDeferredTools,
-} from "../utils/deferred-tools.ts";
+import { appendDeferredToolsUnsupportedDiagnostic, splitDeferredTools } from "../utils/deferred-tools.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { headersToRecord } from "../utils/headers.ts";
 import { parseJsonWithRepair, parseStreamingJson } from "../utils/json-parse.ts";
@@ -565,10 +561,9 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 				client = created.client;
 				isOAuth = created.isOAuthToken;
 			}
-			let params = buildParams(model, context, isOAuth, options);
-			if (!getAnthropicCompat(model).supportsToolReferences) {
-				appendDeferredToolExpansionDiagnostic(output, model, listDeferredToolNames(context.tools));
-			}
+			const built = buildParams(model, context, isOAuth, options);
+			appendDeferredToolsUnsupportedDiagnostic(output, model, built.unsupportedDeferredToolNames);
+			let params = built.params;
 			const nextParams = await options?.onPayload?.(params, model);
 			if (nextParams !== undefined) {
 				params = nextParams as MessageCreateParamsStreaming;
@@ -961,12 +956,18 @@ function createClient(
 	return { client, isOAuthToken: false };
 }
 
+/** The request plus the deferral this model could not express, for the caller to report. */
+interface BuiltParams {
+	params: MessageCreateParamsStreaming;
+	unsupportedDeferredToolNames: string[];
+}
+
 function buildParams(
 	model: Model<"anthropic-messages">,
 	context: Context,
 	isOAuthToken: boolean,
 	options?: AnthropicOptions,
-): MessageCreateParamsStreaming {
+): BuiltParams {
 	const { cacheControl } = getCacheControl(model, options?.cacheRetention, options?.env);
 	const compat = getAnthropicCompat(model);
 	const transformedMessages = transformMessages(context.messages, model, normalizeToolCallId);
@@ -1090,7 +1091,7 @@ function buildParams(
 		}
 	}
 
-	return params;
+	return { params, unsupportedDeferredToolNames: toolPlacement.unsupported };
 }
 
 // Normalize tool call IDs to match Anthropic's required pattern and length

@@ -2,7 +2,7 @@ import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 import { getModel, streamSimple } from "../src/compat.ts";
 import type { Api, AssistantMessage, Context, Model, Tool, ToolResultMessage, UserMessage } from "../src/types.ts";
-import { DEFERRED_TOOLS_EXPANDED_DIAGNOSTIC, splitDeferredTools } from "../src/utils/deferred-tools.ts";
+import { DEFERRED_TOOLS_UNSUPPORTED_DIAGNOSTIC, splitDeferredTools } from "../src/utils/deferred-tools.ts";
 import type { AssistantMessageDiagnostic } from "../src/utils/diagnostics.ts";
 
 interface AnthropicToolPayload {
@@ -166,7 +166,7 @@ function toolReferenceNames(payload: AnthropicPayload): string[] {
 }
 
 function expansionDiagnostics(message: AssistantMessage): AssistantMessageDiagnostic[] {
-	return (message.diagnostics ?? []).filter((diagnostic) => diagnostic.type === DEFERRED_TOOLS_EXPANDED_DIAGNOSTIC);
+	return (message.diagnostics ?? []).filter((diagnostic) => diagnostic.type === DEFERRED_TOOLS_UNSUPPORTED_DIAGNOSTIC);
 }
 
 const anthropicDeferring = getModel("anthropic", "claude-opus-4-6");
@@ -397,6 +397,16 @@ describe("registration-deferred tools", () => {
 		expect(injected?.tools?.map((tool) => tool.function.name)).toEqual(["mcp_deploy"]);
 	});
 
+	it("keeps a Kimi marker anchor for a registration-deferred tool while other deferrals expand", async () => {
+		const tools = [makeTool("read"), makeTool("mcp_deploy", true), makeTool("mcp_rollback", true)];
+		const { payload, message } = await capture<KimiPayload>(makeKimiModel(), afterLoad(tools, ["mcp_deploy"]));
+		const injected = payload.messages.find((entry) => entry.tools !== undefined);
+
+		expect(payload.tools?.map((tool) => tool.function.name)).toEqual(["read", "mcp_rollback"]);
+		expect(injected?.tools?.map((tool) => tool.function.name)).toEqual(["mcp_deploy"]);
+		expect(expansionDiagnostics(message)[0]?.details?.deferredCandidates).toEqual(["mcp_rollback"]);
+	});
+
 	it("does not inject a Kimi schema for a tool the model already used", async () => {
 		const payload = await capturePayload<KimiPayload>(makeKimiModel(), {
 			messages: [
@@ -470,8 +480,8 @@ describe("registration-deferred tools", () => {
 			expect(deferredToolNames(payload)).toEqual([]);
 			expect(expansionDiagnostics(message)).toMatchObject([
 				{
-					type: DEFERRED_TOOLS_EXPANDED_DIAGNOSTIC,
-					details: { provider: "anthropic", model: "claude-haiku-4-5", toolNames: ["mcp_deploy"] },
+					type: DEFERRED_TOOLS_UNSUPPORTED_DIAGNOSTIC,
+					details: { provider: "anthropic", model: "claude-haiku-4-5", deferredCandidates: ["mcp_deploy"] },
 				},
 			]);
 		});
@@ -504,7 +514,7 @@ describe("registration-deferred tools", () => {
 
 			expect(payload.tools?.map((tool) => tool.function.name)).toEqual(["read", "mcp_deploy"]);
 			expect(expansionDiagnostics(message)).toHaveLength(1);
-			expect(expansionDiagnostics(message)[0]?.details?.toolNames).toEqual(["mcp_deploy"]);
+			expect(expansionDiagnostics(message)[0]?.details?.deferredCandidates).toEqual(["mcp_deploy"]);
 		});
 
 		it("stays silent when nothing was registered as deferred", async () => {
