@@ -138,8 +138,13 @@ async function capturePayload<T>(model: Model<Api>, context: Context, apiKey = "
 	return (await capture<T>(model, context, apiKey)).payload;
 }
 
+/**
+ * Client tool names only. The Anthropic provider also appends the server-side
+ * `tool_search_tool_bm25` entry whenever a request carries deferred tools; that is
+ * covered by the tool-search tests and is not part of tool placement.
+ */
 function toolNames(payload: AnthropicPayload): string[] {
-	return (payload.tools ?? []).map((tool) => tool.name);
+	return (payload.tools ?? []).filter((tool) => !tool.name.startsWith("tool_search_tool")).map((tool) => tool.name);
 }
 
 function deferredToolNames(payload: AnthropicPayload): string[] {
@@ -350,13 +355,17 @@ describe("registration-deferred tools", () => {
 		expect(toolReferenceNames(payload)).toEqual([]);
 	});
 
-	it("keeps every tool immediate when all of them are registration-deferred", async () => {
+	// The all-deferred floor guarantees the model is never left with no schema and no way to
+	// find one. Anthropic is sent its server-side search tool, which is a way to find one, so
+	// the floor stands down there and an all-MCP tool set -- the shape deferral helps most --
+	// stays deferred. The OpenAI family has no such route, so the floor still applies.
+	it("keeps an all-deferred set deferred only where search can reach it", async () => {
 		const tools = [makeTool("mcp_a", true), makeTool("mcp_b", true)];
 		const anthropic = await capturePayload<AnthropicPayload>(anthropicDeferring, turnZero(tools));
 		const openai = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.4"), turnZero(tools));
 
 		expect(toolNames(anthropic)).toEqual(["mcp_a", "mcp_b"]);
-		expect(deferredToolNames(anthropic)).toEqual([]);
+		expect(deferredToolNames(anthropic)).toEqual(["mcp_a", "mcp_b"]);
 		expect(openAIToolNames(openai)).toEqual(["mcp_a", "mcp_b"]);
 	});
 

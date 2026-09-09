@@ -121,11 +121,25 @@ async function run(model: Model<"anthropic-messages">, context: Context): Promis
 	return await s.result();
 }
 
+/**
+ * Client tool entries only. The server-side `tool_search_tool_bm25` entry is asserted
+ * separately by `capturedSearchTool`, so the deferral assertions stay about the tools
+ * mcpi actually registers.
+ */
 function capturedTools(index: number): CapturedTool[] {
-	return ((mockState.createParams[index] as unknown as CapturedParams).tools ?? []).map((tool) => ({
-		name: tool.name,
-		...(tool.defer_loading !== undefined ? { defer_loading: tool.defer_loading } : {}),
-	}));
+	return ((mockState.createParams[index] as unknown as CapturedParams).tools ?? [])
+		.filter((tool) => !tool.name.startsWith("tool_search_tool"))
+		.map((tool) => ({
+			name: tool.name,
+			...(tool.defer_loading !== undefined ? { defer_loading: tool.defer_loading } : {}),
+		}));
+}
+
+/** The server-side search entry sent with this request, if any. */
+function capturedSearchTool(index: number): { name: string; type?: string } | undefined {
+	const tools = (mockState.createParams[index] as unknown as CapturedParams).tools ?? [];
+	const search = tools.find((tool) => tool.name.startsWith("tool_search_tool"));
+	return search ? { name: search.name, type: (search as { type?: string }).type } : undefined;
 }
 
 describe("Anthropic deferred tools over the wire", () => {
@@ -142,6 +156,49 @@ describe("Anthropic deferred tools over the wire", () => {
 		expect(capturedTools(0)).toEqual([{ name: "base_tool" }, { name: "late_tool", defer_loading: true }]);
 		expect(message.stopReason).toBe("stop");
 		expect(message.diagnostics ?? []).toEqual([]);
+	});
+
+	// Without this entry on the wire, a deferred schema can only ever come back through a
+	// tool result, so a tool no skill pushes would stay hidden for the whole session.
+	it("sends the server-side search tool alongside deferred tools", async () => {
+		await run(copilotModel("https://api.individual.githubcopilot.com/probe-search"), makeContext());
+
+		expect(capturedSearchTool(0)).toEqual({
+			name: "tool_search_tool_bm25",
+			type: "tool_search_tool_bm25_20251119",
+		});
+	});
+
+	it("sends no search tool when nothing is deferred", async () => {
+		const context = makeContext();
+		context.tools = [makeTool("base_tool")];
+		await run(copilotModel("https://api.individual.githubcopilot.com/probe-nosearch"), context);
+
+		expect(capturedSearchTool(0)).toBeUndefined();
+	});
+
+	// A rejection of the search tool is the same class of capability gap as a rejection of
+	// `defer_loading`, so it downgrades once rather than failing the turn outright.
+	it("downgrades once when the endpoint rejects the search tool", async () => {
+		const model = copilotModel("https://proxy.invalid/rejects-search");
+		mockState.failNextWith = badRequest(
+			"Input tag 'tool_search_tool_bm25_20251119' found using 'type' does not match any of the expected tags",
+		);
+
+		const message = await run(model, makeContext());
+
+		expect(mockState.createParams).toHaveLength(2);
+		expect(capturedSearchTool(0)).toBeDefined();
+		expect(capturedSearchTool(1)).toBeUndefined();
+		expect(capturedTools(1)).toEqual([{ name: "base_tool" }, { name: "late_tool" }]);
+		expect(message.stopReason).toBe("stop");
+		expect(message.diagnostics?.[0]).toMatchObject({
+			type: "deferred_tools_rejected",
+			error: {
+				message:
+					"400 Input tag 'tool_search_tool_bm25_20251119' found using 'type' does not match any of the expected tags",
+			},
+		});
 	});
 
 	it("adds no anthropic-beta value on account of deferred tools", async () => {

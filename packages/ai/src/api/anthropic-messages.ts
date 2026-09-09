@@ -6,6 +6,7 @@ import type {
 	MessageParam,
 	RawMessageStreamEvent,
 	RefusalStopDetails,
+	ToolSearchToolBm25_20251119,
 } from "@anthropic-ai/sdk/resources/messages.js";
 import { calculateCost } from "../models.ts";
 import type {
@@ -184,6 +185,13 @@ function getAnthropicCompat(
 		allowEmptySignature: model.compat?.allowEmptySignature ?? false,
 		supportsStrictTools: model.compat?.supportsStrictTools ?? false,
 		supportsToolReferences: resolveSupportsToolReferences(model),
+		// On by default wherever deferral works: Anthropic defines `defer_loading` as "only
+		// loaded when returned via tool_reference from tool search", so withholding a schema
+		// without offering search leaves no way to hand it back. Verified against the Copilot
+		// gateway on every id in `GITHUB_COPILOT_TOOL_REFERENCE_MODEL_IDS` routed through this
+		// API, each answering with `server_tool_use` -> `tool_search_tool_result` -> `tool_use`.
+		// Only consulted when `supportsToolReferences` is on, which gates deferral itself.
+		supportsToolSearch: model.compat?.supportsToolSearch ?? true,
 	};
 }
 
@@ -208,6 +216,19 @@ function resolveSupportsToolReferences(model: Model<"anthropic-messages">): bool
 	if (toolReferencesRejectedByEndpoint.has(toolReferenceEndpointKey(model))) return false;
 	return model.compat?.supportsToolReferences ?? defaultSupportsToolReferences(model);
 }
+
+/**
+ * Anthropic's server-side tool search, offered whenever a request carries deferred tools.
+ *
+ * BM25 rather than the regex variant: a regex that matches nothing returns no references
+ * and leaves the tool hidden, which is the failure this exists to prevent, while BM25
+ * always ranks the catalog and returns the closest matches. It stays outside the deferred
+ * set so the model can always see that searching is possible.
+ */
+const TOOL_SEARCH_TOOL: ToolSearchToolBm25_20251119 = {
+	name: "tool_search_tool_bm25",
+	type: "tool_search_tool_bm25_20251119",
+};
 
 /**
  * Fallback for `anthropic-messages` models with no explicit capability metadata.
@@ -550,8 +571,9 @@ const TOOL_REFERENCE_RESOLUTION_FAILURE = /not found|does not exist|no such|unre
 
 /**
  * True only for an unambiguous rejection of the deferred-tool protocol itself:
- * a 400 naming the `defer_loading` field or the `tool_reference` block type
- * *and* describing it as unknown, extra, or unsupported.
+ * a 400 naming the `defer_loading` field, the `tool_reference` block type, or the
+ * `tool_search_tool_*` server tool, *and* describing it as unknown, extra, or
+ * unsupported.
  *
  * The Copilot gateway words these as `Extra inputs are not permitted:
  * tools.1.defer_loading` and as an unrecognized content block type.
@@ -563,7 +585,7 @@ const TOOL_REFERENCE_RESOLUTION_FAILURE = /not found|does not exist|no such|unre
 function isDeferredToolRejection(error: unknown): boolean {
 	if (!(error instanceof Error)) return false;
 	if ((error as { status?: unknown }).status !== 400) return false;
-	if (!/\b(?:defer_loading|tool_reference)\b/.test(error.message)) return false;
+	if (!/\b(?:defer_loading|tool_reference|tool_search_tool\w*)\b/.test(error.message)) return false;
 	if (TOOL_REFERENCE_RESOLUTION_FAILURE.test(error.message)) return false;
 	return DEFERRED_TOOL_CAPABILITY_REJECTION.test(error.message);
 }
@@ -1071,6 +1093,15 @@ function buildParams(
 	const deferralContext = { ...context, messages: transformedMessages };
 	const toolPlacement = splitDeferredTools(deferralContext, {
 		enabled: compat.supportsToolReferences,
+		// Without server-side search, the only load point is a `tool_reference` in a tool
+		// result, so a tool registered with `deferred: true` that no result introduces would
+		// stay hidden for the whole session. Report those instead of losing them.
+		registrationDeferral: compat.supportsToolSearch,
+		// The all-deferred safety floor exists so the model always has somewhere to start. The
+		// search tool below is somewhere to start, so a tool set that is entirely deferred --
+		// the all-MCP-proxy shape that gains the most here -- stays deferred rather than being
+		// expanded wholesale.
+		providesToolSearch: compat.supportsToolSearch,
 		normalizeName: normalizeToolName,
 	});
 	const immediateTools = toolPlacement.immediate;
@@ -1140,6 +1171,11 @@ function buildParams(
 				true,
 			),
 		];
+		// Appended last so it sits outside the cached prefix, which ends at the
+		// `cache_control` breakpoint on the final immediate tool.
+		if (deferredTools.length > 0 && compat.supportsToolSearch) {
+			params.tools.push(TOOL_SEARCH_TOOL);
+		}
 	}
 
 	// Configure thinking mode: adaptive, budget-based, or explicitly disabled.

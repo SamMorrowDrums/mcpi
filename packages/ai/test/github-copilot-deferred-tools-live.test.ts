@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { githubCopilotOAuth } from "../src/auth/oauth/github-copilot.ts";
 import type { OAuthCredential } from "../src/auth/types.ts";
 import { getModel, streamSimple } from "../src/compat.ts";
-import type { AssistantMessage, Context, Model, Tool } from "../src/types.ts";
+import type { AssistantMessage, Context, FetchFunction, Model, Tool } from "../src/types.ts";
 
 /**
  * Live regression for deferred tool loading on GitHub Copilot's Anthropic gateway.
@@ -22,6 +22,8 @@ import type { AssistantMessage, Context, Model, Tool } from "../src/types.ts";
 const LIVE = process.env.MCPI_LIVE_COPILOT === "1";
 const MODEL_ID = "claude-opus-5";
 const MAX_OUTPUT_TOKENS = 16;
+/** A tool call has to fit its arguments JSON, so the discovery probe needs a little more room. */
+const TOOL_CALL_OUTPUT_TOKENS = 256;
 
 interface Auth {
 	apiKey: string;
@@ -183,6 +185,8 @@ interface WirePayload {
 interface ProbeResult {
 	message: AssistantMessage;
 	payload: WirePayload;
+	/** The server's own content blocks, in emission order. */
+	blocks: RawBlock[];
 	deferred: string[];
 	toolOrder: string[];
 	/**
@@ -196,12 +200,86 @@ interface ProbeResult {
 	promptTokens: number;
 }
 
+/** One `content_block_start` from the raw stream, in the order the server emitted it. */
+interface RawBlock {
+	type: string;
+	/** Set for `server_tool_use` and `tool_use`. */
+	name?: string;
+	/** Tool names carried by the `tool_reference` entries of a `tool_search_tool_result`. */
+	references: string[];
+}
+
+/**
+ * Record the server's own content blocks without changing the request.
+ *
+ * mcpi's stream reader ignores `server_tool_use` and `tool_search_tool_result`, so those
+ * blocks never reach the assistant message. Inferring "search happened" from the fact that
+ * a deferred tool was eventually called would not distinguish a real search from a blind
+ * call on a guessed name, which is the failure this has to rule out. Teeing the response
+ * body records what the server actually sent while mcpi issues its normal request with its
+ * normal headers.
+ */
+function recordingFetch(chunks: string[]): FetchFunction {
+	return async (input, init) => {
+		const response = await fetch(input as Parameters<FetchFunction>[0], init as RequestInit);
+		if (!response.body) return response;
+		const [forMcpi, forRecording] = response.body.tee();
+		void (async () => {
+			const reader = forRecording.getReader();
+			const decoder = new TextDecoder();
+			for (;;) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				chunks.push(decoder.decode(value, { stream: true }));
+			}
+		})();
+		return new Response(forMcpi, {
+			status: response.status,
+			statusText: response.statusText,
+			headers: response.headers,
+		});
+	};
+}
+
+/** Pull the ordered `content_block_start` blocks out of a recorded SSE stream. */
+function parseBlocks(chunks: string[]): RawBlock[] {
+	const blocks: RawBlock[] = [];
+	for (const line of chunks.join("").split("\n")) {
+		if (!line.startsWith("data:")) continue;
+		const body = line.slice(5).trim();
+		if (!body || body === "[DONE]") continue;
+		let event: { type?: string; content_block?: Record<string, unknown> };
+		try {
+			event = JSON.parse(body) as typeof event;
+		} catch {
+			continue;
+		}
+		if (event.type !== "content_block_start" || !event.content_block) continue;
+		const block = event.content_block;
+		// A `tool_search_tool_result` carries a single object, not a list of blocks:
+		// `content: { type: "tool_search_tool_search_result", tool_references: [...] }`.
+		const content = block.content as { tool_references?: { tool_name?: string }[] } | undefined;
+		blocks.push({
+			type: String(block.type ?? ""),
+			name: typeof block.name === "string" ? block.name : undefined,
+			references: (content?.tool_references ?? []).map((entry) => String(entry.tool_name ?? "")),
+		});
+	}
+	return blocks;
+}
+
 /** Issue one bounded live request, capturing the exact wire payload alongside the result. */
-async function probe(context: Context, mutate?: (payload: WirePayload) => WirePayload): Promise<ProbeResult> {
+async function probe(
+	context: Context,
+	mutate?: (payload: WirePayload) => WirePayload,
+	maxTokens: number = MAX_OUTPUT_TOKENS,
+): Promise<ProbeResult> {
 	let payload: WirePayload | undefined;
+	const chunks: string[] = [];
 	const stream = streamSimple(model(), context, {
 		apiKey: auth.apiKey,
-		maxTokens: MAX_OUTPUT_TOKENS,
+		maxTokens,
+		fetch: recordingFetch(chunks),
 		onPayload: (raw) => {
 			payload = raw as WirePayload;
 			return mutate ? mutate(payload) : payload;
@@ -216,6 +294,7 @@ async function probe(context: Context, mutate?: (payload: WirePayload) => WirePa
 	return {
 		message,
 		payload,
+		blocks: parseBlocks(chunks),
 		deferred: (payload.tools ?? []).filter((tool) => tool.defer_loading).map((tool) => tool.name),
 		toolOrder: (payload.tools ?? []).map((tool) => tool.name),
 		promptTokens: usage.input + usage.cacheRead + usage.cacheWrite,
@@ -300,8 +379,69 @@ describe.skipIf(!LIVE)("GitHub Copilot deferred tools (live)", () => {
 		expect(result.message.diagnostics?.some((d) => d.type === "deferred_tools_rejected")).toBeFalsy();
 	});
 
+	// The mop-up case: a tool registered `deferred: true` that no skill ever names. Its
+	// schema is withheld on turn zero and no tool result introduces it, so server-side
+	// search is the only route by which the model could learn it exists.
+	//
+	// The assertion is on the server's own blocks, not on the fact that a call happened.
+	// A call alone would not distinguish a real search from a blind call on a guessed name,
+	// and a blind call is a failure even when it returns a usable answer.
+	it("searches for a deferred tool no skill loaded, then calls it", async () => {
+		const context: Context = {
+			systemPrompt: SYSTEM_PROMPT,
+			tools: [makeTool(LOADER), ...ACTIVATED.map((name) => makeTool(name, true))],
+			messages: [
+				{
+					role: "user",
+					content:
+						"Please look up the periodicals record at main/serials/quarterly-review and tell me its lending status.",
+					timestamp: Date.now(),
+				},
+			],
+		};
+
+		const result = await probe(context, undefined, TOOL_CALL_OUTPUT_TOKENS);
+		const target = "catalog_periodicals";
+
+		// Nothing was sent inline that could have told the model this tool exists.
+		expect(result.deferred).toContain(target);
+		expect(result.toolOrder).toContain("tool_search_tool_bm25");
+		expect(
+			result.payload.tools?.find((tool) => tool.name === "tool_search_tool_bm25")?.defer_loading,
+		).toBeUndefined();
+
+		console.log(`[live] server blocks: ${JSON.stringify(result.blocks.map((block) => block.type))}`);
+
+		// The search actually ran server-side, and its result named the tool.
+		const searchIndex = result.blocks.findIndex((block) => block.type === "server_tool_use");
+		const resultIndex = result.blocks.findIndex((block) => block.type === "tool_search_tool_result");
+		expect(searchIndex).toBeGreaterThanOrEqual(0);
+		expect(resultIndex).toBeGreaterThan(searchIndex);
+
+		const loaded = result.blocks[resultIndex]?.references ?? [];
+		console.log(`[live] loaded references: ${JSON.stringify(loaded)}`);
+		// BM25 ranks the whole catalog and returns a subset, so assert containment rather than an
+		// exact count. The subset can include an already-immediate tool -- the server ranks by
+		// relevance, not by what was withheld -- so every name only has to be a registered tool.
+		expect(loaded).toContain(target);
+		expect(loaded.length).toBeLessThan(result.toolOrder.length);
+		for (const name of loaded) expect(result.toolOrder).toContain(name);
+
+		// The direct call follows the search, and no deferred tool is ever called blind.
+		const callIndex = result.blocks.findIndex((block) => block.type === "tool_use" && block.name === target);
+		expect(callIndex).toBeGreaterThan(resultIndex);
+		for (const [index, block] of result.blocks.entries()) {
+			if (block.type !== "tool_use" || !block.name || !result.deferred.includes(block.name)) continue;
+			const loadedBefore = result.blocks
+				.slice(0, index)
+				.filter((earlier) => earlier.type === "tool_search_tool_result")
+				.flatMap((earlier) => earlier.references);
+			expect(loadedBefore).toContain(block.name);
+		}
+		expect(result.message.errorMessage).toBeFalsy();
+	});
+
 	it("reports the unsupported-model fallback without a billable request", async () => {
-		// claude-sonnet-4.6 is deliberately outside the verified allowlist.
 		const unsupported = getModel("github-copilot", "claude-sonnet-4.6");
 		expect(unsupported.compat?.supportsToolReferences).toBeUndefined();
 

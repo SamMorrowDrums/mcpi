@@ -148,7 +148,10 @@ interface AnthropicPayload {
 
 interface ProbeResult {
 	promptTokens: number;
+	/** Client tool names only; the provider-injected search tool is reported separately. */
 	toolNames: string[];
+	/** Whether mcpi appended Anthropic's server-side search tool to the request. */
+	searchTool: boolean;
 	deferred: string[];
 	toolReferences: string[];
 }
@@ -198,7 +201,8 @@ async function probe(context: Context): Promise<ProbeResult> {
 	const { input, cacheRead, cacheWrite } = response.usage;
 	return {
 		promptTokens: input + cacheRead + cacheWrite,
-		toolNames: (payload?.tools ?? []).map((t) => t.name),
+		toolNames: (payload?.tools ?? []).map((t) => t.name).filter((name) => !name.startsWith("tool_search_tool")),
+		searchTool: (payload?.tools ?? []).some((t) => t.name.startsWith("tool_search_tool")),
 		deferred: (payload?.tools ?? []).filter((t) => t.defer_loading).map((t) => t.name),
 		toolReferences: toolReferenceNames(payload),
 	};
@@ -238,6 +242,9 @@ describe.skipIf(!TOKEN)("GitHub Copilot registration deferral (live)", () => {
 			expect(deferredRun.toolNames).toEqual([IMMEDIATE_NAME, ...DEFERRED_NAMES]);
 			expect(deferredRun.deferred).toEqual(DEFERRED_NAMES);
 			expect(deferredRun.toolReferences).toEqual([]);
+			// Sent alongside the deferred definitions, so a deferred tool no marker names is still
+			// reachable. Nothing else in this file would notice if it stopped being appended.
+			expect(deferredRun.searchTool).toBe(true);
 
 			// An `addedToolNames` marker activates two of them at that tool-result position. The
 			// rest stay deferred and the tools array is unchanged, so the cacheable prefix holds.
@@ -251,6 +258,8 @@ describe.skipIf(!TOKEN)("GitHub Copilot registration deferral (live)", () => {
 			const inline = await probe(turnZero(makeTools(false)));
 			expect(inline.deferred).toEqual([]);
 			expect(inline.toolNames).toEqual([IMMEDIATE_NAME, ...DEFERRED_NAMES]);
+			// Nothing is held back, so there is no catalog to search and no search tool to send.
+			expect(inline.searchTool).toBe(false);
 
 			// A conservative floor, so the test tracks the capability rather than a tokenizer
 			// revision. The measured turn-zero pair was 1,650 inline against 543 deferred.

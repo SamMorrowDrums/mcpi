@@ -2431,13 +2431,27 @@ Native deferred loading depends on the **provider** as well as the model. The sa
 
 For a verified custom model or proxy, native handling can be enabled with `compat.supportsToolReferences: true` for `anthropic-messages`, or `compat.supportsToolSearch: true` for `openai-responses` and `openai-codex-responses`. Setting `compat.supportsToolReferences: false` also works in the other direction: it opts a model out of native handling even when auto-detection or the catalog would enable it. Leave these disabled unless the endpoint and model accept the corresponding native protocol.
 
+On `anthropic-messages`, `compat.supportsToolSearch` defaults to on and is only consulted where `supportsToolReferences` is on, because Anthropic couples the two: a deferred schema is only ever loaded by a `tool_reference` returned from tool search. Set it to `false` for the rare endpoint that resolves `tool_reference` blocks but rejects the search tool itself; that turns off search and, with it, registration-time deferral.
+
 Amazon Bedrock, Google Vertex, and OpenAI-compatible proxies serving Claude models do not auto-enable, even when they use the `anthropic-messages` API.
+
+#### Finding a deferred tool that no skill loads
+
+A skill pushes a schema at the moment it becomes relevant. That covers tools a skill knows about, but a tool registered with `deferred: true` that no skill ever names has no such moment: its schema is withheld on turn zero and nothing in the transcript ever asks for it. Without a second route it would stay invisible for the whole session.
+
+So on `anthropic-messages`, whenever a request carries any deferred tool, mcpi also sends Anthropic's server-side search tool (`tool_search_tool_bm25_20251119`). The model searches its own withheld catalog, the server returns `tool_reference` blocks for the matches, and only those schemas load. The model can then call the tool directly on the same turn.
+
+The two routes are complements, not alternatives: skills push proactively when the host knows a tool is about to be needed, and search pulls reactively when the model discovers it needs something the host did not anticipate. The search entry is appended after the deferred definitions, past the cache breakpoint, so it does not disturb the cached prefix.
+
+BM25 ranking is used rather than the regex variant. A regex that matches nothing returns no references at all, which would silently reproduce the invisible-tool problem; BM25 always ranks the catalog and returns the closest matches. It returns a ranked subset rather than a single entry — on a 20-tool catalog with 19 deferred, a live probe returned 5 references with the intended tool ranked first. The server ranks the whole catalog by relevance, not only what was withheld, so a result can name a tool that was already immediate. Do not write an extension that assumes a search result contains only deferred tools.
+
+When search is unavailable — `supportsToolSearch: false`, or any model without native reference support — registration-time deferral is switched off and those schemas are sent up front with a `deferred_tools_unsupported` diagnostic, rather than being deferred with no way back. Skill-pushed deferral is unaffected, because it anchors its load point to a tool result and needs no search tool.
 
 #### When deferral is unavailable
 
 Falling back is never silent. When a tool is deferred — whether by `deferred: true` at registration or by a tool result carrying added tool names — and the selected model and provider do not support native references, mcpi records a `deferred_tools_unsupported` diagnostic on the assistant message naming the tools whose definitions were expanded inline. The tools still work; only the cached-prefix saving is lost.
 
-If an endpoint on the allowlist rejects the protocol at runtime, mcpi retries once. A 400 that names `defer_loading` or the `tool_reference` block type *and* reports it as unknown, extra, or unsupported disables native handling for that provider, model id, and base URL for the rest of the process, records a `deferred_tools_rejected` diagnostic carrying the verbatim API error, and resends the request with the full tool list.
+If an endpoint on the allowlist rejects the protocol at runtime, mcpi retries once. A 400 that names `defer_loading`, the `tool_reference` block type, or the `tool_search_tool_*` type *and* reports it as unknown, extra, or unsupported disables native handling for that provider, model id, and base URL for the rest of the process, records a `deferred_tools_rejected` diagnostic carrying the verbatim API error, and resends the request with the full tool list.
 
 This is deliberately narrow. A reference that cannot be resolved, such as `Tool reference 'x' not found in available tools`, is **not** treated as a capability rejection: it proves the endpoint implements references, so it is a client-side activation or tool-naming bug and must surface as the original error rather than be masked by a silent downgrade. The status, the error text, and every other failure propagate unchanged, and no other error class is caught or retried.
 
@@ -2450,6 +2464,8 @@ Claude Opus 5 is the default model for the `anthropic`, `github-copilot`, and `a
 | `anthropic` | `claude-opus-5` | `anthropic-messages` | Native `defer_loading` + `tool_reference` | Offline contract test |
 | `github-copilot` | `claude-opus-5` | `anthropic-messages` | Native `defer_loading` + `tool_reference` | Offline contract test, live probe |
 | `amazon-bedrock` | `us.anthropic.claude-opus-5` | `bedrock-converse-stream` | Safe fallback; the Converse API has no tool-reference protocol | Offline contract test |
+
+**Server-side search.** Both `anthropic-messages` rows also receive Anthropic's search tool whenever a deferred tool is present, so a registration-deferred tool that no skill names stays reachable. `bedrock-converse-stream` has neither route, which is why registration-time deferral is switched off there rather than left unreachable.
 
 **Scope of this matrix.** Deferred loading is the only capability that varies here, so "safe fallback" is not a general capability rating. `us.anthropic.claude-opus-5` keeps adaptive thinking, native `xhigh` effort, and prompt caching; `bedrock-converse-stream` derives those from model-id predicates rather than from `compat.forceAdaptiveThinking`. Only tool deferral is unavailable, because the Converse API has no tool-reference protocol.
 
@@ -2600,25 +2616,28 @@ Registration deferral composes with the `setActiveTools()` lifecycle above:
 
 - A tool registered with `deferred: true` starts withheld with no transcript history at all.
 - When a loader tool later names it — through `pi.setActiveTools()`, which records the name on the tool result — the schema is loaded at that tool-result position, using `tool_reference` or `additional_tools` on native-capable models.
-- Once the model has actually called a tool, it stays immediate for the rest of the session. Its schema was visible when the call was made, so withholding it again would leave a `tool_use` block in the transcript with no definition behind it.
+- If no loader tool ever names it, the model can still find it through provider-native tool search on `anthropic-messages`, which returns a `tool_reference` for the match and loads only that schema. See [Finding a deferred tool that no skill loads](#finding-a-deferred-tool-that-no-skill-loads).
+- Once the model has actually called a tool, it stays immediate for the rest of the session. Its schema was visible when the call was made, so withholding it again would leave a `tool_use` block in the transcript with no definition behind it. This is what keeps a searched-and-called tool working on the following request.
 - Promoted tools are appended after the tools that were never deferred, so the order of the up-front schemas does not shift when a tool is promoted.
 
 On a model or provider without native deferred loading, the deferred schemas are sent up front, exactly as if `deferred` had not been set. mcpi records a `deferred_tools_unsupported` diagnostic on that assistant message naming the provider, the model, and the expanded tools, so the fallback is visible rather than silent. The [compatibility matrix](#models-with-native-deferred-loading) above lists which providers support it.
 
 **How a deferred tool is discovered.** Deferral hides a schema from the model, so something visible has to point at the hidden tool. There are two routes, and a given request may have either or both.
 
-The first is the tools you leave immediate: a loader, an index, or a search tool the model can always see. The model calls one, its result names tools through `addedToolNames`, and their schemas arrive at that position. This route works on every provider that supports deferred loading at all, and it is the one to rely on if you are unsure.
+The first is the tools you leave immediate: a loader, an index, or a search tool the model can always see. The model calls one, its result names tools through `addedToolNames`, and their schemas arrive at that position. This is the proactive push. It works on every provider that supports deferred loading at all, and it is the one to rely on if you are unsure.
 
-The second is a provider's own tool-search tool, which lets the model search the deferred catalog without any help from your extension. It only exists where the provider holds the catalog server-side and mcpi sends that search tool; the [compatibility matrix](#models-with-native-deferred-loading) above records where that applies.
+The second is a provider's own tool-search tool, which lets the model search the deferred catalog with no help from your extension. It is the reactive fallback, and it covers the case the first route cannot: a tool that no immediate tool points at. It only exists where the provider holds the catalog server-side and mcpi sends that search tool; the [compatibility matrix](#models-with-native-deferred-loading) above records where that applies. On `anthropic-messages` mcpi does send it -- see [Finding a deferred tool that no skill loads](#finding-a-deferred-tool-that-no-skill-loads).
 
-If neither route is available for your provider, keep at least one tool immediate, or the deferred ones can never be found.
+If neither route is available for your provider, as on the OpenAI family, keep at least one loader or index tool immediate, or the deferred ones can never be found.
 
 **Registration deferral needs a turn-zero anchor, and not every provider has one.**
 
-- Anthropic keeps deferred tools in the request's `tools` array, carrying the full name, description, and input schema alongside `defer_loading: true`. The server holds the definition and withholds it from the model's context, so the tool is still part of the request: loading it later costs only a `tool_reference` rather than a re-sent schema, and a call the model does make resolves normally.
+- Anthropic keeps deferred tools in the request's `tools` array, carrying the full name, description, and input schema alongside `defer_loading: true`. The server holds the definition and withholds it from the model's context, so the tool is still part of the request: loading it later costs only a `tool_reference` rather than a re-sent schema, and a call the model does make resolves normally. Server-side search is what lets the model reach that held definition on turn zero, with no tool result to anchor to.
 - The OpenAI family loads tools from an item anchored to a tool result — `additional_tools`, or a client-executed `tool_search_output` that mcpi synthesizes. On turn zero there is no tool result to anchor to, so a withheld tool would be absent from the request entirely. It would not merely be hidden; naming it would fail, because the API was never told it exists.
 
 That second case would turn deferral into a dispatch gate, which it is not. So on OpenAI-family models, tools registered with `deferred: true` are sent up front with the `deferred_tools_unsupported` diagnostic, and stay up front for the rest of the session even if a loader later names them. Moving an already-sent schema to a load point would drop it out of the tools array the model has already seen, invalidating the cached prefix to re-send a definition it already has. Tools that reach `setActiveTools()` without being registration-deferred are unaffected and still load at the tool-result position.
+
+The same reasoning applies within `anthropic-messages` when search is switched off with `compat.supportsToolSearch: false`: without search there is no turn-zero route to a held definition, so registration-deferred schemas are sent up front with that same diagnostic rather than being withheld with no way back.
 
 One safeguard applies regardless: if every registered tool is deferred, mcpi sends all of them up front, because a request with tools registered but no schema at all leaves the model unable to discover anything. The safeguard lifts on providers whose own tool search can reach the deferred catalog, since there the model does have somewhere to start.
 

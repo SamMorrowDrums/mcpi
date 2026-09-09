@@ -789,6 +789,11 @@ const GITHUB_COPILOT_TOOL_REFERENCE_MODEL_IDS = new Set([
 	"claude-haiku-4.5",
 ]);
 
+// Copilot's gateway also implements Anthropic's server-side tool search, which is what
+// makes a deferred tool discoverable when no skill pushes it. Verified per id by requesting
+// `tool_search_tool_bm25_20251119` and observing `server_tool_use` ->
+// `tool_search_tool_result` -> `tool_use` on the deferred tool. The provider derives
+// `supportsToolSearch` from `supportsToolReferences`, so no separate flag is emitted.
 function applyAnthropicToolReferenceMetadata(model: Model<Api>): void {
 	if (model.api !== "anthropic-messages" || model.provider !== "github-copilot") return;
 	if (!GITHUB_COPILOT_TOOL_REFERENCE_MODEL_IDS.has(model.id)) return;
