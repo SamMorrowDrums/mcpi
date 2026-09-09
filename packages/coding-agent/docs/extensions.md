@@ -2415,16 +2415,31 @@ You do not need to return provider-specific tool references or mark the loader a
 
 Native deferred loading depends on the **provider** as well as the model. The same Claude model can support native deferred loading when served directly by Anthropic and fall back to the normal tool list when served through another provider.
 
-- **Anthropic (first-party `anthropic` provider only)**
+- **Anthropic (first-party `anthropic` provider)**
   - **Models:** Sonnet, Opus, Fable version 4.5 or newer, including Claude Opus 5. Haiku is excluded.
   - **Native representation:** Deferred definitions use `defer_loading`; the load point uses `tool_reference` content.
-  - **Provider gate:** Auto-detection requires `provider === "anthropic"`. Claude models served by GitHub Copilot, Amazon Bedrock, Google Vertex, or an OpenAI-compatible proxy do not auto-enable, even when they use the `anthropic-messages` API.
+  - **Provider gate:** Auto-detection uses a version heuristic and requires `provider === "anthropic"`, because Anthropic ships dated snapshot ids such as `claude-opus-4-6-20260101` that an exact-id list could not keep up with. Both dashed and dotted minor versions are recognized, so `claude-opus-4-5-20250929` and `claude-opus-4.8` are both parsed as 4.5+.
+- **GitHub Copilot**
+  - **Models:** `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4.8`, `claude-opus-4.7`, `claude-fable-5.1`, and `claude-haiku-4.5`.
+  - **Native representation:** Identical to first-party Anthropic. Copilot's Anthropic gateway accepts `defer_loading` and `tool_reference` without any extra beta header, and prompt caching still applies.
+  - **Provider gate:** Support comes from a probe-verified allowlist in the model catalog, not from a version heuristic. Copilot's gateway is a separate implementation whose support is not implied by the Claude version: `claude-sonnet-4.6` uses the same `anthropic-messages` API but rejects `defer_loading` with a 400, so it is excluded. Model ids outside the allowlist, including ids Copilot adds later, use the fallback until they are probed.
+  - Haiku is excluded on first-party Anthropic but allowed here, because `claude-haiku-4.5` was probed directly against the Copilot gateway.
 - **OpenAI**
   - **Models:** `gpt-5.4` and newer family
   - **Native representation:** Models with `supportsAdditionalTools` anchor the new definitions to the transcript with a developer-role `additional_tools` message. Models with only `supportsToolSearch` instead get completed client `tool_search_call` and `tool_search_output` items at the load point.
   - **Provider gate:** Auto-detection applies to the `openai` and `openai-codex` providers. Other hosts of the same models use the fallback.
 
-For a verified custom model or proxy, native handling can be enabled with `compat.supportsToolReferences: true` for `anthropic-messages`, or `compat.supportsToolSearch: true` for `openai-responses` and `openai-codex-responses`. Leave these disabled unless the endpoint and model accept the corresponding native protocol.
+For a verified custom model or proxy, native handling can be enabled with `compat.supportsToolReferences: true` for `anthropic-messages`, or `compat.supportsToolSearch: true` for `openai-responses` and `openai-codex-responses`. Setting `compat.supportsToolReferences: false` also works in the other direction: it opts a model out of native handling even when auto-detection or the catalog would enable it. Leave these disabled unless the endpoint and model accept the corresponding native protocol.
+
+Amazon Bedrock, Google Vertex, and OpenAI-compatible proxies serving Claude models do not auto-enable, even when they use the `anthropic-messages` API.
+
+#### When deferral is unavailable
+
+Falling back is never silent. When a tool is deferred — whether by `deferred: true` at registration or by a tool result carrying added tool names — and the selected model and provider do not support native references, mcpi records a `deferred_tools_unsupported` diagnostic on the assistant message naming the tools whose definitions were expanded inline. The tools still work; only the cached-prefix saving is lost.
+
+If an endpoint on the allowlist rejects the protocol at runtime, mcpi retries once. A 400 that names `defer_loading` or the `tool_reference` block type *and* reports it as unknown, extra, or unsupported disables native handling for that provider, model id, and base URL for the rest of the process, records a `deferred_tools_rejected` diagnostic carrying the verbatim API error, and resends the request with the full tool list.
+
+This is deliberately narrow. A reference that cannot be resolved, such as `Tool reference 'x' not found in available tools`, is **not** treated as a capability rejection: it proves the endpoint implements references, so it is a client-side activation or tool-naming bug and must surface as the original error rather than be masked by a silent downgrade. The status, the error text, and every other failure propagate unchanged, and no other error class is caught or retried.
 
 #### Claude Opus 5 compatibility matrix
 
@@ -2433,14 +2448,20 @@ Claude Opus 5 is the default model for the `anthropic`, `github-copilot`, and `a
 | Provider | Model id | API | Deferred loading | Verified by |
 | --- | --- | --- | --- | --- |
 | `anthropic` | `claude-opus-5` | `anthropic-messages` | Native `defer_loading` + `tool_reference` | Offline contract test |
-| `github-copilot` | `claude-opus-5` | `anthropic-messages` | Safe fallback: full active tool list, no `defer_loading` | Offline contract test |
+| `github-copilot` | `claude-opus-5` | `anthropic-messages` | Native `defer_loading` + `tool_reference` | Offline contract test, live probe |
 | `amazon-bedrock` | `us.anthropic.claude-opus-5` | `bedrock-converse-stream` | Safe fallback; the Converse API has no tool-reference protocol | Offline contract test |
 
 **Scope of this matrix.** Deferred loading is the only capability that varies here, so "safe fallback" is not a general capability rating. `us.anthropic.claude-opus-5` keeps adaptive thinking, native `xhigh` effort, and prompt caching; `bedrock-converse-stream` derives those from model-id predicates rather than from `compat.forceAdaptiveThinking`. Only tool deferral is unavailable, because the Converse API has no tool-reference protocol.
 
+**Measured effect.** On `github-copilot/claude-opus-5` with 12 tools, a live probe measured 11,885 input tokens with every definition inline against 1,352 input tokens with 11 of the 12 deferred. Activation and prompt caching both behaved normally in the same probe.
+
+`packages/ai/test/github-copilot-deferred-tools-live.test.ts` re-runs that probe against the live gateway. It is opt-in because the requests are billable: set `MCPI_LIVE_COPILOT=1`, and it reads the signed-in Copilot credential through the normal auth path rather than taking a pasted token. It reports 5,544 prompt tokens inline against 881 deferred, a 6.3x reduction, and asserts that the tool array and the cached prefix are byte-identical before and after activation.
+
+Note that the Copilot gateway caches the prompt prefix automatically, so `usage.input` stays near zero regardless of deferral and the saving only shows up once `cacheRead` and `cacheWrite` are counted too.
+
 Switching between these providers mid-session is supported. A tool marked as added under one provider is loaded correctly after switching to another, including across API families such as an `openai-responses` transcript continued on `anthropic/claude-opus-5`.
 
-**Offline contract tests.** The behaviors above are asserted by offline contract tests that capture the outgoing request payload and abort before any network call, so they need no credentials and make no billable requests. See `packages/ai/test/deferred-tools.test.ts` and `packages/ai/test/claude-opus-5-provider-matrix.test.ts`.
+**Offline contract tests.** The behaviors above are asserted by offline contract tests that capture the outgoing request payload and abort before any network call, so they need no credentials and make no billable requests. See `packages/ai/test/deferred-tools.test.ts`, `packages/ai/test/anthropic-deferred-tools-wire.test.ts` (wire shape, beta headers, and the one-shot downgrade), and `packages/ai/test/claude-opus-5-provider-matrix.test.ts`.
 
 #### Fallback behavior
 

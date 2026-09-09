@@ -532,10 +532,15 @@ describe("registration-deferred tools", () => {
 			expect(deferredToolNames(payload)).toEqual(["mcp_deploy"]);
 		});
 
+		// Deliberately a model the catalog does *not* advertise deferral for. `claude-opus-5` now
+		// ships with it on, so pinning the flag there would pass whether or not overrides are read
+		// at all; on `claude-sonnet-4.6` the override is the only thing that can turn it on.
 		it("honors supportsToolReferences on a GitHub Copilot Claude model", async () => {
+			const base = getModel("github-copilot", "claude-sonnet-4.6");
+			expect(base.compat?.supportsToolReferences).toBeUndefined();
 			const model: Model<"anthropic-messages"> = {
-				...getModel("github-copilot", "claude-opus-5"),
-				compat: { ...getModel("github-copilot", "claude-opus-5").compat, supportsToolReferences: true },
+				...base,
+				compat: { ...base.compat, supportsToolReferences: true },
 			};
 			const { payload, message } = await capture<AnthropicPayload>(
 				model,

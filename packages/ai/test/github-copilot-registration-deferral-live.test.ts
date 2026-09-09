@@ -175,17 +175,10 @@ function toolReferenceNames(payload: AnthropicPayload | undefined): string[] {
 }
 
 async function probe(context: Context): Promise<ProbeResult> {
+	// No capability pin: the Copilot catalog now advertises deferral for this model, so the probe
+	// exercises the shipped default rather than a forced one.
 	const base = getModel("github-copilot", "claude-opus-5");
-	// Force the capability on. The host seam is what this probe exercises; whether the Copilot
-	// catalog advertises deferral by default is separate metadata that lands with the provider
-	// change, and is covered offline by the provider matrix test. Pinning it here keeps the probe
-	// measuring the one thing only a live request can show: that the real gateway accepts
-	// `defer_loading` and actually withholds the schemas from the billed prompt.
-	const model: Model<"anthropic-messages"> = {
-		...base,
-		compat: { ...base.compat, supportsToolReferences: true },
-		...(BASE_URL ? { baseUrl: BASE_URL } : {}),
-	};
+	const model: Model<"anthropic-messages"> = { ...base, ...(BASE_URL ? { baseUrl: BASE_URL } : {}) };
 	let payload: AnthropicPayload | undefined;
 	const s = streamSimple(model, context, {
 		apiKey: TOKEN,
@@ -216,11 +209,7 @@ async function call(
 	context: Context,
 ): Promise<{ message: AssistantMessage; payload: AnthropicPayload | undefined; calls: ToolCall[] }> {
 	const base = getModel("github-copilot", "claude-opus-5");
-	const model: Model<"anthropic-messages"> = {
-		...base,
-		compat: { ...base.compat, supportsToolReferences: true },
-		...(BASE_URL ? { baseUrl: BASE_URL } : {}),
-	};
+	const model: Model<"anthropic-messages"> = { ...base, ...(BASE_URL ? { baseUrl: BASE_URL } : {}) };
 	let payload: AnthropicPayload | undefined;
 	const s = streamSimple(model, context, {
 		apiKey: TOKEN,

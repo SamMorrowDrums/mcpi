@@ -30,6 +30,7 @@ import type {
 	ToolResultMessage,
 } from "../types.ts";
 import { appendDeferredToolsUnsupportedDiagnostic, splitDeferredTools } from "../utils/deferred-tools.ts";
+import { appendAssistantMessageDiagnostic, createAssistantMessageDiagnostic } from "../utils/diagnostics.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { headersToRecord } from "../utils/headers.ts";
 import { parseJsonWithRepair, parseStreamingJson } from "../utils/json-parse.ts";
@@ -182,18 +183,52 @@ function getAnthropicCompat(
 		supportsTemperature: model.compat?.supportsTemperature ?? true,
 		allowEmptySignature: model.compat?.allowEmptySignature ?? false,
 		supportsStrictTools: model.compat?.supportsStrictTools ?? false,
-		supportsToolReferences: model.compat?.supportsToolReferences ?? defaultSupportsToolReferences(model),
+		supportsToolReferences: resolveSupportsToolReferences(model),
 	};
 }
 
 /**
- * Default for `supportsToolReferences`: first-party Anthropic models except
- * Haiku (rejects client-side tool_reference blocks) and models that predate
- * tool search (Claude 3.x, Opus/Sonnet 4.0, Opus 4.1).
+ * Models whose deferred-tool support was withdrawn after the endpoint rejected
+ * `defer_loading` or `tool_reference`. Process-lifetime only, and only reachable
+ * for endpoints that claim the capability without implementing it, since built-in
+ * catalog metadata is probe-verified.
+ */
+const toolReferencesRejectedByEndpoint = new Set<string>();
+
+function toolReferenceEndpointKey(model: Model<"anthropic-messages">): string {
+	return `${model.provider}\u0000${model.id}\u0000${model.baseUrl}`;
+}
+
+/** Record a hard endpoint rejection so this process stops sending deferred tools. */
+export function disableToolReferencesForEndpoint(model: Model<"anthropic-messages">): void {
+	toolReferencesRejectedByEndpoint.add(toolReferenceEndpointKey(model));
+}
+
+function resolveSupportsToolReferences(model: Model<"anthropic-messages">): boolean {
+	if (toolReferencesRejectedByEndpoint.has(toolReferenceEndpointKey(model))) return false;
+	return model.compat?.supportsToolReferences ?? defaultSupportsToolReferences(model);
+}
+
+/**
+ * Fallback for `anthropic-messages` models with no explicit capability metadata.
+ *
+ * First-party Anthropic ships dated snapshots of the same model
+ * (`claude-opus-4-6-20260101`), so support is derived from the family version
+ * rather than an exact-id allowlist: Sonnet, Opus, and Fable at 4.5 or newer,
+ * excluding Haiku, which rejects client-side `tool_reference` blocks.
+ *
+ * Every other provider returns false and must opt in through
+ * `compat.supportsToolReferences`. Gateways that reuse Claude ids do not
+ * necessarily implement the protocol, and the generated catalog carries
+ * probe-verified metadata for the ones that do (see
+ * `GITHUB_COPILOT_TOOL_REFERENCE_MODEL_IDS` in `scripts/generate-models.ts`).
  */
 function defaultSupportsToolReferences(model: Model<"anthropic-messages">): boolean {
 	if (model.provider !== "anthropic" || model.id.includes("haiku")) return false;
-	const version = model.id.match(/^claude-(?:opus|sonnet|fable)-(\d+)(?:-(\d+))?(?:-|$)/);
+	// Minor versions appear as `claude-opus-4-6` and `claude-opus-4.8` depending on
+	// the catalog, so accept either separator. A trailing 8-digit group is a release
+	// date (`claude-sonnet-4-20250514`), not a minor version.
+	const version = model.id.match(/^claude-(?:opus|sonnet|fable)-(\d+)(?:[-.](\d+))?(?:[-.]|$)/);
 	if (!version) return false;
 	const major = Number(version[1]);
 	const minor = version[2] && version[2].length < 8 ? Number(version[2]) : 0;
@@ -499,6 +534,40 @@ async function* iterateAnthropicEvents(
 	}
 }
 
+/**
+ * Signals that the endpoint does not implement the deferred-tool protocol at all:
+ * the field is rejected as unknown, or the content block type is unrecognized.
+ */
+const DEFERRED_TOOL_CAPABILITY_REJECTION =
+	/extra inputs are not permitted|not permitted|unsupported|not supported|unrecognized|unexpected (?:field|keyword|argument|property)|unknown (?:field|parameter|argument|property)|does not match any of the expected|invalid[^.]{0,32}\btype\b/i;
+
+/**
+ * Signals that the endpoint *does* implement references and could not resolve one.
+ * That is a client-side activation or naming bug, not a capability gap, so it must
+ * surface rather than silently downgrade the request.
+ */
+const TOOL_REFERENCE_RESOLUTION_FAILURE = /not found|does not exist|no such|unresolved|unknown tool\b/i;
+
+/**
+ * True only for an unambiguous rejection of the deferred-tool protocol itself:
+ * a 400 naming the `defer_loading` field or the `tool_reference` block type
+ * *and* describing it as unknown, extra, or unsupported.
+ *
+ * The Copilot gateway words these as `Extra inputs are not permitted:
+ * tools.1.defer_loading` and as an unrecognized content block type.
+ *
+ * `Tool reference 'x' not found in available tools` is deliberately excluded. It
+ * proves the endpoint implements references, so downgrading would mask a client
+ * activation or tool-naming bug behind a silent capability loss.
+ */
+function isDeferredToolRejection(error: unknown): boolean {
+	if (!(error instanceof Error)) return false;
+	if ((error as { status?: unknown }).status !== 400) return false;
+	if (!/\b(?:defer_loading|tool_reference)\b/.test(error.message)) return false;
+	if (TOOL_REFERENCE_RESOLUTION_FAILURE.test(error.message)) return false;
+	return DEFERRED_TOOL_CAPABILITY_REJECTION.test(error.message);
+}
+
 export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 	model: Model<"anthropic-messages">,
 	context: Context,
@@ -561,7 +630,7 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 				client = created.client;
 				isOAuth = created.isOAuthToken;
 			}
-			const built = buildParams(model, context, isOAuth, options);
+			let built = buildParams(model, context, isOAuth, options);
 			appendDeferredToolsUnsupportedDiagnostic(output, model, built.unsupportedDeferredToolNames);
 			let params = built.params;
 			const nextParams = await options?.onPayload?.(params, model);
@@ -573,14 +642,38 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 				...(options?.timeoutMs !== undefined ? { timeout: options.timeoutMs } : {}),
 				maxRetries: 0,
 			};
-			const response = await retryProviderRequest(
-				() => client.messages.create({ ...params, stream: true }, requestOptions).asResponse(),
-				{
+			const sendRequest = (body: MessageCreateParamsStreaming) =>
+				retryProviderRequest(() => client.messages.create({ ...body, stream: true }, requestOptions).asResponse(), {
 					maxRetries: options?.maxRetries,
 					maxRetryDelayMs: options?.maxRetryDelayMs,
 					signal: options?.signal,
-				},
-			);
+				});
+			let response: Response;
+			try {
+				response = await sendRequest(params);
+			} catch (error) {
+				// Only a 400 that names the deferred-tool fields is treated as a
+				// capability mismatch. Every other failure, including other 400s,
+				// propagates with the provider's exact message.
+				if (built.deferredToolNames.length === 0 || !isDeferredToolRejection(error)) throw error;
+				disableToolReferencesForEndpoint(model);
+				appendAssistantMessageDiagnostic(
+					output,
+					createAssistantMessageDiagnostic("deferred_tools_rejected", error, {
+						provider: model.provider,
+						model: model.id,
+						deferredTools: built.deferredToolNames,
+					}),
+				);
+				built = buildParams(model, context, isOAuth, options);
+				appendDeferredToolsUnsupportedDiagnostic(output, model, built.unsupportedDeferredToolNames);
+				params = built.params;
+				const retryParams = await options?.onPayload?.(params, model);
+				if (retryParams !== undefined) {
+					params = retryParams as MessageCreateParamsStreaming;
+				}
+				response = await sendRequest(params);
+			}
 			await options?.onResponse?.({ status: response.status, headers: headersToRecord(response.headers) }, model);
 			stream.push({ type: "start", partial: output });
 
@@ -959,6 +1052,9 @@ function createClient(
 /** The request plus the deferral this model could not express, for the caller to report. */
 interface BuiltParams {
 	params: MessageCreateParamsStreaming;
+	/** Normalized names actually sent with `defer_loading`. */
+	deferredToolNames: string[];
+	/** Normalized names that deferral would have withheld, but which were expanded. */
 	unsupportedDeferredToolNames: string[];
 }
 
@@ -972,10 +1068,11 @@ function buildParams(
 	const compat = getAnthropicCompat(model);
 	const transformedMessages = transformMessages(context.messages, model, normalizeToolCallId);
 	const normalizeToolName = isOAuthToken ? toClaudeCodeName : (name: string) => name;
-	const toolPlacement = splitDeferredTools(
-		{ ...context, messages: transformedMessages },
-		{ enabled: compat.supportsToolReferences, normalizeName: normalizeToolName },
-	);
+	const deferralContext = { ...context, messages: transformedMessages };
+	const toolPlacement = splitDeferredTools(deferralContext, {
+		enabled: compat.supportsToolReferences,
+		normalizeName: normalizeToolName,
+	});
 	const immediateTools = toolPlacement.immediate;
 	const deferredTools = [...toolPlacement.deferred.values()];
 	const deferredToolNames = new Set(deferredTools.map((tool) => normalizeToolName(tool.name)));
@@ -1091,7 +1188,11 @@ function buildParams(
 		}
 	}
 
-	return { params, unsupportedDeferredToolNames: toolPlacement.unsupported };
+	return {
+		params,
+		deferredToolNames: [...deferredToolNames],
+		unsupportedDeferredToolNames: toolPlacement.unsupported,
+	};
 }
 
 // Normalize tool call IDs to match Anthropic's required pattern and length

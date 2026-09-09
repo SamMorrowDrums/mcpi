@@ -9,6 +9,7 @@ interface AnthropicToolPayload {
 	name: string;
 	description?: string;
 	defer_loading?: boolean;
+	cache_control?: { type: string; ttl?: string };
 }
 
 interface AnthropicContentBlock {
@@ -161,6 +162,16 @@ async function capturePayload<T>(model: Model<Api>, context: Context, apiKey = "
 	return captured;
 }
 
+async function captureAssistantMessage(model: Model<Api>, context: Context): Promise<AssistantMessage> {
+	const stream = streamSimple({ ...model, baseUrl: "http://127.0.0.1:9" }, context, {
+		apiKey: "fake-key",
+		onPayload: () => {
+			throw new PayloadCaptured();
+		},
+	});
+	return await stream.result();
+}
+
 function findAnthropicToolResultContent(payload: AnthropicPayload): AnthropicContentBlock[] {
 	for (const message of payload.messages) {
 		if (typeof message.content !== "string" && message.content.some((block) => block.type === "tool_result")) {
@@ -211,14 +222,260 @@ describe("deferred tools", () => {
 		expect(payload.tools?.every((tool) => !tool.defer_loading)).toBe(true);
 	});
 
-	it("does not defer on the GitHub Copilot Opus 5 variant", async () => {
+	it("defers on the GitHub Copilot Opus 5 variant", async () => {
 		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
 		const payload = await capturePayload<AnthropicPayload>(getModel("github-copilot", "claude-opus-5"), context);
+
+		expect(payload.tools).toMatchObject([{ name: "base_tool" }, { name: "late_tool", defer_loading: true }]);
+		expect(findAnthropicToolResult(payload).content).toEqual([{ type: "tool_reference", tool_name: "late_tool" }]);
+	});
+
+	// Registration deferral, unlike a transcript marker, has to work on the very first
+	// request, when there is no tool result to anchor a load point to.
+	it("hides a registration-deferred schema on turn zero on GitHub Copilot Opus 5", async () => {
+		const context: Context = {
+			messages: [makeUserMessage(1)],
+			tools: [makeTool("base_tool"), { ...makeTool("late_tool"), deferred: true }],
+		};
+		const payload = await capturePayload<AnthropicPayload>(getModel("github-copilot", "claude-opus-5"), context);
+
+		// `defer_loading` is what keeps the schema out of the model's context: the
+		// definition still travels on the wire, and the gateway withholds it until a
+		// `tool_reference` loads it. Without this flag on turn zero the schema is in
+		// context from the first request and the saving never happens.
+		expect(payload.tools).toMatchObject([{ name: "base_tool" }, { name: "late_tool", defer_loading: true }]);
+		expect(payload.tools?.find((tool) => tool.name === "base_tool")?.defer_loading).toBeUndefined();
+		// No load point exists yet, so nothing is referenced back.
+		expect(JSON.stringify(payload.messages)).not.toContain("tool_reference");
+	});
+
+	it("loads a turn-zero registration-deferred schema at the addedToolNames marker on GitHub Copilot", async () => {
+		const context = makeContext([makeTool("base_tool"), { ...makeTool("late_tool"), deferred: true }]);
+		const payload = await capturePayload<AnthropicPayload>(getModel("github-copilot", "claude-opus-5"), context);
+
+		expect(payload.tools).toMatchObject([{ name: "base_tool" }, { name: "late_tool", defer_loading: true }]);
+		expect(findAnthropicToolResult(payload).content).toEqual([{ type: "tool_reference", tool_name: "late_tool" }]);
+	});
+
+	it("expands a turn-zero registration-deferred schema on an unsupported Copilot model and reports it", async () => {
+		const context: Context = {
+			messages: [makeUserMessage(1)],
+			tools: [makeTool("base_tool"), { ...makeTool("late_tool"), deferred: true }],
+		};
+		const model = getModel("github-copilot", "claude-sonnet-4.6");
+		const payload = await capturePayload<AnthropicPayload>(model, context);
+		const message = await captureAssistantMessage(model, context);
+
+		expect(payload.tools?.every((tool) => !tool.defer_loading)).toBe(true);
+		expect(message.diagnostics).toMatchObject([
+			{
+				type: "deferred_tools_unsupported",
+				details: { provider: "github-copilot", deferredCandidates: ["late_tool"] },
+			},
+		]);
+	});
+
+	// The cacheable prefix is the tools array plus the system prompt. Activating a
+	// registration-deferred tool must not reorder or re-describe the immediate entries,
+	// or every cached prefix built before activation is invalidated.
+	it("keeps the immediate tool prefix stable when a registration-deferred tool activates", async () => {
+		const tools = [makeTool("base_tool"), makeTool("second_tool"), { ...makeTool("late_tool"), deferred: true }];
+		const model = getModel("github-copilot", "claude-opus-5");
+		const before = await capturePayload<AnthropicPayload>(model, { messages: [makeUserMessage(1)], tools });
+		const after = await capturePayload<AnthropicPayload>(model, makeContext(tools));
+
+		expect(after.tools?.map((tool) => tool.name)).toEqual(before.tools?.map((tool) => tool.name));
+		expect(after.tools?.map((tool) => tool.defer_loading)).toEqual(before.tools?.map((tool) => tool.defer_loading));
+		const immediateBefore = before.tools?.filter((tool) => !tool.defer_loading);
+		expect(after.tools?.filter((tool) => !tool.defer_loading)).toEqual(immediateBefore);
+	});
+
+	// Every id here was verified against the Copilot gateway with a live probe.
+	// Dotted minor versions are the reason this is an explicit allowlist: the
+	// version parser used for direct Anthropic never matched them.
+	it.each(["claude-opus-5", "claude-sonnet-5", "claude-opus-4.8", "claude-opus-4.7", "claude-haiku-4.5"])(
+		"defers on the verified GitHub Copilot model %s",
+		async (modelId) => {
+			const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+			const model = getModel("github-copilot", modelId as "claude-opus-5");
+			expect(model.api).toBe("anthropic-messages");
+			expect(model.compat?.supportsToolReferences).toBe(true);
+
+			const payload = await capturePayload<AnthropicPayload>(model, context);
+
+			expect(payload.tools).toMatchObject([{ name: "base_tool" }, { name: "late_tool", defer_loading: true }]);
+			expect(findAnthropicToolResult(payload).content).toEqual([{ type: "tool_reference", tool_name: "late_tool" }]);
+		},
+	);
+
+	// The Copilot gateway rejects claude-sonnet-4.6 outright, so it is deliberately
+	// absent from the verified allowlist. This pins that Claude version alone never
+	// implies deferral on a gateway.
+	it("does not defer on a GitHub Copilot Claude model outside the verified allowlist", async () => {
+		const model = getModel("github-copilot", "claude-sonnet-4.6");
+		expect(model.compat?.supportsToolReferences).toBeUndefined();
+
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const payload = await capturePayload<AnthropicPayload>(model, context);
 
 		expect(payload.tools?.map((tool) => tool.name)).toEqual(["base_tool", "late_tool"]);
 		expect(payload.tools?.every((tool) => !tool.defer_loading)).toBe(true);
 		const content = findAnthropicToolResult(payload).content;
 		expect(Array.isArray(content) && content.some((block) => block.type === "tool_reference")).toBe(false);
+	});
+
+	// An unprobed Copilot Claude id must fall back rather than inherit deferral from
+	// a sibling. Mutating the allowlist to a prefix or provider-wide test would break
+	// this, which is the point.
+	it("does not defer on an unknown GitHub Copilot Claude id", async () => {
+		const model: Model<"anthropic-messages"> = {
+			...getModel("github-copilot", "claude-opus-5"),
+			id: "claude-opus-6",
+			compat: { forceAdaptiveThinking: true, supportsTemperature: false },
+		};
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const payload = await capturePayload<AnthropicPayload>(model, context);
+
+		expect(payload.tools?.map((tool) => tool.name)).toEqual(["base_tool", "late_tool"]);
+		expect(payload.tools?.every((tool) => !tool.defer_loading)).toBe(true);
+	});
+
+	it("keeps Copilot deferral off when a model override disables it", async () => {
+		const model: Model<"anthropic-messages"> = {
+			...getModel("github-copilot", "claude-opus-5"),
+			compat: { ...getModel("github-copilot", "claude-opus-5").compat, supportsToolReferences: false },
+		};
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const payload = await capturePayload<AnthropicPayload>(model, context);
+
+		expect(payload.tools?.every((tool) => !tool.defer_loading)).toBe(true);
+	});
+
+	it("keeps a Copilot deferred tool immediate once the model has called it", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const assistant = context.messages[1] as AssistantMessage;
+		assistant.content = [{ type: "toolCall", id: "call_1", name: "late_tool", arguments: {} }];
+		const payload = await capturePayload<AnthropicPayload>(getModel("github-copilot", "claude-opus-5"), context);
+
+		expect(payload.tools?.map((tool) => tool.name)).toEqual(["base_tool", "late_tool"]);
+		expect(payload.tools?.every((tool) => !tool.defer_loading)).toBe(true);
+	});
+
+	it("keeps one immediate Copilot tool when every current tool is marked", async () => {
+		const context = makeContext([makeTool("late_tool")]);
+		const payload = await capturePayload<AnthropicPayload>(getModel("github-copilot", "claude-opus-5"), context);
+
+		expect(payload.tools).toMatchObject([{ name: "late_tool" }]);
+		expect(payload.tools?.[0]?.defer_loading).toBeUndefined();
+	});
+
+	// The gateway 400s on a tool_reference mixed with other content in one
+	// tool_result, so sibling output must be displaced after the tool_result block.
+	it("never mixes a Copilot tool_reference with other tool-result content", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const firstResult = context.messages[2] as ToolResultMessage;
+		firstResult.content = [
+			{ type: "text", text: "work completed" },
+			{ type: "image", mimeType: "image/png", data: "aW1hZ2U=" },
+		];
+
+		const payload = await capturePayload<AnthropicPayload>(getModel("github-copilot", "claude-opus-5"), context);
+
+		expect(findAnthropicToolResultContent(payload)).toMatchObject([
+			{
+				type: "tool_result",
+				tool_use_id: "call_1",
+				content: [{ type: "tool_reference", tool_name: "late_tool" }],
+			},
+			{ type: "text", text: "work completed" },
+			{ type: "image", source: { type: "base64", media_type: "image/png", data: "aW1hZ2U=" } },
+		]);
+		const toolResult = findAnthropicToolResult(payload);
+		expect(Array.isArray(toolResult.content) && toolResult.content.every((b) => b.type === "tool_reference")).toBe(
+			true,
+		);
+	});
+
+	// A marker is a permanent transcript fact: it must still defer many turns later,
+	// and the reference must stay at its original index so the cached prefix and the
+	// tool array are byte-stable across turns.
+	it("keeps a Copilot marker deferred and referenced once across later turns", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const firstPayload = await capturePayload<AnthropicPayload>(getModel("github-copilot", "claude-opus-5"), context);
+
+		const laterContext: Context = {
+			...context,
+			messages: [
+				...context.messages,
+				{
+					...makeAssistantToolCall(),
+					content: [{ type: "toolCall", id: "call_2", name: "base_tool", arguments: {} }],
+					provider: "github-copilot",
+					model: "claude-opus-5",
+					timestamp: 5,
+				},
+				{ ...makeToolResult([]), toolCallId: "call_2", timestamp: 6 },
+				makeUserMessage(7),
+			],
+		};
+		const laterPayload = await capturePayload<AnthropicPayload>(
+			getModel("github-copilot", "claude-opus-5"),
+			laterContext,
+		);
+
+		expect(laterPayload.tools).toEqual(firstPayload.tools);
+		const references = laterPayload.messages.flatMap((message) =>
+			typeof message.content === "string"
+				? []
+				: message.content.flatMap((block) =>
+						Array.isArray(block.content) ? block.content.filter((inner) => inner.type === "tool_reference") : [],
+					),
+		);
+		expect(references).toEqual([{ type: "tool_reference", tool_name: "late_tool" }]);
+	});
+
+	// Duplicate markers for one tool must collapse to a single reference; the gateway
+	// treats a repeated definition as a protocol error.
+	it("emits a Copilot tool_reference once when several results mark the same tool", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const assistant = context.messages[1] as AssistantMessage;
+		assistant.content = [
+			{ type: "toolCall", id: "call_1", name: "base_tool", arguments: {} },
+			{ type: "toolCall", id: "call_2", name: "base_tool", arguments: {} },
+		];
+		context.messages.splice(3, 0, { ...makeToolResult(["late_tool"]), toolCallId: "call_2" });
+
+		const payload = await capturePayload<AnthropicPayload>(getModel("github-copilot", "claude-opus-5"), context);
+
+		const references = findAnthropicToolResultContent(payload).flatMap((block) =>
+			Array.isArray(block.content) ? block.content.filter((inner) => inner.type === "tool_reference") : [],
+		);
+		expect(references).toEqual([{ type: "tool_reference", tool_name: "late_tool" }]);
+	});
+
+	// Deferred definitions must sit after the cache breakpoint so the cached prefix
+	// is not invalidated when a tool is added mid-session.
+	it("puts the Copilot cache breakpoint on the last immediate tool", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("other_tool"), makeTool("late_tool")]);
+		const payload = await capturePayload<AnthropicPayload>(getModel("github-copilot", "claude-opus-5"), context);
+
+		expect(payload.tools?.map((tool) => tool.name)).toEqual(["base_tool", "other_tool", "late_tool"]);
+		expect(payload.tools?.at(-1)).toMatchObject({ name: "late_tool", defer_loading: true });
+		expect(payload.tools?.at(-1)?.cache_control).toBeUndefined();
+		expect(payload.tools?.[1]).toMatchObject({ name: "other_tool", cache_control: { type: "ephemeral" } });
+		expect(payload.tools?.[0]?.cache_control).toBeUndefined();
+	});
+
+	it("loads a tool introduced by direct Anthropic history after switching to Copilot", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const assistant = context.messages[1] as AssistantMessage;
+		assistant.provider = "anthropic";
+		assistant.model = "claude-opus-5";
+
+		const payload = await capturePayload<AnthropicPayload>(getModel("github-copilot", "claude-opus-5"), context);
+
+		expect(payload.tools).toMatchObject([{ name: "base_tool" }, { name: "late_tool", defer_loading: true }]);
+		expect(findAnthropicToolResult(payload).content).toEqual([{ type: "tool_reference", tool_name: "late_tool" }]);
 	});
 
 	it("preserves tool output as sibling content after emitting references", async () => {
@@ -395,6 +652,68 @@ describe("deferred tools", () => {
 		const payload = await capturePayload<AnthropicPayload>(model, context);
 
 		expect(payload.tools?.find((tool) => tool.name === "late_tool")?.defer_loading).toBe(true);
+	});
+
+	// The version fallback used to accept only dashed minor versions, so a dotted id
+	// silently fell back even when the family was new enough.
+	it.each(["claude-opus-4.8", "claude-opus-4.7", "claude-fable-5.1", "claude-sonnet-4.5"])(
+		"parses the dotted minor version in %s",
+		async (modelId) => {
+			const model: Model<"anthropic-messages"> = {
+				...getModel("anthropic", "claude-opus-4-6"),
+				id: modelId,
+				compat: undefined,
+			};
+			const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+			const payload = await capturePayload<AnthropicPayload>(model, context);
+
+			expect(payload.tools).toMatchObject([{ name: "base_tool" }, { name: "late_tool", defer_loading: true }]);
+		},
+	);
+
+	it.each(["claude-opus-4.1", "claude-sonnet-4.0", "claude-sonnet-4-20250514", "claude-haiku-4.5"])(
+		"does not defer on %s",
+		async (modelId) => {
+			const model: Model<"anthropic-messages"> = {
+				...getModel("anthropic", "claude-opus-4-6"),
+				id: modelId,
+				compat: undefined,
+			};
+			const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+			const payload = await capturePayload<AnthropicPayload>(model, context);
+
+			expect(payload.tools?.every((tool) => !tool.defer_loading)).toBe(true);
+		},
+	);
+
+	it("records a diagnostic when a marked tool is expanded because deferral is unsupported", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const message = await captureAssistantMessage(getModel("github-copilot", "claude-sonnet-4.6"), context);
+
+		expect(message.diagnostics).toMatchObject([
+			{
+				type: "deferred_tools_unsupported",
+				details: {
+					provider: "github-copilot",
+					model: "claude-sonnet-4.6",
+					deferredCandidates: ["late_tool"],
+				},
+			},
+		]);
+	});
+
+	it("records no deferral diagnostic when the model defers the marked tool", async () => {
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const message = await captureAssistantMessage(getModel("github-copilot", "claude-opus-5"), context);
+
+		expect(message.diagnostics ?? []).toEqual([]);
+	});
+
+	it("records no deferral diagnostic when the transcript marks nothing", async () => {
+		const context: Context = { messages: [makeUserMessage(1)], tools: [makeTool("base_tool")] };
+		const message = await captureAssistantMessage(getModel("github-copilot", "claude-sonnet-4.6"), context);
+
+		expect(message.diagnostics ?? []).toEqual([]);
 	});
 
 	it("serializes Kimi deferred tools as system tool definitions", async () => {
