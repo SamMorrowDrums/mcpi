@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added `Tool.deferred`, a registration-time flag that withholds a tool's schema from the model on turn zero without removing the tool. Deferred tools stay in `Context.tools` and in the provider tools array, so grammar membership and dispatch are unchanged and a direct call still resolves. Anthropic receives the whole definition with `defer_loading: true`, so the tool remains part of the request and a call the model does make still resolves. A `ToolResultMessage.addedToolNames` marker loads the schema at that tool-result position as a `tool_reference`, and a tool the model has already called stays immediate for the rest of the transcript.
+- Added a `deferred_tools_unsupported` assistant-message diagnostic naming the provider, model, and the tools whose schemas were sent up front because the selected model cannot withhold them, so losing progressive disclosure is reported instead of silent.
+
+### Changed
+
+- Moved the deferred-tools safety floor out of the Anthropic path into `splitDeferredTools`, so every API sends all tools up front when every registered tool would otherwise be deferred. `splitDeferredTools` now takes an options object, resolves deferral even for an API that cannot express it so the expanded names are reported rather than silently inlined, and is the single source of truth for the Chat Completions Kimi path as well, which previously derived its own deferred set and could therefore both list a tool up front and re-inject its schema at a load point.
+- Added `SplitDeferredToolsOptions.providesToolSearch`, which lifts the all-deferred safety floor for a caller that adds its own discovery tool to the request. The floor exists to guarantee the model has somewhere to start; where a provider's tool search can reach the deferred catalog it already does, and expanding every schema there would defeat deferral for the case it helps most, a tool set that is entirely MCP proxies. Defaults to off, so no existing caller changes behavior.
+- Restricted `Tool.deferred` to APIs that can withhold a schema without also withholding the tool's name. The OpenAI Responses, Codex Responses, and Chat Completions Kimi paths load tools from an item anchored to a tool result and expose no server-side catalog to search, so a tool withheld on turn zero would appear nowhere in the request and be undiscoverable even though it is still registered and dispatchable. Those APIs now send registration-deferred schemas up front with a `deferred_tools_unsupported` diagnostic, and keep them up front for the rest of the session rather than moving an already-sent schema to a later load point and churning the cached prefix. Deferral driven purely by `addedToolNames` is unchanged on every API.
+
 ## [0.85.1] - 2026-09-08
 
 ## [0.85.0] - 2026-09-04

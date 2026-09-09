@@ -459,6 +459,18 @@ export interface ToolDefinition<TParams extends TSchema = TSchema, TDetails = un
 	promptGuidelines?: string[];
 	/** Parameter schema (TypeBox) */
 	parameters: TParams;
+	/**
+	 * Register the tool with its schema withheld until it is loaded.
+	 *
+	 * The tool is active from the first turn: it stays in the tools array the model sees,
+	 * stays dispatchable, and executes normally if the model names it. Models with native
+	 * deferred loading receive only the name until an `AgentToolResult.addedToolNames`
+	 * marker loads the schema; models without it receive the full schema and the assistant
+	 * message carries a `deferred_tools_unsupported` diagnostic.
+	 *
+	 * This is visibility, not authorization. Use `setActiveTools` to change what may run.
+	 */
+	deferred?: boolean;
 	/** Optional provider-side constrained sampling request for this tool. Set false to explicitly disable it, equivalent to leaving it undefined. */
 	constrainedSampling?: false | ConstrainedSamplingConfig;
 	/** Controls whether ToolExecutionComponent renders the standard colored shell or the tool renders its own framing. */

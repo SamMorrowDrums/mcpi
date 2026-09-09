@@ -13,6 +13,7 @@ import type {
 	Tool,
 	ToolCall,
 } from "../types.ts";
+import { appendDeferredToolsUnsupportedDiagnostic, splitDeferredTools } from "../utils/deferred-tools.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { shortHash } from "../utils/hash.ts";
 import { headersToRecord } from "../utils/headers.ts";
@@ -138,6 +139,11 @@ export const stream: StreamFunction<"mistral-conversations", MistralOptions> = (
 			const transformedMessages = transformMessages(context.messages, model, (id) => normalizeMistralToolCallId(id));
 
 			let payload = buildChatPayload(model, context, transformedMessages, options);
+			appendDeferredToolsUnsupportedDiagnostic(
+				output,
+				model,
+				splitDeferredTools(context, { enabled: false }).unsupported,
+			);
 			const nextPayload = await options?.onPayload?.(payload, model);
 			if (nextPayload !== undefined) {
 				payload = nextPayload as MistralChatPayload;

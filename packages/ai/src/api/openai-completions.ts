@@ -34,6 +34,7 @@ import type {
 	ToolCall,
 	ToolResultMessage,
 } from "../types.ts";
+import { appendDeferredToolsUnsupportedDiagnostic, splitDeferredTools } from "../utils/deferred-tools.ts";
 import { formatProviderError, normalizeProviderError } from "../utils/error-body.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { shortHash } from "../utils/hash.ts";
@@ -90,18 +91,6 @@ function hasToolHistory(messages: Message[]): boolean {
 	return false;
 }
 
-function getDeferredToolNames(messages: Message[]): Set<string> {
-	const names = new Set<string>();
-	for (const message of messages) {
-		if (message.role === "toolResult") {
-			for (const name of message.addedToolNames ?? []) {
-				names.add(name);
-			}
-		}
-	}
-	return names;
-}
-
 function getToolsByName(tools: Tool[] | undefined, names: Iterable<string>): Tool[] {
 	if (!tools) return [];
 	const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
@@ -149,6 +138,8 @@ export interface OpenAICompletionsOptions extends StreamOptions {
 
 export interface ConvertCompletionsMessagesOptions {
 	grammarToolInputProperties?: ReadonlyMap<string, string>;
+	/** Tools still awaiting their load point. Names outside this map are already in `tools`. */
+	deferredTools?: ReadonlyMap<string, Tool>;
 }
 
 interface OpenAICompatCacheControl {
@@ -235,6 +226,14 @@ export const stream: StreamFunction<"openai-completions", OpenAICompletionsOptio
 			const cacheSessionId = cacheRetention === "none" ? undefined : options?.sessionId;
 			const client = createClient(model, context, apiKey, options?.headers, options?.fetch, cacheSessionId, compat);
 			let params = buildParams(model, context, options, compat, cacheRetention, grammarToolInputProperties);
+			appendDeferredToolsUnsupportedDiagnostic(
+				output,
+				model,
+				splitDeferredTools(context, {
+					enabled: compat.deferredToolsMode === "kimi",
+					registrationDeferral: false,
+				}).unsupported,
+			);
 			const nextParams = await options?.onPayload?.(params, model);
 			if (nextParams !== undefined) {
 				params = nextParams as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming;
@@ -690,7 +689,16 @@ function buildParams(
 		compat.supportsOpenAIGrammarTools,
 	),
 ) {
-	const messages = convertMessages(model, context, compat, { grammarToolInputProperties });
+	// Kimi injects schemas in a system message anchored to a tool result, so a
+	// registration-deferred tool would have no anchor before the first tool call.
+	const toolPlacement = splitDeferredTools(context, {
+		enabled: compat.deferredToolsMode === "kimi",
+		registrationDeferral: false,
+	});
+	const messages = convertMessages(model, context, compat, {
+		grammarToolInputProperties,
+		deferredTools: toolPlacement.deferred,
+	});
 	const cacheControl = getCompatCacheControl(compat, cacheRetention);
 
 	const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
@@ -725,10 +733,8 @@ function buildParams(
 		params.temperature = options.temperature;
 	}
 
-	const deferredToolNames =
-		compat.deferredToolsMode === "kimi" ? getDeferredToolNames(context.messages) : new Set<string>();
-	const activeTools = context.tools?.filter((tool) => !deferredToolNames.has(tool.name));
-	if (activeTools && activeTools.length > 0) {
+	const activeTools = toolPlacement.immediate;
+	if (activeTools.length > 0) {
 		params.tools = convertTools(activeTools, compat);
 		if (compat.zaiToolStream) {
 			(params as any).tool_stream = true;
@@ -1316,7 +1322,12 @@ export function convertMessages(
 			}
 
 			if (deferredToolNames.size > 0) {
-				const deferredTools = getToolsByName(context.tools, deferredToolNames);
+				const deferredTools = options?.deferredTools
+					? [...deferredToolNames].flatMap((name) => {
+							const tool = options.deferredTools?.get(name);
+							return tool ? [tool] : [];
+						})
+					: getToolsByName(context.tools, deferredToolNames);
 				if (deferredTools.length > 0) {
 					const kimiToolMessage: KimiToolSystemMessageParam = {
 						role: "system",

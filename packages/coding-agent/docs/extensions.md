@@ -1357,6 +1357,8 @@ Register a custom tool callable by the LLM. See [Custom Tools](#custom-tools) fo
 
 Use `pi.setActiveTools()` to enable or disable tools (including dynamically added tools) at runtime.
 
+Use `deferred: true` to keep a tool active and callable while withholding its schema from the model until a load point. See [Deferring a tool from turn zero](#deferring-a-tool-from-turn-zero).
+
 Use `promptSnippet` to opt a custom tool into a one-line entry in `Available tools`, and `promptGuidelines` to append tool-specific bullets to the default `Guidelines` section when the tool is active.
 
 **Important:** `promptGuidelines` bullets are appended flat to the `Guidelines` section with no tool name prefix. Each guideline must name the tool it refers to — avoid "Use this tool when..." because the LLM cannot tell which tool "this" means. Write "Use my_tool when..." instead.
@@ -2395,6 +2397,8 @@ If a slot renderer is not defined or throws:
 
 Extensions can register many tools while keeping only a small initial set active. A tool can then add more tools with `pi.setActiveTools()` during execution. mcpi detects purely additive changes, records the newly available tool names on that tool result, and applies the updated active set before the next model request.
 
+To withhold a tool's schema from the very first request, before any tool result exists to record it, register the tool with `deferred: true`. See [Deferring a tool from turn zero](#deferring-a-tool-from-turn-zero).
+
 This works with every model. Models with native deferred-loading support preserve the stable prompt prefix and load the new definitions at the tool-result position. Other models use the fallback described below.
 
 The lifecycle is:
@@ -2547,6 +2551,55 @@ export default function (pi: ExtensionAPI) {
 ```
 
 When `search_tools` adds a match, the model receives that definition on the immediately following request. On a native-capable model the definition is anchored after the search result without changing the initial tool-schema prefix. On other models it appears in the normal tool list on that same following request.
+
+#### Deferring a tool from turn zero
+
+`pi.setActiveTools()` can only hide a schema after a tool result records the change, so a tool registered without further metadata sends its full schema on the very first request. An extension that proxies dozens of MCP tools therefore pays for all of those schemas before the model has done anything.
+
+Set `deferred: true` on the tool definition to withhold the schema from turn zero instead:
+
+```typescript
+pi.registerTool({
+  name: "mcp_deploy",
+  label: "mcp deploy",
+  description: "Deploy through a proxied MCP server",
+  parameters: Type.Object({ target: Type.String() }),
+  deferred: true,
+  async execute(_toolCallId, params) {
+    return { content: [{ type: "text", text: `deployed ${params.target}` }], details: {} };
+  },
+});
+```
+
+**`deferred` controls visibility, not authorization.** The tool stays registered and active: it is in `pi.getAllTools()`, in `pi.getActiveTools()`, and in the tools array the agent hands to the provider. Only the JSON schema sent to the model is withheld. A deferred tool is still dispatchable, so a direct call — from a resumed transcript, another extension, or the model itself once it has seen the schema — executes normally. Nothing about `deferred` gates who may call the tool.
+
+Because the tool is never removed and no prompt metadata changes, marking a tool deferred does not rebuild the system prompt or change the active set, so the cached prompt prefix is preserved.
+
+Registration deferral composes with the `setActiveTools()` lifecycle above:
+
+- A tool registered with `deferred: true` starts withheld with no transcript history at all.
+- When a loader tool later names it — through `pi.setActiveTools()`, which records the name on the tool result — the schema is loaded at that tool-result position, using `tool_reference` or `additional_tools` on native-capable models.
+- Once the model has actually called a tool, it stays immediate for the rest of the session. Its schema was visible when the call was made, so withholding it again would leave a `tool_use` block in the transcript with no definition behind it.
+- Promoted tools are appended after the tools that were never deferred, so the order of the up-front schemas does not shift when a tool is promoted.
+
+On a model or provider without native deferred loading, the deferred schemas are sent up front, exactly as if `deferred` had not been set. mcpi records a `deferred_tools_unsupported` diagnostic on that assistant message naming the provider, the model, and the expanded tools, so the fallback is visible rather than silent. The [compatibility matrix](#models-with-native-deferred-loading) above lists which providers support it.
+
+**How a deferred tool is discovered.** Deferral hides a schema from the model, so something visible has to point at the hidden tool. There are two routes, and a given request may have either or both.
+
+The first is the tools you leave immediate: a loader, an index, or a search tool the model can always see. The model calls one, its result names tools through `addedToolNames`, and their schemas arrive at that position. This route works on every provider that supports deferred loading at all, and it is the one to rely on if you are unsure.
+
+The second is a provider's own tool-search tool, which lets the model search the deferred catalog without any help from your extension. It only exists where the provider holds the catalog server-side and mcpi sends that search tool; the [compatibility matrix](#models-with-native-deferred-loading) above records where that applies.
+
+If neither route is available for your provider, keep at least one tool immediate, or the deferred ones can never be found.
+
+**Registration deferral needs a turn-zero anchor, and not every provider has one.**
+
+- Anthropic keeps deferred tools in the request's `tools` array, carrying the full name, description, and input schema alongside `defer_loading: true`. The server holds the definition and withholds it from the model's context, so the tool is still part of the request: loading it later costs only a `tool_reference` rather than a re-sent schema, and a call the model does make resolves normally.
+- The OpenAI family loads tools from an item anchored to a tool result — `additional_tools`, or a client-executed `tool_search_output` that mcpi synthesizes. On turn zero there is no tool result to anchor to, so a withheld tool would be absent from the request entirely. It would not merely be hidden; naming it would fail, because the API was never told it exists.
+
+That second case would turn deferral into a dispatch gate, which it is not. So on OpenAI-family models, tools registered with `deferred: true` are sent up front with the `deferred_tools_unsupported` diagnostic, and stay up front for the rest of the session even if a loader later names them. Moving an already-sent schema to a load point would drop it out of the tools array the model has already seen, invalidating the cached prefix to re-send a definition it already has. Tools that reach `setActiveTools()` without being registration-deferred are unaffected and still load at the tool-result position.
+
+One safeguard applies regardless: if every registered tool is deferred, mcpi sends all of them up front, because a request with tools registered but no schema at all leaves the model unable to discover anything. The safeguard lifts on providers whose own tool search can reach the deferred catalog, since there the model does have somewhere to start.
 
 ## Custom UI
 

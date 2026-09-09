@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added `deferred` to the extension `ToolDefinition`, so `pi.registerTool({ ..., deferred: true })` withholds the tool's schema from the model until a load point rather than sending it on the first request. This is visibility, not authorization: the tool stays registered and active, remains in `pi.getAllTools()` and `pi.getActiveTools()`, and is still dispatchable, so a direct call executes normally. Because no tool is removed and no prompt metadata changes, the system prompt is not rebuilt and the cached prompt prefix is preserved. Registration deferral composes with `pi.setActiveTools()`: a loader tool naming a deferred tool loads its schema at that tool-result position, and once the model has called a tool it stays immediate. Registration deferral needs a turn-zero anchor: Anthropic sends the full definition with `defer_loading: true`, so the tool stays part of the request and a call still resolves, while OpenAI-family models can only load tools from a tool-result-anchored item and would omit a turn-zero deferred tool from the request altogether. Those models therefore send registration-deferred schemas up front with a `deferred_tools_unsupported` diagnostic rather than let deferral become a dispatch gate. A deferred tool is discovered either through the tools you leave immediate — a loader, index, or search tool whose result names tools via `addedToolNames` — or through a provider's own tool search where mcpi sends one. Keep at least one tool immediate if your provider has no such search. See [Deferring a tool from turn zero](docs/extensions.md#deferring-a-tool-from-turn-zero).
+
 ## [0.85.1] - 2026-09-08
 
 ### Fixed

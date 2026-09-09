@@ -15,7 +15,7 @@ import type {
 	StreamOptions,
 	Usage,
 } from "../types.ts";
-import { splitDeferredTools } from "../utils/deferred-tools.ts";
+import { appendDeferredToolsUnsupportedDiagnostic, splitDeferredTools } from "../utils/deferred-tools.ts";
 import { formatProviderError, normalizeProviderError } from "../utils/error-body.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { headersToRecord } from "../utils/headers.ts";
@@ -138,6 +138,14 @@ export const stream: StreamFunction<"openai-responses", OpenAIResponsesOptions> 
 			);
 			const client = createClient(model, context, apiKey, options?.headers, options?.fetch, cacheSessionId);
 			let params = buildParams(model, context, options, compat, grammarToolInputProperties);
+			appendDeferredToolsUnsupportedDiagnostic(
+				output,
+				model,
+				splitDeferredTools(context, {
+					enabled: compat.supportsAdditionalTools || compat.supportsToolSearch,
+					registrationDeferral: false,
+				}).unsupported,
+			);
 			const nextParams = await options?.onPayload?.(params, model);
 			if (nextParams !== undefined) {
 				params = nextParams as ResponseCreateParamsStreaming;
@@ -270,7 +278,13 @@ function buildParams(
 		: compat.supportsToolSearch
 			? "tool-search"
 			: undefined;
-	const toolPlacement = splitDeferredTools(context, deferredToolsMode !== undefined);
+	// Both OpenAI modes reveal a schema only at a transcript load point: `additional_tools` is
+	// message-anchored and the tool search is replayed client-side. Neither leaves the server a
+	// catalog to search, so a registration-deferred tool with no marker would be unreachable.
+	const toolPlacement = splitDeferredTools(context, {
+		enabled: deferredToolsMode !== undefined,
+		registrationDeferral: false,
+	});
 	const messages = convertResponsesMessages(model, context, OPENAI_TOOL_CALL_PROVIDERS, {
 		grammarToolInputProperties,
 		deferredTools: toolPlacement.deferred,
