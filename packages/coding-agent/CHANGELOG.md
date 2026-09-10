@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Fixed `mcpi --help` silently succeeding when explicit, managed, or trusted project extension packages fail to load. Help now retains successfully registered extension flags, reports startup diagnostics and a `--no-extensions` recovery hint, and exits nonzero for fatal load errors while preserving warning-only success.
 - Fixed a tool registered with `deferred: true` being unreachable when no loader tool ever named it. Its schema was withheld from turn zero and the only load point was a `pi.setActiveTools()` marker, so a tool no skill named stayed invisible for the whole session. On Anthropic-family providers mcpi now offers the server-side search tool alongside the deferred definitions, so the model can find the tool itself and then call it directly. Where search is unavailable those schemas are sent up front with a `deferred_tools_unsupported` diagnostic rather than being withheld with no way back. See [Finding a deferred tool that no skill loads](docs/extensions.md#finding-a-deferred-tool-that-no-skill-loads).
 - Corrected the dynamic tool loading documentation for GitHub Copilot. The provider matrix said Copilot-served Claude models used the safe fallback; they now use native `defer_loading` and `tool_reference`. Documented the probe-verified Copilot allowlist, the dotted-version parsing fix, the diagnostics emitted when deferral is unavailable, and the `compat.supportsToolReferences` and `compat.supportsToolSearch` overrides in both directions.
 

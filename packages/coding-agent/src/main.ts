@@ -76,7 +76,7 @@ import { assertNoLegacyPaths } from "./path-migration.ts";
 import { isLocalPath, normalizePath, resolvePath } from "./utils/paths.ts";
 import { cleanupWindowsSelfUpdateQuarantine } from "./utils/windows-self-update.ts";
 
-const EXTENSION_LOAD_FAILURE_HINT = `Hint: Start without extensions using "${APP_NAME} -ne".`;
+const EXTENSION_LOAD_FAILURE_HINT = `Hint: Start without extensions using "${APP_NAME} --no-extensions" (or "${APP_NAME} -ne").`;
 
 /**
  * Read all content from piped stdin.
@@ -117,6 +117,15 @@ function reportDiagnostics(diagnostics: readonly AgentSessionRuntimeDiagnostic[]
 		const prefix = diagnostic.type === "error" ? "Error: " : diagnostic.type === "warning" ? "Warning: " : "";
 		console.error(color(`${prefix}${diagnostic.message}`));
 	}
+}
+
+function reportRuntimeDiagnostics(diagnostics: readonly AgentSessionRuntimeDiagnostic[]): boolean {
+	reportDiagnostics(diagnostics);
+	const hasErrors = diagnostics.some((diagnostic) => diagnostic.type === "error");
+	if (hasErrors && diagnostics.some((diagnostic) => diagnostic.message.includes("Failed to load extension"))) {
+		console.error(chalk.yellow(EXTENSION_LOAD_FAILURE_HINT));
+	}
+	return hasErrors;
 }
 
 function isTruthyEnvFlag(value: string | undefined): boolean {
@@ -867,11 +876,12 @@ export async function main(args: string[], options?: MainOptions) {
 	configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
 
 	if (parsed.help) {
+		const hasRuntimeErrors = reportRuntimeDiagnostics(runtime.diagnostics);
 		const extensionFlags = resourceLoader
 			.getExtensions()
 			.extensions.flatMap((extension) => Array.from(extension.flags.values()));
 		printHelp(extensionFlags);
-		process.exit(0);
+		process.exit(hasRuntimeErrors ? 1 : 0);
 	}
 
 	if (parsed.listModels !== undefined) {
@@ -905,11 +915,7 @@ export async function main(args: string[], options?: MainOptions) {
 	}
 
 	time("resolveModelScope");
-	reportDiagnostics(runtime.diagnostics);
-	if (runtime.diagnostics.some((diagnostic) => diagnostic.type === "error")) {
-		if (runtime.diagnostics.some((diagnostic) => diagnostic.message.includes("Failed to load extension"))) {
-			console.error(chalk.yellow(EXTENSION_LOAD_FAILURE_HINT));
-		}
+	if (reportRuntimeDiagnostics(runtime.diagnostics)) {
 		process.exit(1);
 	}
 	time("createAgentSession");
