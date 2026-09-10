@@ -35,7 +35,11 @@ import { getPiUserAgent } from "../utils/pi-user-agent.ts";
 import { uuidv7 } from "../utils/uuid.ts";
 import { createGrammarToolInputProperties } from "./constrained-sampling.ts";
 import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.ts";
-import { convertResponsesMessages, convertResponsesTools, processResponsesStream } from "./openai-responses-shared.ts";
+import {
+	buildResponsesToolsPayload,
+	convertResponsesMessages,
+	processResponsesStream,
+} from "./openai-responses-shared.ts";
 import { buildBaseOptions } from "./simple-options.ts";
 
 // ============================================================================
@@ -272,7 +276,8 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 				model,
 				splitDeferredTools(context, {
 					enabled: Boolean(model.compat?.supportsAdditionalTools || model.compat?.supportsToolSearch),
-					registrationDeferral: false,
+					registrationDeferral: model.compat?.supportsToolSearch ?? false,
+					providesToolSearch: model.compat?.supportsToolSearch ?? false,
 				}).unsupported,
 			);
 			const nextBody = await options?.onPayload?.(body, model);
@@ -533,17 +538,31 @@ function buildRequestBody(
 ): RequestBody {
 	const supportsStrictMode = model.compat?.supportsStrictMode ?? true;
 	const supportsOpenAIGrammarTools = model.compat?.supportsOpenAIGrammarTools ?? false;
-	const deferredToolsMode = model.compat?.supportsAdditionalTools
-		? "additional-tools"
-		: model.compat?.supportsToolSearch
-			? "tool-search"
+	const supportsToolSearch = model.compat?.supportsToolSearch ?? false;
+	// Hosted tool search is the only OpenAI mechanism with a turn-zero anchor: declaring
+	// `{"type": "tool_search"}` lets the server search the deferred catalog before any tool has
+	// run, so a registration-deferred tool is reachable without a marker. When it is available it
+	// also becomes the load mechanism for markers, because a tool already declared in the
+	// top-level catalog is loaded by a `tool_search_output`, not by re-declaring it in
+	// `additional_tools`. `additional_tools` stays the fallback for models that lack search.
+	//
+	// Unlike `openai-responses` there is no rejection downgrade here: `openai-codex-responses`
+	// is served by exactly one backend, so a model advertising search cannot be a gateway that
+	// claims the capability without implementing it.
+	// `{"type": "tool_search"}` lets the server search the deferred catalog before any tool has
+	// run, so a registration-deferred tool is reachable without a marker. When it is available it
+	// also becomes the load mechanism for markers, because a tool already declared in the
+	// top-level catalog is loaded by a `tool_search_output`, not by re-declaring it in
+	// `additional_tools`. `additional_tools` stays the fallback for models that lack search.
+	const deferredToolsMode = supportsToolSearch
+		? "tool-search"
+		: model.compat?.supportsAdditionalTools
+			? "additional-tools"
 			: undefined;
-	// Both OpenAI modes reveal a schema only at a transcript load point: `additional_tools` is
-	// message-anchored and the tool search is replayed client-side. Neither leaves the server a
-	// catalog to search, so a registration-deferred tool with no marker would be unreachable.
 	const toolPlacement = splitDeferredTools(context, {
 		enabled: deferredToolsMode !== undefined,
-		registrationDeferral: false,
+		registrationDeferral: supportsToolSearch,
+		providesToolSearch: supportsToolSearch,
 	});
 	const messages = convertResponsesMessages(model, context, CODEX_TOOL_CALL_PROVIDERS, {
 		includeSystemPrompt: false,
@@ -578,12 +597,19 @@ function buildRequestBody(
 		body.service_tier = options.serviceTier;
 	}
 
-	if (toolPlacement.immediate.length > 0) {
-		body.tools = convertResponsesTools(toolPlacement.immediate, {
-			strict: null,
-			supportsStrictMode,
-			supportsOpenAIGrammarTools,
-		});
+	if (toolPlacement.immediate.length > 0 || toolPlacement.deferred.size > 0) {
+		// The deferred catalog is only declared up front when hosted search can reach it.
+		// Under `additional_tools` the schemas arrive later at their transcript load point, so
+		// declaring them here would both duplicate them and defeat the deferral.
+		body.tools = buildResponsesToolsPayload(
+			toolPlacement.immediate,
+			supportsToolSearch ? toolPlacement.deferred : new Map(),
+			{
+				strict: null,
+				supportsStrictMode,
+				supportsOpenAIGrammarTools,
+			},
+		);
 	}
 
 	if (options?.reasoningEffort !== undefined) {

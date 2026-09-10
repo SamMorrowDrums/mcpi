@@ -392,6 +392,29 @@ export interface Usage {
 
 export type StopReason = "pending" | "stop" | "length" | "toolUse" | "error" | "aborted" | "deferred";
 
+/**
+ * A tool-search load point the model reached during one assistant turn.
+ *
+ * OpenAI Responses returns the search step as `tool_search_call` plus `tool_search_output`
+ * items, and the schemas they loaded stay callable only while those items remain in the
+ * input. mcpi rebuilds the whole input from `Context.messages` on every turn, so a step that
+ * is not recorded here is lost and its tools fall back to being sent up front.
+ *
+ * Only the loaded names are kept. The schemas are rebuilt from the current `Context.tools`,
+ * so a tool whose schema changed between turns replays with its current definition and the
+ * transcript never carries a stale copy.
+ */
+export interface ToolSearchStep {
+	/** Who ran the search. Hosted search reports `server` and leaves `callId` unset. */
+	execution: "server" | "client";
+	/** Echoed back on replay. Null or absent for hosted search. */
+	callId?: string | null;
+	/** Verbatim search arguments, replayed so the recorded step stays byte-identical. */
+	arguments?: JsonValue;
+	/** Names from `Context.tools` whose schemas this step loaded. */
+	loadedToolNames: string[];
+}
+
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 export interface DeferredHandle {
@@ -421,6 +444,11 @@ export interface AssistantMessage {
 	responseModel?: string; // Concrete `chunk.model` when different from the requested `model` (e.g. OpenRouter `auto` -> `anthropic/...`)
 	responseId?: string; // Provider-specific response/message identifier when the upstream API exposes one
 	diagnostics?: AssistantMessageDiagnostic[]; // Redacted provider/runtime diagnostics for failures and recoveries.
+	/**
+	 * Tool-search steps this turn reached, in the order the model ran them. Replayed ahead of
+	 * the turn's first tool call so the schemas they loaded stay in scope on later turns.
+	 */
+	toolSearchSteps?: ToolSearchStep[];
 	usage: Usage;
 	stopReason: StopReason;
 	deferred?: DeferredHandle;
@@ -517,6 +545,22 @@ export interface Tool<TParameters extends TSchema = TSchema> {
 	 * `deferred_tools_unsupported` diagnostic on the assistant message.
 	 */
 	deferred?: boolean;
+	/**
+	 * Discovery group this tool belongs to, such as the MCP server that proxies it.
+	 *
+	 * Only OpenAI Responses uses this today, where it becomes a `namespace` tool entry. It
+	 * exists because deferral alone does not hide a flat function: OpenAI still shows the
+	 * model every deferred function's name and description up front and withholds only the
+	 * parameter schema. Grouping replaces that per-tool cost with one name and one
+	 * description for the whole group, which is what keeps a large proxied server off the
+	 * turn-zero prompt.
+	 *
+	 * The group is declared, never inferred from the tool's name. Tools keep their full
+	 * registered names inside the group, so dispatch, grammar membership and existing
+	 * transcripts are unaffected. Tools sharing a `name` group together and the first
+	 * registration wins the `description`.
+	 */
+	namespace?: { name: string; description: string };
 }
 
 export interface Context {
