@@ -2420,10 +2420,11 @@ Native deferred loading depends on the **provider** as well as the model. The sa
   - **Native representation:** Deferred definitions use `defer_loading`; the load point uses `tool_reference` content.
   - **Provider gate:** Auto-detection uses a version heuristic and requires `provider === "anthropic"`, because Anthropic ships dated snapshot ids such as `claude-opus-4-6-20260101` that an exact-id list could not keep up with. Both dashed and dotted minor versions are recognized, so `claude-opus-4-5-20250929` and `claude-opus-4.8` are both parsed as 4.5+.
 - **GitHub Copilot**
-  - **Models:** `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4.8`, `claude-opus-4.7`, `claude-fable-5.1`, and `claude-haiku-4.5`.
+  - **Models:** `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4.8`, `claude-opus-4.7`, and `claude-haiku-4.5`.
   - **Native representation:** Identical to first-party Anthropic. Copilot's Anthropic gateway accepts `defer_loading` and `tool_reference` without any extra beta header, and prompt caching still applies.
   - **Provider gate:** Support comes from a probe-verified allowlist in the model catalog, not from a version heuristic. Copilot's gateway is a separate implementation whose support is not implied by the Claude version: `claude-sonnet-4.6` uses the same `anthropic-messages` API but rejects `defer_loading` with a 400, so it is excluded. Model ids outside the allowlist, including ids Copilot adds later, use the fallback until they are probed.
   - Haiku is excluded on first-party Anthropic but allowed here, because `claude-haiku-4.5` was probed directly against the Copilot gateway.
+  - `claude-fable-5.1` currently routes through OpenAI Completions rather than Anthropic Messages, so it does not receive this Anthropic-native capability.
 - **OpenAI**
   - **Models:** `gpt-5.4` and newer family
   - **Native representation:** Models with `supportsAdditionalTools` anchor the new definitions to the transcript with a developer-role `additional_tools` message. Models with only `supportsToolSearch` instead get completed client `tool_search_call` and `tool_search_output` items at the load point.

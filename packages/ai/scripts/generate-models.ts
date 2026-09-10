@@ -785,7 +785,6 @@ const GITHUB_COPILOT_TOOL_REFERENCE_MODEL_IDS = new Set([
 	"claude-sonnet-5",
 	"claude-opus-4.8",
 	"claude-opus-4.7",
-	"claude-fable-5.1",
 	"claude-haiku-4.5",
 ]);
 

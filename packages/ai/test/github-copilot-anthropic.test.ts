@@ -74,6 +74,32 @@ describe("Copilot Claude via Anthropic Messages", () => {
 		expect(getSupportedThinkingLevels(sonnet46)).not.toContain("xhigh");
 	});
 
+	it("advertises native tool references only on verified Anthropic routes", () => {
+		const nativeAnthropicModelIds = [
+			"claude-opus-5",
+			"claude-sonnet-5",
+			"claude-opus-4.8",
+			"claude-opus-4.7",
+			"claude-haiku-4.5",
+		] as const;
+		for (const id of nativeAnthropicModelIds) {
+			const model = getModel("github-copilot", id);
+			expect(model.api).toBe("anthropic-messages");
+			if (model.api !== "anthropic-messages") throw new Error(`Expected ${id} to use Anthropic Messages`);
+			expect(model.compat?.supportsToolReferences).toBe(true);
+		}
+
+		const fable51 = getModel("github-copilot", "claude-fable-5.1");
+		expect(fable51.api).toBe("openai-completions");
+		expect(fable51.compat).not.toHaveProperty("supportsToolReferences");
+
+		const sonnet46 = getModel("github-copilot", "claude-sonnet-4.6");
+		expect(sonnet46.api).toBe("anthropic-messages");
+		if (sonnet46.api !== "anthropic-messages")
+			throw new Error("Expected Claude Sonnet 4.6 to use Anthropic Messages");
+		expect(sonnet46.compat?.supportsToolReferences).toBeUndefined();
+	});
+
 	it("uses Bearer auth, Copilot headers, and valid Anthropic Messages payload", async () => {
 		const model = getModel("github-copilot", "claude-sonnet-4.6");
 		expect(model.api).toBe("anthropic-messages");
