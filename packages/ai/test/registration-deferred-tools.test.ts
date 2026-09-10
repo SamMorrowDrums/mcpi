@@ -26,9 +26,18 @@ interface AnthropicPayload {
 	messages: Array<{ content: string | AnthropicContentBlock[] }>;
 }
 
+interface OpenAIToolPayload {
+	type?: string;
+	name?: string;
+	description?: string;
+	defer_loading?: boolean;
+	function?: { name: string };
+	tools?: OpenAIToolPayload[];
+}
+
 interface OpenAIPayload {
-	tools?: Array<{ name?: string; function?: { name: string } }>;
-	input?: Array<{ type?: string; name?: string; namespace?: string; tools?: Array<{ name: string }> }>;
+	tools?: OpenAIToolPayload[];
+	input?: Array<{ type?: string; name?: string; namespace?: string; tools?: OpenAIToolPayload[] }>;
 }
 
 interface KimiPayload {
@@ -151,8 +160,33 @@ function deferredToolNames(payload: AnthropicPayload): string[] {
 	return (payload.tools ?? []).filter((tool) => tool.defer_loading === true).map((tool) => tool.name);
 }
 
+/** Names whose full schema is sent up front, which is what a cached prefix is made of. */
 function openAIToolNames(payload: OpenAIPayload): string[] {
-	return (payload.tools ?? []).map((tool) => tool.name ?? tool.function?.name ?? "");
+	return (payload.tools ?? [])
+		.filter((tool) => tool.type !== "namespace" && tool.type !== "tool_search" && tool.defer_loading !== true)
+		.map((tool) => tool.name ?? tool.function?.name ?? "");
+}
+
+/** Ungrouped deferred names: schema withheld, but name and description still visible. */
+function openAIDeferredToolNames(payload: OpenAIPayload): string[] {
+	return (payload.tools ?? [])
+		.filter((tool) => tool.type !== "namespace" && tool.defer_loading === true)
+		.map((tool) => tool.name ?? "");
+}
+
+/** Grouped deferred tools: only the group name and description are visible up front. */
+function openAINamespaces(payload: OpenAIPayload): Array<{ name: string; description?: string; tools: string[] }> {
+	return (payload.tools ?? [])
+		.filter((tool) => tool.type === "namespace")
+		.map((tool) => ({
+			name: tool.name ?? "",
+			description: tool.description,
+			tools: (tool.tools ?? []).map((nested) => nested.name ?? ""),
+		}));
+}
+
+function openAIHasToolSearch(payload: OpenAIPayload): boolean {
+	return (payload.tools ?? []).some((tool) => tool.type === "tool_search");
 }
 
 function findToolResultContent(payload: AnthropicPayload): AnthropicContentBlock[] {
@@ -356,53 +390,80 @@ describe("registration-deferred tools", () => {
 	});
 
 	// The all-deferred floor guarantees the model is never left with no schema and no way to
-	// find one. Anthropic is sent its server-side search tool, which is a way to find one, so
-	// the floor stands down there and an all-MCP tool set -- the shape deferral helps most --
-	// stays deferred. The OpenAI family has no such route, so the floor still applies.
-	it("keeps an all-deferred set deferred only where search can reach it", async () => {
+	// find one. Both Anthropic and the OpenAI Responses family declare a native search tool
+	// alongside the deferred catalog, which is a way to find one, so the floor stands down and
+	// an all-MCP tool set -- the shape deferral helps most -- stays deferred on both.
+	it("keeps an all-deferred set deferred where search can reach it", async () => {
 		const tools = [makeTool("mcp_a", true), makeTool("mcp_b", true)];
 		const anthropic = await capturePayload<AnthropicPayload>(anthropicDeferring, turnZero(tools));
 		const openai = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.4"), turnZero(tools));
 
 		expect(toolNames(anthropic)).toEqual(["mcp_a", "mcp_b"]);
 		expect(deferredToolNames(anthropic)).toEqual(["mcp_a", "mcp_b"]);
-		expect(openAIToolNames(openai)).toEqual(["mcp_a", "mcp_b"]);
+		expect(openAIToolNames(openai)).toEqual([]);
+		expect(openAIDeferredToolNames(openai)).toEqual(["mcp_a", "mcp_b"]);
+		expect(openAIHasToolSearch(openai)).toBe(true);
 	});
 
-	it("keeps a registration-deferred OpenAI tool reachable, because it has no turn-zero anchor", async () => {
+	it("defers a registration-deferred OpenAI tool and declares hosted search to reach it", async () => {
 		const tools = [makeTool("read"), makeTool("mcp_deploy", true)];
 		const { payload, message } = await capture<OpenAIPayload>(getModel("openai", "gpt-5.4"), turnZero(tools));
 
-		// Withholding the schema here would withhold the name too, leaving the model unable to
-		// name a tool that is still registered and dispatchable.
-		expect(openAIToolNames(payload)).toEqual(["read", "mcp_deploy"]);
+		expect(openAIToolNames(payload)).toEqual(["read"]);
+		expect(openAIDeferredToolNames(payload)).toEqual(["mcp_deploy"]);
+		expect(openAIHasToolSearch(payload)).toBe(true);
 		expect((payload.input ?? []).some((item) => item.type === "additional_tools")).toBe(false);
-		expect(expansionDiagnostics(message)[0]?.details?.deferredCandidates).toEqual(["mcp_deploy"]);
+		expect(expansionDiagnostics(message)).toEqual([]);
 	});
 
-	it("does not re-inject an OpenAI schema that was already sent up front", async () => {
+	it("hides the name and description of a namespaced OpenAI tool at turn zero", async () => {
+		const tools = [
+			makeTool("read"),
+			{ ...makeTool("mcp_deploy", true), namespace: { name: "github.mcp", description: "GitHub MCP server" } },
+			{ ...makeTool("mcp_rollback", true), namespace: { name: "github.mcp", description: "GitHub MCP server" } },
+		];
+		const payload = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.4"), turnZero(tools));
+
+		// A flat deferred function still shows its name and description to the model, so grouping
+		// is the only way to keep a proxied server's catalog off the turn-zero prompt. The request
+		// still carries the definitions -- the server needs them to serve a search -- and renders
+		// only the group name and description to the model.
+		expect(openAIToolNames(payload)).toEqual(["read"]);
+		expect(openAIDeferredToolNames(payload)).toEqual([]);
+		expect(openAINamespaces(payload)).toEqual([
+			{ name: "github-mcp", description: "GitHub MCP server", tools: ["mcp_deploy", "mcp_rollback"] },
+		]);
+	});
+
+	it("loads a registration-deferred OpenAI schema at its marker through tool search", async () => {
 		const tools = [makeTool("read"), makeTool("mcp_deploy", true)];
 		const payload = await capturePayload<OpenAIPayload>(
 			getModel("openai", "gpt-5.4"),
 			afterLoad(tools, ["mcp_deploy"]),
 		);
+		const searchOutput = (payload.input ?? []).find((item) => item.type === "tool_search_output");
 
-		// Moving it to a load point now would drop it from the tools array the model has
-		// already seen, invalidating the cached prefix to re-send a schema it already has.
-		expect(openAIToolNames(payload)).toEqual(["read", "mcp_deploy"]);
+		// The tool stays in the declared catalog and the marker loads it in place, so the tools
+		// array is identical to turn zero and the cached prefix survives the load.
+		expect(openAIToolNames(payload)).toEqual(["read"]);
+		expect(openAIDeferredToolNames(payload)).toEqual(["mcp_deploy"]);
+		expect(searchOutput?.tools?.map((tool) => tool.name)).toEqual(["mcp_deploy"]);
 		expect((payload.input ?? []).some((item) => item.type === "additional_tools")).toBe(false);
 	});
 
-	it("still defers an OpenAI tool a marker introduced without registration deferral", async () => {
+	it("also declares a marker-introduced OpenAI tool in the searchable catalog", async () => {
 		const tools = [makeTool("read"), makeTool("mcp_deploy")];
 		const payload = await capturePayload<OpenAIPayload>(
 			getModel("openai", "gpt-5.4"),
 			afterLoad(tools, ["mcp_deploy"]),
 		);
-		const additional = (payload.input ?? []).find((item) => item.type === "additional_tools");
+		const searchOutput = (payload.input ?? []).find((item) => item.type === "tool_search_output");
 
+		// Search covers every deferred tool regardless of how it became deferred, so a tool a
+		// skill would have loaded is still reachable directly when no skill is involved.
 		expect(openAIToolNames(payload)).toEqual(["read"]);
-		expect(additional?.tools?.map((tool) => tool.name)).toEqual(["mcp_deploy"]);
+		expect(openAIDeferredToolNames(payload)).toEqual(["mcp_deploy"]);
+		expect(searchOutput?.tools?.map((tool) => tool.name)).toEqual(["mcp_deploy"]);
 	});
 
 	it("drops the namespace of a call whose schema is now sent up front", async () => {
@@ -426,15 +487,73 @@ describe("registration-deferred tools", () => {
 			],
 			tools: [makeTool("read"), makeTool("mcp_deploy", true)],
 		};
-		const payload = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.4"), context);
+		// gpt-5.2 has no deferred loading at all, so every schema is sent up front and no load
+		// item is emitted. Replaying the namespace would point at one that does not exist here.
+		const payload = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.2"), context);
 		const call = (payload.input ?? []).find((item) => item.type === "function_call" && item.name === "mcp_deploy");
 
-		// An OpenAI namespace is defined by the load item that introduced the tool. This request
-		// sends the schema up front and emits no load item, so replaying the namespace would
-		// point at one that does not exist here.
 		expect(openAIToolNames(payload)).toEqual(["read", "mcp_deploy"]);
 		expect(call).toBeDefined();
 		expect(call).not.toHaveProperty("namespace");
+	});
+
+	it("qualifies a replayed call with the namespace this request declares", async () => {
+		const namespace = { name: "github.mcp", description: "GitHub MCP server" };
+		const context: Context = {
+			messages: [
+				makeUserMessage(1),
+				{
+					...makeAssistantToolCall("mcp_deploy", { id: "call_2|fc_2", timestamp: 4, namespace: "stale_group" }),
+					api: "openai-responses",
+					provider: "openai",
+					model: "gpt-5.5",
+					toolSearchSteps: [{ execution: "server", loadedToolNames: ["mcp_deploy"] }],
+				},
+				makeToolResult([], { toolCallId: "call_2|fc_2", toolName: "mcp_deploy", timestamp: 5 }),
+				makeUserMessage(6),
+			],
+			tools: [makeTool("read"), { ...makeTool("mcp_deploy", true), namespace }],
+		};
+		const payload = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.4"), context);
+		const call = (payload.input ?? []).find((item) => item.type === "function_call" && item.name === "mcp_deploy");
+
+		// The recorded name came from another run and is not declared here; the group this
+		// request actually declares is the only one the call can resolve against.
+		expect(call?.namespace).toBe("github-mcp");
+	});
+
+	it("treats a native search as the load point for the call it enabled", async () => {
+		const context: Context = {
+			messages: [
+				makeUserMessage(1),
+				{
+					...makeAssistantToolCall("mcp_deploy", { id: "call_2|fc_2", timestamp: 4 }),
+					api: "openai-responses",
+					provider: "openai",
+					model: "gpt-5.4",
+					toolSearchSteps: [
+						{ execution: "server", arguments: { query: "deploy" }, loadedToolNames: ["mcp_deploy"] },
+					],
+				},
+				makeToolResult([], { toolCallId: "call_2|fc_2", toolName: "mcp_deploy", timestamp: 5 }),
+				makeUserMessage(6),
+			],
+			tools: [makeTool("read"), makeTool("mcp_deploy", true)],
+		};
+		const payload = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.4"), context);
+		const input = payload.input ?? [];
+		const searchIndex = input.findIndex((item) => item.type === "tool_search_call");
+		const callIndex = input.findIndex((item) => item.type === "function_call" && item.name === "mcp_deploy");
+
+		// Without the search items the replayed call would reference a schema this request never
+		// loaded, and the tool would be pulled back up front for the rest of the session.
+		expect(openAIToolNames(payload)).toEqual(["read"]);
+		expect(openAIDeferredToolNames(payload)).toEqual(["mcp_deploy"]);
+		expect(searchIndex).toBeGreaterThanOrEqual(0);
+		expect(searchIndex).toBeLessThan(callIndex);
+		expect(input.find((item) => item.type === "tool_search_output")?.tools?.map((tool) => tool.name)).toEqual([
+			"mcp_deploy",
+		]);
 	});
 
 	it("replays the namespace of a marker-deferred call across a model switch", async () => {

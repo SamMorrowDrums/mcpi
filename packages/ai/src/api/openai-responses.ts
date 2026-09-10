@@ -15,7 +15,14 @@ import type {
 	StreamOptions,
 	Usage,
 } from "../types.ts";
-import { appendDeferredToolsUnsupportedDiagnostic, splitDeferredTools } from "../utils/deferred-tools.ts";
+import {
+	appendDeferredToolsUnsupportedDiagnostic,
+	createDeferredToolEndpointRegistry,
+	DEFERRED_TOOLS_REJECTED_DIAGNOSTIC,
+	isDeferredToolRejection,
+	splitDeferredTools,
+} from "../utils/deferred-tools.ts";
+import { appendAssistantMessageDiagnostic, createAssistantMessageDiagnostic } from "../utils/diagnostics.ts";
 import { formatProviderError, normalizeProviderError } from "../utils/error-body.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { headersToRecord } from "../utils/headers.ts";
@@ -24,7 +31,11 @@ import { retryProviderRequest } from "../utils/provider-retry.ts";
 import { createGrammarToolInputProperties } from "./constrained-sampling.ts";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "./github-copilot-headers.ts";
 import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.ts";
-import { convertResponsesMessages, convertResponsesTools, processResponsesStream } from "./openai-responses-shared.ts";
+import {
+	buildResponsesToolsPayload,
+	convertResponsesMessages,
+	processResponsesStream,
+} from "./openai-responses-shared.ts";
 import { buildBaseOptions } from "./simple-options.ts";
 
 const OPENAI_TOOL_CALL_PROVIDERS = new Set(["openai", "openai-codex", "opencode"]);
@@ -64,15 +75,26 @@ function resolveCacheRetention(cacheRetention?: CacheRetention, env?: ProviderEn
 	return "short";
 }
 
+/**
+ * Endpoints that advertised deferred-tool support and then rejected it. Only reachable for a
+ * gateway that claims an OpenAI-compatible surface without implementing `defer_loading`,
+ * `namespace` or `tool_search`; built-in catalog metadata is probe-verified.
+ */
+const deferredToolEndpoints = createDeferredToolEndpointRegistry();
+
+/** Field names that make a 400 attributable to the deferred-tool protocol rather than the request. */
+const OPENAI_DEFERRED_TOOL_FIELDS = /\b(?:defer_loading|tool_search|tool_search_call|tool_search_output|namespace)\b/;
+
 function getCompat(model: Model<"openai-responses">): Required<OpenAIResponsesCompat> {
+	const deferredToolsDisabled = deferredToolEndpoints.isDisabled(model);
 	return {
 		supportsDeveloperRole: model.compat?.supportsDeveloperRole ?? true,
 		sessionAffinityFormat: model.compat?.sessionAffinityFormat ?? detectSessionAffinityFormat(model),
 		supportsLongCacheRetention: model.compat?.supportsLongCacheRetention ?? true,
 		supportsStrictMode: model.compat?.supportsStrictMode ?? false,
 		supportsOpenAIGrammarTools: model.compat?.supportsOpenAIGrammarTools ?? false,
-		supportsAdditionalTools: model.compat?.supportsAdditionalTools ?? false,
-		supportsToolSearch: model.compat?.supportsToolSearch ?? false,
+		supportsAdditionalTools: deferredToolsDisabled ? false : (model.compat?.supportsAdditionalTools ?? false),
+		supportsToolSearch: deferredToolsDisabled ? false : (model.compat?.supportsToolSearch ?? false),
 		supportsExplicitPromptCacheMode: model.compat?.supportsExplicitPromptCacheMode ?? false,
 	};
 }
@@ -138,14 +160,12 @@ export const stream: StreamFunction<"openai-responses", OpenAIResponsesOptions> 
 			);
 			const client = createClient(model, context, apiKey, options?.headers, options?.fetch, cacheSessionId);
 			let params = buildParams(model, context, options, compat, grammarToolInputProperties);
-			appendDeferredToolsUnsupportedDiagnostic(
-				output,
-				model,
-				splitDeferredTools(context, {
-					enabled: compat.supportsAdditionalTools || compat.supportsToolSearch,
-					registrationDeferral: false,
-				}).unsupported,
-			);
+			let placement = splitDeferredTools(context, {
+				enabled: compat.supportsAdditionalTools || compat.supportsToolSearch,
+				registrationDeferral: compat.supportsToolSearch,
+				providesToolSearch: compat.supportsToolSearch,
+			});
+			appendDeferredToolsUnsupportedDiagnostic(output, model, placement.unsupported);
 			const nextParams = await options?.onPayload?.(params, model);
 			if (nextParams !== undefined) {
 				params = nextParams as ResponseCreateParamsStreaming;
@@ -155,14 +175,45 @@ export const stream: StreamFunction<"openai-responses", OpenAIResponsesOptions> 
 				...(options?.timeoutMs !== undefined ? { timeout: options.timeoutMs } : {}),
 				maxRetries: 0,
 			};
-			const { data: openaiStream, response } = await retryProviderRequest(
-				() => client.responses.create(params, requestOptions).withResponse(),
-				{
+			const sendRequest = (body: ResponseCreateParamsStreaming) =>
+				retryProviderRequest(() => client.responses.create(body, requestOptions).withResponse(), {
 					maxRetries: options?.maxRetries,
 					maxRetryDelayMs: options?.maxRetryDelayMs,
 					signal: options?.signal,
-				},
-			);
+				});
+			let openaiStream: Awaited<ReturnType<typeof sendRequest>>["data"];
+			let response: Awaited<ReturnType<typeof sendRequest>>["response"];
+			try {
+				({ data: openaiStream, response } = await sendRequest(params));
+			} catch (error) {
+				// Only a 400 that names the deferred-tool fields counts as a capability mismatch.
+				// Every other failure, including other 400s, propagates with the provider's message.
+				if (placement.deferred.size === 0 || !isDeferredToolRejection(error, OPENAI_DEFERRED_TOOL_FIELDS)) {
+					throw error;
+				}
+				deferredToolEndpoints.disable(model);
+				appendAssistantMessageDiagnostic(
+					output,
+					createAssistantMessageDiagnostic(DEFERRED_TOOLS_REJECTED_DIAGNOSTIC, error, {
+						provider: model.provider,
+						model: model.id,
+						deferredTools: [...placement.deferred.keys()],
+					}),
+				);
+				const retryCompat = getCompat(model);
+				params = buildParams(model, context, options, retryCompat, grammarToolInputProperties);
+				placement = splitDeferredTools(context, {
+					enabled: retryCompat.supportsAdditionalTools || retryCompat.supportsToolSearch,
+					registrationDeferral: retryCompat.supportsToolSearch,
+					providesToolSearch: retryCompat.supportsToolSearch,
+				});
+				appendDeferredToolsUnsupportedDiagnostic(output, model, placement.unsupported);
+				const retryParams = await options?.onPayload?.(params, model);
+				if (retryParams !== undefined) {
+					params = retryParams as ResponseCreateParamsStreaming;
+				}
+				({ data: openaiStream, response } = await sendRequest(params));
+			}
 			await options?.onResponse?.({ status: response.status, headers: headersToRecord(response.headers) }, model);
 			stream.push({ type: "start", partial: output });
 
@@ -273,17 +324,21 @@ function buildParams(
 		compat.supportsOpenAIGrammarTools,
 	),
 ) {
-	const deferredToolsMode = compat.supportsAdditionalTools
-		? "additional-tools"
-		: compat.supportsToolSearch
-			? "tool-search"
+	// Hosted tool search is the only OpenAI mechanism with a turn-zero anchor: declaring
+	// `{"type": "tool_search"}` lets the server search the deferred catalog before any tool has
+	// run, so a registration-deferred tool is reachable without a marker. When it is available it
+	// also becomes the load mechanism for markers, because a tool already declared in the
+	// top-level catalog is loaded by a `tool_search_output`, not by re-declaring it in
+	// `additional_tools`. `additional_tools` stays the fallback for models that lack search.
+	const deferredToolsMode = compat.supportsToolSearch
+		? "tool-search"
+		: compat.supportsAdditionalTools
+			? "additional-tools"
 			: undefined;
-	// Both OpenAI modes reveal a schema only at a transcript load point: `additional_tools` is
-	// message-anchored and the tool search is replayed client-side. Neither leaves the server a
-	// catalog to search, so a registration-deferred tool with no marker would be unreachable.
 	const toolPlacement = splitDeferredTools(context, {
 		enabled: deferredToolsMode !== undefined,
-		registrationDeferral: false,
+		registrationDeferral: compat.supportsToolSearch,
+		providesToolSearch: compat.supportsToolSearch,
 	});
 	const messages = convertResponsesMessages(model, context, OPENAI_TOOL_CALL_PROVIDERS, {
 		grammarToolInputProperties,
@@ -319,11 +374,18 @@ function buildParams(
 		params.service_tier = options.serviceTier;
 	}
 
-	if (toolPlacement.immediate.length > 0) {
-		params.tools = convertResponsesTools(toolPlacement.immediate, {
-			supportsStrictMode: compat.supportsStrictMode,
-			supportsOpenAIGrammarTools: compat.supportsOpenAIGrammarTools,
-		});
+	if (toolPlacement.immediate.length > 0 || toolPlacement.deferred.size > 0) {
+		// The deferred catalog is only declared up front when hosted search can reach it.
+		// Under `additional_tools` the schemas arrive later at their transcript load point, so
+		// declaring them here would both duplicate them and defeat the deferral.
+		params.tools = buildResponsesToolsPayload(
+			toolPlacement.immediate,
+			compat.supportsToolSearch ? toolPlacement.deferred : new Map(),
+			{
+				supportsStrictMode: compat.supportsStrictMode,
+				supportsOpenAIGrammarTools: compat.supportsOpenAIGrammarTools,
+			},
+		);
 	}
 
 	if (options?.toolChoice !== undefined) {

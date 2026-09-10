@@ -53,7 +53,7 @@ interface OpenAIAdditionalTools {
 }
 
 interface OpenAIPayload {
-	tools?: Array<{ name?: string; function?: { name: string } }>;
+	tools?: Array<{ type?: string; name?: string; defer_loading?: boolean; function?: { name: string } }>;
 	input?: Array<
 		OpenAIAdditionalTools | OpenAIToolSearchCall | OpenAIToolSearchOutput | { type?: string; name?: string }
 	>;
@@ -187,8 +187,22 @@ function findAnthropicToolResult(payload: AnthropicPayload): AnthropicContentBlo
 	return result;
 }
 
+/** Names whose full schema is sent up front, which is what a cached prefix is made of. */
 function openAIToolNames(payload: OpenAIPayload): string[] {
-	return (payload.tools ?? []).map((tool) => tool.name ?? tool.function?.name ?? "");
+	return (payload.tools ?? [])
+		.filter((tool) => tool.type !== "namespace" && tool.type !== "tool_search" && tool.defer_loading !== true)
+		.map((tool) => tool.name ?? tool.function?.name ?? "");
+}
+
+/** Names declared in the searchable catalog with their schema withheld. */
+function openAIDeferredToolNames(payload: OpenAIPayload): string[] {
+	return (payload.tools ?? [])
+		.filter((tool) => tool.type !== "namespace" && tool.defer_loading === true)
+		.map((tool) => tool.name ?? "");
+}
+
+function openAIHasToolSearch(payload: OpenAIPayload): boolean {
+	return (payload.tools ?? []).some((tool) => tool.type === "tool_search");
 }
 
 function makeCodexToken(): string {
@@ -859,22 +873,45 @@ describe("deferred tools", () => {
 		expect(payload.messages.some((message) => message.tools !== undefined)).toBe(false);
 	});
 
-	it("loads an OpenAI Responses tool through additional_tools", async () => {
+	it("loads an OpenAI Responses tool through tool search when the catalog is declared", async () => {
 		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
 		const payload = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.4"), context);
+		const searchOutput = payload.input?.find(
+			(item): item is OpenAIToolSearchOutput => item.type === "tool_search_output",
+		);
+
+		// The tool is in the declared catalog, so the marker loads it in place through a search
+		// output. Re-declaring it in `additional_tools` would list the same tool twice.
+		expect(openAIToolNames(payload)).toEqual(["base_tool"]);
+		expect(openAIDeferredToolNames(payload)).toEqual(["late_tool"]);
+		expect(openAIHasToolSearch(payload)).toBe(true);
+		expect(searchOutput?.tools).toMatchObject([{ type: "function", name: "late_tool" }]);
+		expect(payload.input?.some((item) => item.type === "additional_tools")).toBe(false);
+	});
+
+	it("loads through additional_tools when the model has no tool search", async () => {
+		const model: Model<"openai-responses"> = {
+			...getModel("openai", "gpt-5.4"),
+			provider: "openai-proxy",
+			compat: { supportsAdditionalTools: true, supportsToolSearch: false },
+		};
+		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
+		const payload = await capturePayload<OpenAIPayload>(model, context);
 		const additionalTools = payload.input?.find(
 			(item): item is OpenAIAdditionalTools => item.type === "additional_tools",
 		);
 
+		// Nothing is declared up front here, so the schema has to arrive at its load point.
 		expect(openAIToolNames(payload)).toEqual(["base_tool"]);
+		expect(openAIDeferredToolNames(payload)).toEqual([]);
+		expect(openAIHasToolSearch(payload)).toBe(false);
 		expect(additionalTools).toMatchObject({ role: "developer" });
 		expect(additionalTools?.tools).toMatchObject([{ type: "function", name: "late_tool" }]);
 		expect(additionalTools?.tools.every((tool) => tool.defer_loading === undefined)).toBe(true);
 		expect(payload.input?.some((item) => item.type === "tool_search_call")).toBe(false);
-		expect(payload.input?.some((item) => item.type === "tool_search_output")).toBe(false);
 	});
 
-	it("preserves an additional_tools marker after the loaded tool is used", async () => {
+	it("preserves the load marker after the loaded tool is used", async () => {
 		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
 		const lateCall: AssistantMessage = {
 			...makeAssistantToolCall(),
@@ -890,19 +927,19 @@ describe("deferred tools", () => {
 		});
 
 		const payload = await capturePayload<OpenAIPayload>(getModel("openai", "gpt-5.4"), context);
-		const additionalToolIndexes = (payload.input ?? []).flatMap((item, index) =>
-			item.type === "additional_tools" ? [index] : [],
+		const loadIndexes = (payload.input ?? []).flatMap((item, index) =>
+			item.type === "tool_search_output" ? [index] : [],
 		);
 		const lateCallIndex = (payload.input ?? []).findIndex(
 			(item) => item.type === "function_call" && item.name === "late_tool",
 		);
 
-		expect(additionalToolIndexes).toHaveLength(1);
-		expect(additionalToolIndexes[0]).toBeLessThan(lateCallIndex);
+		expect(loadIndexes).toHaveLength(1);
+		expect(loadIndexes[0]).toBeLessThan(lateCallIndex);
 		expect(openAIToolNames(payload)).toEqual(["base_tool"]);
 	});
 
-	it("falls back to client tool search when additional_tools is unsupported", async () => {
+	it("uses client tool search when additional_tools is unsupported", async () => {
 		const model: Model<"openai-responses"> = {
 			...getModel("openai", "gpt-5.4"),
 			provider: "openai-proxy",
@@ -916,6 +953,7 @@ describe("deferred tools", () => {
 		);
 
 		expect(openAIToolNames(payload)).toEqual(["base_tool"]);
+		expect(openAIDeferredToolNames(payload)).toEqual(["late_tool"]);
 		expect(searchCall).toMatchObject({ execution: "client", status: "completed" });
 		expect(searchOutput?.call_id).toBe(searchCall?.call_id);
 		expect(searchOutput?.tools).toMatchObject([{ type: "function", name: "late_tool", defer_loading: true }]);
@@ -946,9 +984,9 @@ describe("deferred tools", () => {
 		expect(payload.input?.some((item) => item.type === "tool_search_output")).toBe(false);
 	});
 
-	it("selects additional tools, tool search, or top-level tools for Codex models", async () => {
+	it("selects tool search or top-level tools for Codex models", async () => {
 		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
-		const additionalTools = await capturePayload<OpenAIPayload>(
+		const searchCapable = await capturePayload<OpenAIPayload>(
 			getModel("openai-codex", "gpt-5.6-sol"),
 			context,
 			makeCodexToken(),
@@ -964,9 +1002,12 @@ describe("deferred tools", () => {
 			makeCodexToken(),
 		);
 
-		expect(openAIToolNames(additionalTools)).toEqual(["base_tool"]);
-		expect(additionalTools.input?.some((item) => item.type === "additional_tools")).toBe(true);
-		expect(additionalTools.input?.some((item) => item.type === "tool_search_output")).toBe(false);
+		// gpt-5.6-sol supports both mechanisms; the declared catalog wins, so it loads through a
+		// search output rather than re-declaring the tool in additional_tools.
+		expect(openAIToolNames(searchCapable)).toEqual(["base_tool"]);
+		expect(openAIDeferredToolNames(searchCapable)).toEqual(["late_tool"]);
+		expect(searchCapable.input?.some((item) => item.type === "additional_tools")).toBe(false);
+		expect(searchCapable.input?.some((item) => item.type === "tool_search_output")).toBe(true);
 		expect(openAIToolNames(toolSearch)).toEqual(["base_tool"]);
 		expect(toolSearch.input?.some((item) => item.type === "tool_search_output")).toBe(true);
 		expect(openAIToolNames(topLevel)).toEqual(["base_tool", "late_tool"]);

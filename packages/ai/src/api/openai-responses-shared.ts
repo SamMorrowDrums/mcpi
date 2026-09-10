@@ -1,5 +1,8 @@
 import type OpenAI from "openai";
 import type {
+	CustomTool,
+	FunctionTool,
+	NamespaceTool,
 	Tool as OpenAITool,
 	ResponseCreateParamsStreaming,
 	ResponseInput,
@@ -26,8 +29,10 @@ import type {
 	ThinkingContent,
 	Tool,
 	ToolCall,
+	ToolSearchStep,
 	Usage,
 } from "../types.ts";
+import { appendDeferredToolsLoadedDiagnostic } from "../utils/deferred-tools.ts";
 import type { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { shortHash } from "../utils/hash.ts";
 import { parseStreamingJson } from "../utils/json-parse.ts";
@@ -143,6 +148,11 @@ export function convertResponsesMessages<TApi extends Api>(
 ): ResponseInput {
 	const messages: ResponseInput = [];
 	const loadedToolNames = new Set<string>();
+	// Namespace names this request actually declares, per tool. A namespace can also be assigned
+	// by the server for tools loaded through a transcript item, which is why an unrecognized
+	// recorded namespace is passed through rather than dropped; but where we declared the group,
+	// our name is the one that exists in this request.
+	const declaredNamespaces = declaredNamespaceByTool(options?.deferredTools);
 
 	const normalizeIdPart = (part: string): string => {
 		const sanitized = part.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -216,6 +226,7 @@ export function convertResponsesMessages<TApi extends Api>(
 			const isSameModel = isSameProviderAndApi && assistantMsg.model === model.id;
 			const isDifferentModel = isSameProviderAndApi && assistantMsg.model !== model.id;
 			let textBlockIndex = 0;
+			let firstToolCallIndex = -1;
 
 			for (const block of msg.content) {
 				if (block.type === "thinking") {
@@ -246,6 +257,7 @@ export function convertResponsesMessages<TApi extends Api>(
 					} satisfies ResponseOutputMessage);
 				} else if (block.type === "toolCall") {
 					const toolCall = block as ToolCall;
+					if (firstToolCallIndex < 0) firstToolCallIndex = output.length;
 					const [callId, itemIdRaw] = toolCall.id.split("|");
 					const customInputProperty = options?.grammarToolInputProperties?.get(toolCall.name);
 					let itemId: string | undefined = itemIdRaw;
@@ -263,6 +275,11 @@ export function convertResponsesMessages<TApi extends Api>(
 					}
 
 					const canReplayNamespace = isSameModel || options?.deferredTools?.has(toolCall.name) === true;
+					// A group we declared is authoritative: the recorded name may predate the
+					// grouping or come from a different model's run, and pointing at a namespace
+					// this request does not contain would leave the call unresolvable.
+					const declaredNamespace = declaredNamespaces.get(toolCall.name);
+					const replayedNamespace = declaredNamespace ?? (canReplayNamespace ? toolCall.namespace : undefined);
 
 					if (customInputProperty !== undefined) {
 						output.push({
@@ -273,9 +290,7 @@ export function convertResponsesMessages<TApi extends Api>(
 							input: sanitizeSurrogates(
 								getGrammarToolInput(toolCall.name, toolCall.arguments, customInputProperty),
 							),
-							...(canReplayNamespace && toolCall.namespace !== undefined
-								? { namespace: toolCall.namespace }
-								: {}),
+							...(replayedNamespace !== undefined ? { namespace: replayedNamespace } : {}),
 						} satisfies ResponseOutputItem);
 					} else {
 						output.push({
@@ -284,12 +299,46 @@ export function convertResponsesMessages<TApi extends Api>(
 							call_id: callId,
 							name: toolCall.name,
 							arguments: JSON.stringify(toolCall.arguments),
-							...(canReplayNamespace && toolCall.namespace !== undefined
-								? { namespace: toolCall.namespace }
-								: {}),
+							...(replayedNamespace !== undefined ? { namespace: replayedNamespace } : {}),
 						});
 					}
 				}
+			}
+			// A model-initiated search is what put the called tool's schema in scope. mcpi sends
+			// `store: false` and rebuilds the input every turn, so without replaying the search
+			// items here the following `function_call` would reference a tool the request never
+			// loaded. Replay is verbatim (same execution mode, same call id) because that is the
+			// exact transcript the server produced; if an endpoint rejects it, the deferred-tools
+			// rejection path downgrades the whole endpoint to full schemas.
+			if (options?.deferredToolsMode === "tool-search" && assistantMsg.toolSearchSteps?.length) {
+				const replay: ResponseInput = [];
+				for (const step of assistantMsg.toolSearchSteps) {
+					const tools: Tool[] = [];
+					for (const name of step.loadedToolNames) {
+						const tool = options.deferredTools?.get(name);
+						// A tool can disappear between turns (extension unloaded, catalog changed).
+						// Replaying a stale name would load a schema the request never declared.
+						if (!tool || loadedToolNames.has(name)) continue;
+						loadedToolNames.add(name);
+						tools.push(tool);
+					}
+					if (tools.length === 0) continue;
+					replay.push({
+						type: "tool_search_call",
+						...(step.callId !== undefined ? { call_id: step.callId } : {}),
+						execution: step.execution,
+						status: "completed",
+						arguments: step.arguments ?? {},
+					} satisfies ResponseInputItem);
+					replay.push({
+						type: "tool_search_output",
+						...(step.callId !== undefined ? { call_id: step.callId } : {}),
+						execution: step.execution,
+						status: "completed",
+						tools: buildLoadedToolItems(tools, options.toolOptions),
+					} satisfies ResponseToolSearchOutputItemParam);
+				}
+				output.splice(firstToolCallIndex < 0 ? output.length : firstToolCallIndex, 0, ...replay);
 			}
 			if (output.length === 0) continue;
 			messages.push(...output);
@@ -339,10 +388,7 @@ export function convertResponsesMessages<TApi extends Api>(
 					call_id: searchCallId,
 					execution: "client",
 					status: "completed",
-					tools: convertResponsesTools(deferredTools, {
-						...options.toolOptions,
-						deferLoading: true,
-					}),
+					tools: buildLoadedToolItems(deferredTools, options.toolOptions),
 				} satisfies ResponseToolSearchOutputItemParam);
 			}
 		}
@@ -356,7 +402,10 @@ export function convertResponsesMessages<TApi extends Api>(
 // Tool conversion
 // =============================================================================
 
-export function convertResponsesTools(tools: readonly Tool[], options?: ConvertResponsesToolsOptions): OpenAITool[] {
+export function convertResponsesTools(
+	tools: readonly Tool[],
+	options?: ConvertResponsesToolsOptions,
+): Array<FunctionTool | CustomTool> {
 	const defaultStrict = options?.strict === undefined ? false : options.strict;
 	const supportsStrictMode = options?.supportsStrictMode ?? true;
 	const supportsOpenAIGrammarTools = options?.supportsOpenAIGrammarTools ?? false;
@@ -374,13 +423,13 @@ export function convertResponsesTools(tools: readonly Tool[], options?: ConvertR
 					definition: grammar.definition,
 				},
 				...(options?.deferLoading ? { defer_loading: true } : {}),
-			} satisfies OpenAITool;
+			} satisfies CustomTool;
 		}
 
 		const constrainedStrict = resolveJsonSchemaStrictSampling(tool, supportsStrictMode);
 		const strict = constrainedStrict ?? defaultStrict;
-		const functionTool: Omit<Extract<OpenAITool, { type: "function" }>, "strict"> & {
-			strict?: Extract<OpenAITool, { type: "function" }>["strict"];
+		const functionTool: Omit<FunctionTool, "strict"> & {
+			strict?: FunctionTool["strict"];
 		} = {
 			type: "function",
 			name: tool.name,
@@ -391,8 +440,129 @@ export function convertResponsesTools(tools: readonly Tool[], options?: ConvertR
 		if (supportsStrictMode) {
 			functionTool.strict = strict;
 		}
-		return functionTool as OpenAITool;
+		return functionTool as FunctionTool;
 	});
+}
+
+/** OpenAI rejects namespace names outside this set; dots in particular are common in server ids. */
+function sanitizeNamespaceName(name: string): string {
+	const sanitized = name.replace(/[^a-zA-Z0-9_-]/g, "-").replace(/^-+|-+$/g, "");
+	return sanitized.length > 0 ? sanitized : "tools";
+}
+
+/**
+ * Flatten the tool definitions a search returned into plain names.
+ *
+ * Namespaced results nest the matched functions one level down, and hosted tools such as
+ * `tool_search` itself carry no name at all, so both cases need unwrapping before the names
+ * can be matched back against the registered catalog.
+ */
+function collectLoadedToolNames(tools: readonly OpenAITool[]): string[] {
+	const names: string[] = [];
+	for (const tool of tools) {
+		if (tool.type === "namespace") {
+			for (const nested of tool.tools) names.push(nested.name);
+		} else if ("name" in tool && typeof tool.name === "string") {
+			names.push(tool.name);
+		}
+	}
+	return names;
+}
+
+/**
+ * Split deferred tools into declared namespace groups plus ungrouped leftovers.
+ *
+ * Registration order decides both group order and which description wins, so an unchanged tool
+ * set serializes identically on every turn and the prompt cache is not invalidated by map
+ * iteration differences.
+ */
+function groupDeferredTools(tools: Iterable<Tool>): {
+	groups: Map<string, { description: string; tools: Tool[] }>;
+	flat: Tool[];
+} {
+	const groups = new Map<string, { description: string; tools: Tool[] }>();
+	const flat: Tool[] = [];
+	const takenNames = new Map<string, string>();
+	for (const tool of tools) {
+		const namespace = tool.namespace;
+		if (!namespace) {
+			flat.push(tool);
+			continue;
+		}
+		let key = takenNames.get(namespace.name);
+		if (key === undefined) {
+			const base = sanitizeNamespaceName(namespace.name);
+			key = base;
+			// Two distinct groups can sanitize to the same name; keep them separate.
+			for (let suffix = 2; groups.has(key); suffix++) key = `${base}-${suffix}`;
+			takenNames.set(namespace.name, key);
+			groups.set(key, { description: namespace.description, tools: [] });
+		}
+		groups.get(key)?.tools.push(tool);
+	}
+	return { groups, flat };
+}
+
+/**
+ * Map each grouped deferred tool to the namespace name this request declares for it.
+ *
+ * Mirrors the grouping used to build the tools array, so a replayed call is qualified with the
+ * name that actually exists in the request rather than whatever the transcript recorded.
+ */
+function declaredNamespaceByTool(deferred: ReadonlyMap<string, Tool> | undefined): Map<string, string> {
+	const declared = new Map<string, string>();
+	if (!deferred || deferred.size === 0) return declared;
+	const { groups } = groupDeferredTools(deferred.values());
+	for (const [name, group] of groups) {
+		for (const tool of group.tools) declared.set(tool.name, name);
+	}
+	return declared;
+}
+
+/**
+ * Serialize a set of loaded tools the way a `tool_search_output` reports them: grouped tools
+ * stay nested in their namespace so a replayed transcript matches what the server emitted and
+ * the model can keep attaching the `namespace` field to its calls.
+ */
+function buildLoadedToolItems(tools: readonly Tool[], options?: ConvertResponsesToolsOptions): OpenAITool[] {
+	const toolOptions: ConvertResponsesToolsOptions = { ...options, deferLoading: true };
+	const { groups, flat } = groupDeferredTools(tools);
+	const items: OpenAITool[] = [];
+	for (const [name, group] of groups) {
+		items.push({
+			type: "namespace",
+			name,
+			description: group.description,
+			tools: convertResponsesTools(group.tools, toolOptions),
+		} satisfies NamespaceTool);
+	}
+	items.push(...convertResponsesTools(flat, toolOptions));
+	return items;
+}
+
+/**
+ * Build the request `tools` array for an API that can search a deferred catalog.
+ *
+ * Layout is `[immediate, namespaces, flat deferred, tool_search]`. Immediate tools keep
+ * registration order and stay first so the cacheable prefix never shifts when a later turn
+ * changes what is deferred. `tool_search` is appended only when something is actually
+ * deferred, because declaring a search over an empty catalog just costs tokens.
+ *
+ * Deferred tools carrying `Tool.namespace` are grouped, which is the only way OpenAI hides a
+ * tool's name and description rather than just its parameter schema. Deferred tools without
+ * that metadata stay flat: still worth deferring for the schema, but their name and
+ * description remain visible on turn zero.
+ */
+export function buildResponsesToolsPayload(
+	immediate: readonly Tool[],
+	deferred: ReadonlyMap<string, Tool>,
+	options?: ConvertResponsesToolsOptions,
+): OpenAITool[] {
+	const payload: OpenAITool[] = [...convertResponsesTools(immediate, options)];
+	if (deferred.size === 0) return payload;
+	payload.push(...buildLoadedToolItems([...deferred.values()], options));
+	payload.push({ type: "tool_search" });
+	return payload;
 }
 
 // =============================================================================
@@ -459,6 +629,42 @@ export async function processResponsesStream<TApi extends Api>(
 			delta,
 			partial: output,
 		});
+	};
+	// A search step arrives as a `tool_search_call` followed by a `tool_search_output`. Both are
+	// recorded on the message because the loaded schemas only stay in scope while those items
+	// remain in the input, and mcpi rebuilds the input from messages on every turn.
+	const recordToolSearchCall = (
+		execution: "server" | "client",
+		callId: string | null,
+		args: unknown,
+	): ToolSearchStep => {
+		const step: ToolSearchStep = { execution, loadedToolNames: [] };
+		if (callId !== null) step.callId = callId;
+		if (args !== undefined && args !== null) step.arguments = args as ToolSearchStep["arguments"];
+		output.toolSearchSteps = [...(output.toolSearchSteps ?? []), step];
+		return step;
+	};
+	const recordToolSearchOutput = (
+		execution: "server" | "client",
+		callId: string | null,
+		tools: readonly OpenAITool[],
+	): void => {
+		const steps = output.toolSearchSteps ?? [];
+		// Hosted search leaves `call_id` null, so fall back to the most recent unfilled call.
+		const match =
+			(callId !== null ? steps.find((step) => step.callId === callId) : undefined) ??
+			[...steps].reverse().find((step) => step.loadedToolNames.length === 0);
+		const step = match ?? recordToolSearchCall(execution, callId, undefined);
+		step.loadedToolNames = collectLoadedToolNames(tools);
+		// Emitted here rather than at each call site so every transport that funnels through this
+		// processor reports discovery identically. This records what the model was shown; it is
+		// not authorization, and a tool called without a preceding search still executes.
+		appendDeferredToolsLoadedDiagnostic(
+			output,
+			step.execution === "server" ? "hosted-search" : "client-search",
+			step.loadedToolNames,
+			{ provider: model.provider, model: model.id },
+		);
 	};
 	const createSlot = (outputIndex: number, item: ResponseOutputItem): ResponsesOutputSlot | undefined => {
 		if (item.type === "reasoning") {
@@ -736,6 +942,10 @@ export async function processResponsesStream<TApi extends Api>(
 					partial: output,
 				});
 				outputSlots.delete(event.output_index);
+			} else if (item.type === "tool_search_call") {
+				recordToolSearchCall(item.execution, item.call_id, item.arguments);
+			} else if (item.type === "tool_search_output") {
+				recordToolSearchOutput(item.execution, item.call_id, item.tools);
 			}
 		} else if (event.type === "response.completed" || event.type === "response.incomplete") {
 			finalizeResponse(event.response);

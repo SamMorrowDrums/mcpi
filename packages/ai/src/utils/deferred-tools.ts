@@ -8,6 +8,12 @@ const identityToolName: ToolNameNormalizer = (name) => name;
 /** Diagnostic emitted when an API sends schemas up front that deferral would have withheld. */
 export const DEFERRED_TOOLS_UNSUPPORTED_DIAGNOSTIC = "deferred_tools_unsupported";
 
+/** Diagnostic emitted when an endpoint rejected the deferred-tool protocol itself. */
+export const DEFERRED_TOOLS_REJECTED_DIAGNOSTIC = "deferred_tools_rejected";
+
+/** Diagnostic emitted when a load point revealed deferred schemas to the model. */
+export const DEFERRED_TOOLS_LOADED_DIAGNOSTIC = "deferred_tools_loaded";
+
 /** How the current tools split across the request tools array and transcript load points. */
 export interface DeferredToolPlacement {
 	/** Tools whose schemas are sent up front, registration order first, then promoted tools. */
@@ -84,6 +90,20 @@ export function splitDeferredTools(context: Context, options: SplitDeferredTools
 	const usedNames = new Set<string>();
 	for (const message of context.messages) {
 		if (message.role === "assistant") {
+			// A native search the model ran is a load point, exactly like a marker. It is applied
+			// before this message's calls because that is the order the transcript replays: the
+			// search items sit immediately ahead of the calls they enabled. Without this, a tool
+			// the model found and called reactively would look like it was called with its schema
+			// already visible, and would be pulled back into the up-front tools array for the rest
+			// of the session -- churning the cached prefix and undoing the deferral it just used.
+			for (const step of message.toolSearchSteps ?? []) {
+				for (const rawName of step.loadedToolNames) {
+					const name = normalizeName(rawName);
+					if (usedNames.has(name)) continue;
+					deferredNames.add(name);
+					loadedNames.add(name);
+				}
+			}
 			for (const block of message.content) {
 				if (block.type !== "toolCall") continue;
 				const name = normalizeName(block.name);
@@ -169,5 +189,84 @@ export function appendDeferredToolsUnsupportedDiagnostic(
 			model: model.id,
 			deferredCandidates: [...deferredCandidates],
 		},
+	});
+}
+
+/**
+ * Signals that the endpoint does not implement the deferred-tool protocol at all: the field
+ * is rejected as unknown, or the item type is unrecognized.
+ */
+const DEFERRED_TOOL_CAPABILITY_REJECTION =
+	/extra inputs are not permitted|not permitted|unsupported|not supported|unrecognized|unexpected (?:field|keyword|argument|property)|unknown (?:field|parameter|argument|property)|does not match any of the expected|invalid[^.]{0,32}\btype\b/i;
+
+/**
+ * Signals that the endpoint *does* implement the protocol and could not resolve one name.
+ * That is a client-side activation or naming bug, not a capability gap, so it must surface
+ * rather than silently downgrade the request.
+ */
+const DEFERRED_TOOL_RESOLUTION_FAILURE = /not found|does not exist|no such|unresolved|unknown tool\b/i;
+
+/**
+ * True only for an unambiguous rejection of the deferred-tool protocol itself: a 400 naming
+ * one of `fields` *and* describing it as unknown, extra, or unsupported.
+ *
+ * A 400 that names a field but reports it as unresolved is deliberately excluded, because it
+ * proves the endpoint implements the field. Downgrading there would mask a client bug behind
+ * a silent capability loss.
+ *
+ * Shared so every API applies the same rule to its own field names. `anthropic-messages`
+ * carries an equivalent local copy that predates this seam and can adopt it directly.
+ */
+export function isDeferredToolRejection(error: unknown, fields: RegExp): boolean {
+	if (!(error instanceof Error)) return false;
+	if ((error as { status?: unknown }).status !== 400) return false;
+	if (!fields.test(error.message)) return false;
+	if (DEFERRED_TOOL_RESOLUTION_FAILURE.test(error.message)) return false;
+	return DEFERRED_TOOL_CAPABILITY_REJECTION.test(error.message);
+}
+
+/**
+ * Per-process record of endpoints that claimed deferred-tool support and then rejected it.
+ *
+ * Keyed by provider, model and base URL rather than model alone, because the same model id
+ * behind a different gateway is a different implementation. Process-lifetime only: built-in
+ * catalog metadata is probe-verified, so this is only reachable for an endpoint that
+ * advertises the capability without implementing it.
+ */
+export function createDeferredToolEndpointRegistry(): {
+	disable: (model: Pick<Model<Api>, "id" | "provider" | "baseUrl">) => void;
+	isDisabled: (model: Pick<Model<Api>, "id" | "provider" | "baseUrl">) => boolean;
+} {
+	const disabled = new Set<string>();
+	const key = (model: Pick<Model<Api>, "id" | "provider" | "baseUrl">): string =>
+		`${model.provider}\u0000${model.id}\u0000${model.baseUrl}`;
+	return {
+		disable: (model) => {
+			disabled.add(key(model));
+		},
+		isDisabled: (model) => disabled.has(key(model)),
+	};
+}
+
+/**
+ * Record that a tool search revealed deferred schemas, so discovery is measurable separately
+ * from execution. This reports what the model was shown; it never authorizes a call, and a
+ * tool the model names without a preceding load still executes.
+ *
+ * Only searches are reported. A marker load is already in the transcript as
+ * `ToolResultMessage.addedToolNames`, and it is applied while the *request* is built, so there
+ * is no assistant message of its own to carry a diagnostic.
+ */
+export function appendDeferredToolsLoadedDiagnostic(
+	message: { diagnostics?: AssistantMessageDiagnostic[] },
+	source: "hosted-search" | "client-search",
+	loadedToolNames: readonly string[],
+	details?: Record<string, unknown>,
+): void {
+	if (loadedToolNames.length === 0) return;
+	appendAssistantMessageDiagnostic(message, {
+		type: DEFERRED_TOOLS_LOADED_DIAGNOSTIC,
+		timestamp: Date.now(),
+		details: { source, loadedToolNames: [...loadedToolNames], ...details },
 	});
 }

@@ -89,6 +89,7 @@ type _AiAssistantMessageFieldsAccountedFor = Assert<
 		| "responseModel"
 		| "responseId"
 		| "diagnostics"
+		| "toolSearchSteps"
 		| "usage"
 		| "stopReason"
 		| "deferred"

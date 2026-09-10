@@ -471,6 +471,22 @@ export interface ToolDefinition<TParams extends TSchema = TSchema, TDetails = un
 	 * This is visibility, not authorization. Use `setActiveTools` to change what may run.
 	 */
 	deferred?: boolean;
+	/**
+	 * Group this tool under a named collection for APIs that can search a deferred catalog.
+	 *
+	 * Without a group, a deferred tool still shows its name and description on every turn and
+	 * only its parameter schema is withheld. A group replaces all of that with one entry, so a
+	 * proxied MCP server with fifty tools costs one name and one description at turn zero and
+	 * the model discovers the rest by searching.
+	 *
+	 * Declare it explicitly with the identity you already have, for example the MCP server name
+	 * and its description. It is never inferred from tool-name prefixes, which cannot tell
+	 * `github-insiders-*` from `github-mcp-server-*` and carry no description. Tools keep their
+	 * full registered names, so dispatch and `setActiveTools` are unaffected.
+	 *
+	 * Ignored on APIs without a searchable catalog.
+	 */
+	namespace?: { name: string; description: string };
 	/** Optional provider-side constrained sampling request for this tool. Set false to explicitly disable it, equivalent to leaving it undefined. */
 	constrainedSampling?: false | ConstrainedSamplingConfig;
 	/** Controls whether ToolExecutionComponent renders the standard colored shell or the tool renders its own framing. */
