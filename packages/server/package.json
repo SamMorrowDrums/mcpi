@@ -1,6 +1,6 @@
 {
 	"name": "@sammorrowdrums/mcpi-server",
-	"version": "0.85.1",
+	"version": "0.85.2",
 	"description": "Experimental server package for mcpi",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -56,8 +56,8 @@
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"@sammorrowdrums/mcpi-ai": "^0.85.1",
-		"@sammorrowdrums/mcpi-protocol": "^0.85.1"
+		"@sammorrowdrums/mcpi-ai": "^0.85.2",
+		"@sammorrowdrums/mcpi-protocol": "^0.85.2"
 	},
 	"devDependencies": {
 		"shx": "0.4.0",
