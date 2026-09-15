@@ -16,6 +16,7 @@ import type {
 	CacheRetention,
 	Context,
 	ImageContent,
+	JsonValue,
 	Message,
 	Model,
 	ProviderEnv,
@@ -42,6 +43,7 @@ import { sanitizeSurrogates } from "../utils/sanitize-unicode.ts";
 
 import { getJsonSchemaToolParameters, resolveJsonSchemaStrictSampling } from "./constrained-sampling.ts";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "./github-copilot-headers.ts";
+import type { ProviderReplayAssistantMessage } from "./provider-replay.ts";
 import { adjustMaxTokensForThinking, buildBaseOptions, clampMaxTokensToContext } from "./simple-options.ts";
 import { transformMessages } from "./transform-messages.ts";
 
@@ -701,6 +703,12 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 
 			type Block = (ThinkingContent | TextContent | (ToolCall & { partialJson: string })) & { index: number };
 			const blocks = output.content as Block[];
+			interface ReplayBlock {
+				index: number;
+				block: Record<string, unknown>;
+				partialJson: string;
+			}
+			const replayBlocks: ReplayBlock[] = [];
 
 			for await (const event of iterateAnthropicEvents(response, options?.signal)) {
 				if (event.type === "message_start") {
@@ -717,6 +725,11 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 						output.usage.input + output.usage.output + output.usage.cacheRead + output.usage.cacheWrite;
 					calculateCost(model, output.usage);
 				} else if (event.type === "content_block_start") {
+					replayBlocks.push({
+						index: event.index,
+						block: event.content_block as unknown as Record<string, unknown>,
+						partialJson: "",
+					});
 					if (event.content_block.type === "text") {
 						const block: Block = {
 							type: "text",
@@ -759,6 +772,27 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 						stream.push({ type: "toolcall_start", contentIndex: output.content.length - 1, partial: output });
 					}
 				} else if (event.type === "content_block_delta") {
+					const replayBlock = replayBlocks.find((block) => block.index === event.index);
+					if (replayBlock) {
+						if (event.delta.type === "text_delta") {
+							const text = replayBlock.block.text;
+							replayBlock.block.text = `${typeof text === "string" ? text : ""}${event.delta.text}`;
+						} else if (event.delta.type === "thinking_delta") {
+							const thinking = replayBlock.block.thinking;
+							replayBlock.block.thinking = `${typeof thinking === "string" ? thinking : ""}${event.delta.thinking}`;
+						} else if (event.delta.type === "signature_delta") {
+							const signature = replayBlock.block.signature;
+							replayBlock.block.signature = `${typeof signature === "string" ? signature : ""}${event.delta.signature}`;
+						} else if (event.delta.type === "input_json_delta") {
+							replayBlock.partialJson += event.delta.partial_json;
+							replayBlock.block.input = parseStreamingJson(replayBlock.partialJson);
+						} else if (event.delta.type === "citations_delta") {
+							const citations = replayBlock.block.citations;
+							replayBlock.block.citations = Array.isArray(citations)
+								? [...citations, event.delta.citation]
+								: [event.delta.citation];
+						}
+					}
 					if (event.delta.type === "text_delta") {
 						const index = blocks.findIndex((b) => b.index === event.index);
 						const block = blocks[index];
@@ -805,6 +839,10 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 						}
 					}
 				} else if (event.type === "content_block_stop") {
+					const replayBlock = replayBlocks.find((block) => block.index === event.index);
+					if (replayBlock?.partialJson) {
+						replayBlock.block.input = parseStreamingJson(replayBlock.partialJson);
+					}
 					const index = blocks.findIndex((b) => b.index === event.index);
 					const block = blocks[index];
 					if (block) {
@@ -885,6 +923,21 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 			}
 			if (output.stopReason === "aborted" || output.stopReason === "error") {
 				throw new Error(output.errorMessage || "An unknown error occurred");
+			}
+			const providerContent = replayBlocks
+				.sort((left, right) => left.index - right.index)
+				.map((block) => block.block as JsonValue);
+			if (
+				providerContent.some(
+					(block) => typeof block === "object" && block !== null && !Array.isArray(block) && block.type !== "text",
+				)
+			) {
+				(output as ProviderReplayAssistantMessage).providerReplay = {
+					provider: model.provider,
+					api: model.api,
+					model: model.id,
+					content: providerContent,
+				};
 			}
 
 			stream.push({ type: "done", reason: output.stopReason, message: output });
@@ -1281,6 +1334,7 @@ function convertMessages(
 ): MessageParam[] {
 	const params: MessageParam[] = [];
 	const loadedToolNames = new Set<string>();
+	const providerToolCallIds = new Map<string, string>();
 
 	for (let i = 0; i < transformedMessages.length; i++) {
 		const msg = transformedMessages[i];
@@ -1325,56 +1379,92 @@ function convertMessages(
 			}
 		} else if (msg.role === "assistant") {
 			const blocks: ContentBlockParam[] = [];
+			const providerReplay = (msg as ProviderReplayAssistantMessage).providerReplay;
+			const canReplayProviderContent =
+				providerReplay?.provider === msg.provider &&
+				providerReplay.api === msg.api &&
+				providerReplay.model === msg.model &&
+				providerReplay.api === "anthropic-messages";
 
-			for (const block of msg.content) {
-				if (block.type === "text") {
-					if (block.text.trim().length === 0) continue;
-					blocks.push({
-						type: "text",
-						text: sanitizeSurrogates(block.text),
-					});
-				} else if (block.type === "thinking") {
-					// Redacted thinking: pass the opaque payload back as redacted_thinking
-					if (block.redacted) {
-						blocks.push({
-							type: "redacted_thinking",
-							data: block.thinkingSignature!,
-						});
-						continue;
-					}
-					const thinkingSignature = block.thinkingSignature;
-					const hasThinkingSignature = !!thinkingSignature && thinkingSignature.trim().length > 0;
-					if (block.thinking.trim().length === 0 && !hasThinkingSignature) continue;
-					// If thinking signature is missing/empty (e.g., from aborted stream),
-					// convert to plain text for Anthropic. Some compatible providers emit
-					// and accept empty signatures, so let marked models preserve the block.
-					if (!hasThinkingSignature) {
-						blocks.push(
-							allowEmptySignature
-								? {
-										type: "thinking",
-										thinking: sanitizeSurrogates(block.thinking),
-										signature: "",
-									}
-								: {
-										type: "text",
-										text: sanitizeSurrogates(block.thinking),
-									},
+			if (canReplayProviderContent) {
+				const replayBlocks = structuredClone(providerReplay.content) as unknown as ContentBlockParam[];
+				const replayToolCalls = replayBlocks.filter(
+					(block): block is Extract<ContentBlockParam, { type: "tool_use" }> => block.type === "tool_use",
+				);
+				const localToolCalls = msg.content.filter((block): block is ToolCall => block.type === "toolCall");
+				for (let index = 0; index < Math.min(localToolCalls.length, replayToolCalls.length); index++) {
+					providerToolCallIds.set(localToolCalls[index].id, replayToolCalls[index].id);
+				}
+				blocks.push(...replayBlocks);
+			} else {
+				for (let index = 0; index < msg.content.length - 1; index++) {
+					const current = msg.content[index];
+					const next = msg.content[index + 1];
+					if (
+						current.type === "thinking" &&
+						next.type === "thinking" &&
+						current.thinkingSignature &&
+						next.thinkingSignature &&
+						msg.content.slice(index + 2).some((block) => block.type === "toolCall")
+					) {
+						throw new Error(
+							"Cannot safely replay this Anthropic assistant message: it contains adjacent signed thinking blocks but no provider-native replay data. mcpi 0.85.2 could drop native server-tool blocks between those thoughts. Start a new session or branch before this turn, or start a new session with thinking disabled.",
 						);
-					} else {
+					}
+				}
+
+				for (const block of msg.content) {
+					if (block.type === "text") {
+						if (block.text.trim().length === 0) continue;
 						blocks.push({
-							type: "thinking",
-							thinking: sanitizeSurrogates(block.thinking),
-							signature: thinkingSignature,
+							type: "text",
+							text: sanitizeSurrogates(block.text),
+						});
+					} else if (block.type === "thinking") {
+						// Redacted thinking: pass the opaque payload back as redacted_thinking
+						if (block.redacted) {
+							blocks.push({
+								type: "redacted_thinking",
+								data: block.thinkingSignature!,
+							});
+							continue;
+						}
+						const thinkingSignature = block.thinkingSignature;
+						const hasThinkingSignature = !!thinkingSignature && thinkingSignature.trim().length > 0;
+						if (block.thinking.trim().length === 0 && !hasThinkingSignature) continue;
+						// If thinking signature is missing/empty (e.g., from aborted stream),
+						// convert to plain text for Anthropic. Some compatible providers emit
+						// and accept empty signatures, so let marked models preserve the block.
+						if (!hasThinkingSignature) {
+							blocks.push(
+								allowEmptySignature
+									? {
+											type: "thinking",
+											thinking: sanitizeSurrogates(block.thinking),
+											signature: "",
+										}
+									: {
+											type: "text",
+											text: sanitizeSurrogates(block.thinking),
+										},
+							);
+						} else {
+							// Signatures authenticate the exact thinking text. Never sanitize
+							// or otherwise rewrite a signed block during replay.
+							blocks.push({
+								type: "thinking",
+								thinking: block.thinking,
+								signature: thinkingSignature,
+							});
+						}
+					} else if (block.type === "toolCall") {
+						blocks.push({
+							type: "tool_use",
+							id: block.id,
+							name: isOAuthToken ? toClaudeCodeName(block.name) : block.name,
+							input: block.arguments ?? {},
 						});
 					}
-				} else if (block.type === "toolCall") {
-					blocks.push({
-						type: "tool_use",
-						id: block.id,
-						name: isOAuthToken ? toClaudeCodeName(block.name) : block.name,
-						input: block.arguments ?? {},
-					});
 				}
 			}
 			if (blocks.length === 0) continue;
@@ -1388,8 +1478,12 @@ function convertMessages(
 			const siblingContent: ContentBlockParam[] = [];
 			let j = i;
 			while (j < transformedMessages.length && transformedMessages[j].role === "toolResult") {
+				const toolResult = transformedMessages[j] as ToolResultMessage;
 				const converted = convertToolResult(
-					transformedMessages[j] as ToolResultMessage,
+					{
+						...toolResult,
+						toolCallId: providerToolCallIds.get(toolResult.toolCallId) ?? toolResult.toolCallId,
+					},
 					isOAuthToken,
 					deferredToolNames,
 					loadedToolNames,

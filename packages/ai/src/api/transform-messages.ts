@@ -8,6 +8,7 @@ import type {
 	ToolCall,
 	ToolResultMessage,
 } from "../types.ts";
+import type { ProviderReplayAssistantMessage } from "./provider-replay.ts";
 
 const NON_VISION_USER_IMAGE_PLACEHOLDER = "(image omitted: model does not support images)";
 const NON_VISION_TOOL_IMAGE_PLACEHOLDER = "(tool image omitted: model does not support images)";
@@ -91,7 +92,7 @@ export function transformMessages<TApi extends Api>(
 
 		// Assistant messages need transformation check
 		if (msg.role === "assistant") {
-			const assistantMsg = msg as AssistantMessage;
+			const assistantMsg = msg as ProviderReplayAssistantMessage;
 			const isSameModel =
 				assistantMsg.provider === model.provider &&
 				assistantMsg.api === model.api &&
@@ -147,10 +148,14 @@ export function transformMessages<TApi extends Api>(
 				return block;
 			});
 
-			return {
+			const transformedAssistant: ProviderReplayAssistantMessage = {
 				...assistantMsg,
 				content: transformedContent,
 			};
+			if (!isSameModel) {
+				delete transformedAssistant.providerReplay;
+			}
+			return transformedAssistant;
 		}
 		return msg;
 	});

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed Anthropic and GitHub Copilot signed-thinking replay after provider-native deferred tool search. Anthropic response blocks such as `server_tool_use` and `tool_search_tool_result` are now retained exactly, in order, across JSONL persistence and replay without becoming client-executed tools. Same-model replay also preserves the provider's original tool identity and signed thinking bytes, while cross-model handoffs drop the provider-native payload. Sessions created by older mcpi versions with adjacent signed thinking blocks but missing native blocks now fail locally with recovery guidance instead of retrying Anthropic's unreplayable payload.
+
 ## [0.85.2] - 2026-09-10
 
 ### Added
