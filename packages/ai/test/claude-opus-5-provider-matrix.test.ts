@@ -145,12 +145,14 @@ describe("Claude Opus 5 catalog metadata", () => {
 		expect(getModel("amazon-bedrock", "us.anthropic.claude-opus-5").id).toBe("us.anthropic.claude-opus-5");
 	});
 
-	it("prices prompt caching identically across providers", () => {
-		const expected = { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 };
+	it("uses direct pricing except on regional Bedrock profiles", () => {
+		const standard = { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 };
+		const regionalBedrock = { input: 5.5, output: 27.5, cacheRead: 0.55, cacheWrite: 6.875 };
 
-		expect(getModel("anthropic", "claude-opus-5").cost).toEqual(expected);
-		expect(getModel("github-copilot", "claude-opus-5").cost).toEqual(expected);
-		expect(getModel("amazon-bedrock", "us.anthropic.claude-opus-5").cost).toEqual(expected);
+		expect(getModel("anthropic", "claude-opus-5").cost).toEqual(standard);
+		expect(getModel("github-copilot", "claude-opus-5").cost).toEqual(standard);
+		expect(getModel("amazon-bedrock", "global.anthropic.claude-opus-5").cost).toEqual(standard);
+		expect(getModel("amazon-bedrock", "us.anthropic.claude-opus-5").cost).toEqual(regionalBedrock);
 	});
 });
 
