@@ -13,6 +13,7 @@ import {
 	findCutPoint,
 	getLastAssistantUsage,
 	prepareCompaction,
+	serializeConversation,
 	shouldCompact,
 } from "../src/core/compaction/index.ts";
 import {
@@ -66,6 +67,15 @@ function createAssistantMessage(text: string, usage?: Usage): AssistantMessage {
 		model: "claude-sonnet-4-5",
 	};
 }
+
+type ReplayableAssistantMessage = AssistantMessage & {
+	providerReplay: {
+		provider: string;
+		api: string;
+		model: string;
+		content: unknown[];
+	};
+};
 
 let entryCounter = 0;
 let lastId: string | null = null;
@@ -458,6 +468,76 @@ describe("buildSessionContext", () => {
 		// model_change is later overwritten by assistant message's model info
 		expect(loaded.model).toEqual({ provider: "anthropic", modelId: "claude-sonnet-4-5" });
 		expect(loaded.thinkingLevel).toBe("high");
+	});
+
+	it("keeps provider-native replay data exact across a compaction boundary", () => {
+		const oldUser = createMessageEntry(createUserMessage("old history ".repeat(100)));
+		const oldAssistant = createMessageEntry(createAssistantMessage("old answer ".repeat(100)));
+		const currentUser = createMessageEntry(createUserMessage("current turn"));
+		const protectedMessage: ReplayableAssistantMessage = {
+			...createAssistantMessage(""),
+			content: [
+				{ type: "thinking", thinking: "first", thinkingSignature: "signature-one" },
+				{ type: "thinking", thinking: "second", thinkingSignature: "signature-two" },
+				{ type: "toolCall", id: "toolu_1", name: "read", arguments: {} },
+			],
+			provider: "github-copilot",
+			model: "claude-opus-5",
+			stopReason: "toolUse",
+			providerReplay: {
+				provider: "github-copilot",
+				api: "anthropic-messages",
+				model: "claude-opus-5",
+				content: [
+					{ type: "thinking", thinking: "first", signature: "signature-one" },
+					{
+						type: "server_tool_use",
+						id: "srvtoolu_1",
+						name: "tool_search_tool_bm25",
+						input: { query: "read" },
+						caller: { type: "direct" },
+					},
+					{
+						type: "tool_search_tool_result",
+						tool_use_id: "srvtoolu_1",
+						content: {
+							type: "tool_search_tool_search_result",
+							tool_references: [{ type: "tool_reference", tool_name: "read" }],
+						},
+					},
+					{ type: "thinking", thinking: "second", signature: "signature-two" },
+					{ type: "tool_use", id: "toolu_1", name: "read", input: {}, caller: { type: "direct" } },
+				],
+			},
+		};
+		const protectedEntry = createMessageEntry(protectedMessage);
+		const toolResult = createMessageEntry({
+			role: "toolResult",
+			toolCallId: "toolu_1",
+			toolName: "read",
+			content: [{ type: "text", text: "done" }],
+			isError: false,
+			timestamp: Date.now(),
+		});
+		const entries = [oldUser, oldAssistant, currentUser, protectedEntry, toolResult];
+		const preparation = prepareCompaction(entries, {
+			...DEFAULT_COMPACTION_SETTINGS,
+			keepRecentTokens: 2,
+		});
+		expect(preparation?.firstKeptEntryId).toBe(protectedEntry.id);
+
+		const compaction = createCompactionEntry("older history summary", protectedEntry.id);
+		const restored = buildSessionContext([...entries, compaction]);
+		const restoredProtected = restored.messages.find(
+			(message): message is AssistantMessage => message.role === "assistant" && message.model === "claude-opus-5",
+		);
+		expect((restoredProtected as ReplayableAssistantMessage | undefined)?.providerReplay).toEqual(
+			protectedMessage.providerReplay,
+		);
+
+		const serialized = serializeConversation([protectedMessage]);
+		expect(serialized).not.toContain("tool_search_tool_result");
+		expect(serialized).not.toContain("tool_search_tool_bm25");
 	});
 });
 

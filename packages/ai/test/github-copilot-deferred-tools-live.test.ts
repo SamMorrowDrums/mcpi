@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import { beforeAll, describe, expect, it } from "vitest";
+import type { ProviderReplayAssistantMessage } from "../src/api/provider-replay.ts";
 import { githubCopilotOAuth } from "../src/auth/oauth/github-copilot.ts";
 import type { OAuthCredential } from "../src/auth/types.ts";
 import { getModel, streamSimple } from "../src/compat.ts";
@@ -212,12 +213,10 @@ interface RawBlock {
 /**
  * Record the server's own content blocks without changing the request.
  *
- * mcpi's stream reader ignores `server_tool_use` and `tool_search_tool_result`, so those
- * blocks never reach the assistant message. Inferring "search happened" from the fact that
- * a deferred tool was eventually called would not distinguish a real search from a blind
- * call on a guessed name, which is the failure this has to rule out. Teeing the response
- * body records what the server actually sent while mcpi issues its normal request with its
- * normal headers.
+ * Provider-native blocks stay out of the client-executed content union and are retained
+ * opaquely for replay. Inferring "search happened" from the fact that a deferred tool was
+ * eventually called would not distinguish a real search from a blind call on a guessed
+ * name, so teeing the response independently records what the server actually sent.
  */
 function recordingFetch(chunks: string[]): FetchFunction {
 	return async (input, init) => {
@@ -273,12 +272,14 @@ async function probe(
 	context: Context,
 	mutate?: (payload: WirePayload) => WirePayload,
 	maxTokens: number = MAX_OUTPUT_TOKENS,
+	reasoning?: "medium",
 ): Promise<ProbeResult> {
 	let payload: WirePayload | undefined;
 	const chunks: string[] = [];
 	const stream = streamSimple(model(), context, {
 		apiKey: auth.apiKey,
 		maxTokens,
+		reasoning,
 		fetch: recordingFetch(chunks),
 		onPayload: (raw) => {
 			payload = raw as WirePayload;
@@ -439,6 +440,72 @@ describe.skipIf(!LIVE)("GitHub Copilot deferred tools (live)", () => {
 			expect(loadedBefore).toContain(block.name);
 		}
 		expect(result.message.errorMessage).toBeFalsy();
+	});
+
+	it("replays interleaved native search successfully on the tool-result turn", async () => {
+		const context: Context = {
+			systemPrompt: SYSTEM_PROMPT,
+			tools: [makeTool(LOADER), ...ACTIVATED.map((name) => makeTool(name, true))],
+			messages: [
+				{
+					role: "user",
+					content:
+						"Look up main/serials/quarterly-review. Think about the catalog category, search the deferred tools, reconsider the returned match, then call the matching tool.",
+					timestamp: Date.now(),
+				},
+			],
+		};
+		const first = await probe(context, undefined, 512, "medium");
+		expect(first.message.errorMessage).toBeFalsy();
+
+		const rawTypes = first.blocks.map((block) => block.type);
+		const replay = (first.message as ProviderReplayAssistantMessage).providerReplay;
+		expect(
+			replay?.content.map((block) =>
+				typeof block === "object" && block !== null && !Array.isArray(block) ? block.type : undefined,
+			),
+		).toEqual(rawTypes);
+
+		const searchIndex = rawTypes.indexOf("server_tool_use");
+		const resultIndex = rawTypes.indexOf("tool_search_tool_result", searchIndex + 1);
+		const firstThinkingIndex = rawTypes.indexOf("thinking");
+		const secondThinkingIndex = rawTypes.indexOf("thinking", resultIndex + 1);
+		expect(firstThinkingIndex).toBeGreaterThanOrEqual(0);
+		expect(searchIndex).toBeGreaterThan(firstThinkingIndex);
+		expect(resultIndex).toBeGreaterThan(searchIndex);
+		expect(secondThinkingIndex).toBeGreaterThan(resultIndex);
+
+		const toolCall = first.message.content.find((block) => block.type === "toolCall");
+		if (!toolCall || toolCall.type !== "toolCall") throw new Error("Expected the searched catalog tool call");
+		const second = await probe(
+			{
+				...context,
+				messages: [
+					...context.messages,
+					first.message,
+					{
+						role: "toolResult",
+						toolCallId: toolCall.id,
+						toolName: toolCall.name,
+						content: [
+							{
+								type: "text",
+								text: "Quarterly Review is available for standard two-week lending.",
+							},
+						],
+						isError: false,
+						timestamp: Date.now(),
+					},
+				],
+			},
+			undefined,
+			128,
+			"medium",
+		);
+
+		expect(second.message.stopReason).not.toBe("error");
+		expect(second.message.errorMessage).toBeUndefined();
+		console.log(`[live] replay blocks: ${JSON.stringify(rawTypes)}`);
 	});
 
 	it("reports the unsupported-model fallback without a billable request", async () => {
